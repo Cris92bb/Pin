@@ -1,0 +1,25 @@
+{
+  "dart.flutterSdkPath": "/home/cris92bb/flutter",
+  "dart.env": {
+    "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
+    "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
+    "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
+  },
+  "terminal.integrated.env.linux": {
+    "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
+    "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
+    "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
+  },
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "Dart-Code.dart-code",
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.rulers": [80],
+    "editor.selectionHighlight": false,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  }
+}

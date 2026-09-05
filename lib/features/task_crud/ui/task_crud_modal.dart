@@ -1,0 +1,712 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../entities/atomic_step/model/atomic_step.dart';
+import '../../../entities/atomic_step/ui/atomic_step_tile.dart';
+import '../../../entities/task/model/pin_task.dart';
+import '../../../entities/task/state/task_state_notifier.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../shared/ui/pill_chip.dart';
+import '../../../shared/ui/pin_button.dart';
+import '../../../shared/ui/pin_tokens.dart';
+
+/// Modal dialog for creating or editing Pins with tags, estimation chips, and energy states.
+class TaskCrudModal extends ConsumerStatefulWidget {
+  final PinTask? initialTask;
+  final TaskStatus? defaultStatus;
+
+  const TaskCrudModal({
+    super.key,
+    this.initialTask,
+    this.defaultStatus,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    PinTask? task,
+    TaskStatus? defaultStatus,
+  }) {
+    return showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      builder: (ctx) => TaskCrudModal(
+        initialTask: task,
+        defaultStatus: defaultStatus,
+      ),
+    );
+  }
+
+  @override
+  ConsumerState<TaskCrudModal> createState() => _TaskCrudModalState();
+}
+
+class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _descController;
+  late final TextEditingController _subtaskController;
+  late final TextEditingController _tagController;
+
+  late TaskStatus _selectedStatus;
+  late String _selectedEnergyTag;
+  late int _selectedEstimateMinutes;
+  late List<String> _tags;
+  late List<AtomicStep> _subtasks;
+  String? _inlineError;
+
+  static const List<int> _estimationOptions = [5, 15, 30, 45, 60, 120];
+  static const List<String> _energyTags = [
+    'low-friction',
+    'medium-flow',
+    'deep-focus',
+    'creative',
+    'administrative',
+  ];
+  static const List<String> _quickTags = [
+    '#dev',
+    '#ui',
+    '#admin',
+    '#quick-win',
+    '#design',
+    '#docs',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final task = widget.initialTask;
+    _titleController = TextEditingController(text: task?.title ?? '');
+    _descController = TextEditingController(text: task?.description ?? '');
+    _subtaskController = TextEditingController();
+    _tagController = TextEditingController();
+
+    _selectedStatus =
+        task?.status ?? widget.defaultStatus ?? TaskStatus.today;
+    _selectedEnergyTag = task?.energyTag ?? 'low-friction';
+    _selectedEstimateMinutes = task?.estimatedMinutes ?? 15;
+    _tags = task?.tags != null ? List.from(task!.tags) : ['#dev'];
+    _subtasks = task?.subtasks != null ? List.from(task!.subtasks) : [];
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    _subtaskController.dispose();
+    _tagController.dispose();
+    super.dispose();
+  }
+
+  void _addSubtask() {
+    final text = _subtaskController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _subtasks.add(
+        AtomicStep(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          title: text,
+          isCompleted: false,
+          estimatedMinutes: 15,
+        ),
+      );
+      _subtaskController.clear();
+    });
+  }
+
+  void _addTag(String tag) {
+    final clean = tag.startsWith('#') ? tag : '#$tag';
+    if (!_tags.contains(clean)) {
+      setState(() => _tags.add(clean));
+    }
+    _tagController.clear();
+  }
+
+  void _removeTag(String tag) {
+    setState(() => _tags.remove(tag));
+  }
+
+  Future<void> _submit() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      setState(() => _inlineError = 'Pin title cannot be empty.');
+      return;
+    }
+
+    final notifier = ref.read(taskStateProvider.notifier);
+    final now = DateTime.now();
+
+    if (widget.initialTask == null) {
+      final newTask = PinTask(
+        id: 'pin_${now.microsecondsSinceEpoch}',
+        title: title,
+        description: _descController.text.trim(),
+        status: _selectedStatus,
+        isPinned: _selectedStatus == TaskStatus.today,
+        energyTag: _selectedEnergyTag,
+        estimatedMinutes: _selectedEstimateMinutes,
+        tags: _tags,
+        trackedSeconds: 0,
+        subtasks: _subtasks,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final success = await notifier.createTask(newTask);
+      if (mounted) {
+        if (success) {
+          Navigator.of(context).pop();
+        } else {
+          final state = ref.read(taskStateProvider);
+          setState(() {
+            _inlineError = state.alertMessage ?? 'WIP limit reached!';
+          });
+        }
+      }
+    } else {
+      final updated = widget.initialTask!.copyWith(
+        title: title,
+        description: _descController.text.trim(),
+        status: _selectedStatus,
+        isPinned: _selectedStatus == TaskStatus.today,
+        energyTag: _selectedEnergyTag,
+        estimatedMinutes: _selectedEstimateMinutes,
+        tags: _tags,
+        subtasks: _subtasks,
+        updatedAt: now,
+      );
+
+      final success = await notifier.updateTask(updated);
+      if (mounted) {
+        if (success) {
+          Navigator.of(context).pop();
+        } else {
+          final state = ref.read(taskStateProvider);
+          setState(() {
+            _inlineError = state.alertMessage ?? 'WIP limit reached!';
+          });
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.initialTask != null;
+    final taskState = ref.watch(taskStateProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final modalBg = isDark ? PinTokens.darkPhoneFrameBg : Colors.white;
+    final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
+    final textPrimary =
+        isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+    final inputBg = isDark ? PinTokens.darkCardBg : const Color(0xFFF9FAFB);
+
+    return Dialog(
+      backgroundColor: modalBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: borderColor, width: 1.8),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440, maxHeight: 680),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isEditing ? 'Edit Pin' : 'Capture New Pin',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: textPrimary,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: textPrimary),
+                    splashRadius: 18,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Inline Alert
+              if (_inlineError != null) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: PinTokens.accentAmber.withValues(alpha: 0.12),
+                    borderRadius: PinTokens.radiusMd,
+                    border: Border.all(
+                      color: PinTokens.accentAmber.withValues(alpha: 0.6),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: PinTokens.accentAmber,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _inlineError!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: PinTokens.accentAmber,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title input
+                      TextField(
+                        controller: _titleController,
+                        autofocus: true,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'What needs execution?',
+                          hintStyle: TextStyle(
+                            color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
+                            fontSize: 15,
+                          ),
+                          filled: true,
+                          fillColor: inputBg,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: PinTokens.radiusMd,
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderRadius: PinTokens.radiusMd,
+                            borderSide: BorderSide(color: PinTokens.lightActiveFocus, width: 1.6),
+                          ),
+                        ),
+                        onSubmitted: (_) => _submit(),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Description input
+                      TextField(
+                        controller: _descController,
+                        maxLines: 2,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Optional notes, blockers, or context...',
+                          hintStyle: TextStyle(
+                            color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: inputBg,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: PinTokens.radiusMd,
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderRadius: PinTokens.radiusMd,
+                            borderSide: BorderSide(color: PinTokens.lightActiveFocus, width: 1.6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Target Column Selection
+                      Text(
+                        'Target Deck',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildColumnOption(
+                              label: 'To do',
+                              status: TaskStatus.today,
+                              badge: '${taskState.todayCount}/${taskState.wipLimit} focus',
+                              isFull: taskState.isTodayWipFull &&
+                                  widget.initialTask?.status != TaskStatus.today,
+                              borderColor: borderColor,
+                              textPrimary: textPrimary,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildColumnOption(
+                              label: 'Backlog',
+                              status: TaskStatus.backlog,
+                              badge: '${taskState.backlogTasks.length} queued',
+                              borderColor: borderColor,
+                              textPrimary: textPrimary,
+                            ),
+                            if (isEditing) ...[
+                              const SizedBox(width: 8),
+                              _buildColumnOption(
+                                label: 'Done',
+                                status: TaskStatus.done,
+                                badge: '${taskState.doneTasks.length} done',
+                                borderColor: borderColor,
+                                textPrimary: textPrimary,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Hashtag Tags
+                      Text(
+                        'Tags',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          for (final tag in _tags)
+                            Chip(
+                              label: Text(
+                                tag,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? PinTokens.darkTextPrimary : const Color(0xFF111827),
+                                ),
+                              ),
+                              shape: StadiumBorder(
+                                side: BorderSide(
+                                  color: isDark ? PinTokens.darkBorder : const Color(0xFF111827),
+                                  width: 1.4,
+                                ),
+                              ),
+                              backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                              deleteIcon: Icon(
+                                Icons.close_rounded,
+                                size: 13,
+                                color: isDark ? PinTokens.darkTextMuted : const Color(0xFF374151),
+                              ),
+                              onDeleted: () => _removeTag(tag),
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                            ),
+                          for (final qTag in _quickTags)
+                            if (!_tags.contains(qTag))
+                              ActionChip(
+                                label: Text(
+                                  qTag,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark ? PinTokens.darkTextSecondary : const Color(0xFF4B5563),
+                                  ),
+                                ),
+                                shape: StadiumBorder(
+                                  side: BorderSide(
+                                    color: isDark ? PinTokens.darkBorder : const Color(0xFFE5E7EB),
+                                    width: 1.0,
+                                  ),
+                                ),
+                                backgroundColor: isDark ? PinTokens.darkCardBg : const Color(0xFFF3F4F6),
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                onPressed: () => _addTag(qTag),
+                              ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Time Estimate
+                      Text(
+                        'Time Scope Estimate',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _estimationOptions.map((minutes) {
+                          final label = DateHelpers.formatMinutes(minutes);
+                          final isSelected = _selectedEstimateMinutes == minutes;
+                          return PillChip.duration(
+                            durationText: label,
+                            isSelected: isSelected,
+                            onTap: () => setState(
+                                () => _selectedEstimateMinutes = minutes),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Energy State
+                      Text(
+                        'Energy State',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _energyTags.map((tag) {
+                          final isSelected = _selectedEnergyTag == tag;
+                          return PillChip.energy(
+                            tag: tag,
+                            isSelected: isSelected,
+                            onTap: () =>
+                                setState(() => _selectedEnergyTag = tag),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Atomic Steps Checklist
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Atomic Micro-Steps (Sub-15m)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '${_subtasks.where((s) => s.isCompleted).length}/${_subtasks.length}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _subtaskController,
+                              style: TextStyle(fontSize: 13, color: textPrimary),
+                              decoration: InputDecoration(
+                                hintText: 'Add micro action...',
+                                hintStyle: TextStyle(
+                                  color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
+                                  fontSize: 12,
+                                ),
+                                filled: true,
+                                fillColor: inputBg,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: PinTokens.radiusMd,
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                              ),
+                              onSubmitted: (_) => _addSubtask(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          PinButton(
+                            icon: Icons.add_rounded,
+                            text: 'Add',
+                            isCompact: true,
+                            onPressed: _addSubtask,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      if (_subtasks.isNotEmpty)
+                        Column(
+                          children: _subtasks.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final step = entry.value;
+                            return AtomicStepTile(
+                              step: step,
+                              isEditable: true,
+                              onToggle: (val) {
+                                setState(() {
+                                  _subtasks[idx] =
+                                      step.copyWith(isCompleted: val);
+                                });
+                              },
+                              onDelete: () {
+                                setState(() {
+                                  _subtasks.removeAt(idx);
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Action buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  PinButton(
+                    text: 'Cancel',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 10),
+                  PinButton.primary(
+                    text: isEditing ? 'Save Changes' : 'Pin to Deck',
+                    icon: isEditing
+                        ? Icons.check_rounded
+                        : Icons.push_pin_rounded,
+                    onPressed: _submit,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColumnOption({
+    required String label,
+    required TaskStatus status,
+    required String badge,
+    bool isFull = false,
+    required Color borderColor,
+    required Color textPrimary,
+  }) {
+    final isSelected = _selectedStatus == status;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final IconData icon = status == TaskStatus.today
+        ? Icons.bolt_rounded
+        : (status == TaskStatus.done
+            ? Icons.check_circle_outline_rounded
+            : Icons.inventory_2_outlined);
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _selectedStatus = status),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: PinTokens.animFast,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF1E2638) : PinTokens.lightMaxFocusBg)
+                : (isDark ? PinTokens.darkCardBg : const Color(0xFFF9FAFB)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
+                  : (isDark ? PinTokens.darkBorder : const Color(0xFFE5E7EB)),
+              width: isSelected ? 1.8 : 1.0,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 14,
+                    color: isSelected
+                        ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
+                        : (isDark ? PinTokens.darkTextMuted : const Color(0xFF6B7280)),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected
+                            ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
+                            : textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                badge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isFull
+                      ? PinTokens.accentAmber
+                      : (isDark ? PinTokens.darkTextMuted : const Color(0xFF6B7280)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

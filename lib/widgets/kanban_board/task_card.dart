@@ -1,0 +1,372 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../entities/task/model/pin_task.dart';
+import '../../entities/task/state/task_state_notifier.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
+import '../../shared/ui/pin_tokens.dart';
+
+/// Tactile Pin card designed to match the companion app screenshot.
+class TaskCard extends ConsumerWidget {
+  final PinTask task;
+
+  const TaskCard({
+    super.key,
+    required this.task,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isDone = task.status == TaskStatus.done;
+    final isToday = task.status == TaskStatus.today;
+
+    final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
+    final cardBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
+    final textPrimary =
+        isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+    final textSecondary =
+        isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: PinTokens.radiusCard,
+        border: Border.all(
+          color: borderColor,
+          width: 1.6,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: PinTokens.radiusCard,
+        onTap: () {
+          // Tap card to enter immersive Focus Mode
+          ref.read(activeFocusTaskProvider.notifier).state = task;
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Row: Check circle, status badge, pin toggle, and delete
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Radio / Checkbox circle
+                  InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      final notifier = ref.read(taskStateProvider.notifier);
+                      if (isDone) {
+                        notifier.moveToToday(task.id);
+                      } else {
+                        notifier.moveToDone(task.id);
+                      }
+                    },
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDone ? (isDark ? Colors.white : Colors.black) : Colors.transparent,
+                        border: Border.all(
+                          color: isDone
+                              ? (isDark ? Colors.white : Colors.black)
+                              : (isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF)),
+                          width: 1.8,
+                        ),
+                      ),
+                      child: isDone
+                          ? Icon(
+                              Icons.check_rounded,
+                              size: 14,
+                              color: isDark ? Colors.black : Colors.white,
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // ACTIVE FOCUS status badge
+                  Text(
+                    isToday
+                        ? 'ACTIVE FOCUS'
+                        : (isDone ? 'COMPLETED' : 'BACKLOG'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: isToday
+                          ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
+                          : (isDone ? PinTokens.accentEmerald : (isDark ? PinTokens.darkTextMuted : const Color(0xFF6B7280))),
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // UNPIN / PIN Action
+                  InkWell(
+                    borderRadius: PinTokens.radiusSm,
+                    onTap: () {
+                      ref.read(taskStateProvider.notifier).togglePin(task.id);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isToday ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+                            size: 14,
+                            color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isToday ? 'UNPIN' : 'PIN',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                              color: isDark
+                                  ? PinTokens.darkTextSecondary
+                                  : PinTokens.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 4),
+
+                  // Delete trash icon
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 16,
+                      color: isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF),
+                    ),
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    tooltip: 'Delete Pin',
+                    onPressed: () {
+                      ref.read(taskStateProvider.notifier).deleteTask(task.id);
+                    },
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+
+              // Title
+              Text(
+                task.title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isDone
+                      ? (isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF))
+                      : textPrimary,
+                  decoration: isDone ? TextDecoration.lineThrough : null,
+                  decorationColor: isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF),
+                  height: 1.3,
+                ),
+              ),
+
+              // Description
+              if (task.description.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  task.description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: isDone
+                        ? (isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF))
+                        : textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 12),
+
+              // Bottom Metadata Row: Energy Pill, Duration, and Hashtags
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Energy Pill
+                  _buildEnergyPill(isDark),
+
+                  // Duration Pill
+                  _buildDurationPill(isDark),
+
+                  // Tracked time counter (if any)
+                  if (task.trackedSeconds > 0)
+                    _buildTrackedPill(isDark),
+
+                  // Hashtag chips
+                  for (final tag in task.tags)
+                    _buildTagChip(tag, isDark),
+
+                  // Subtasks indicator
+                  if (task.hasSubtasks)
+                    _buildSubtasksPill(isDark),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEnergyPill(bool isDark) {
+    Color bg;
+    Color textColor;
+
+    final lower = task.energyTag.toLowerCase();
+    if (lower.contains('deep') || lower.contains('focus')) {
+      bg = isDark ? const Color(0xFF1E1B4B) : PinTokens.energyDeepBg;
+      textColor = isDark ? const Color(0xFF818CF8) : PinTokens.energyDeepText;
+    } else if (lower.contains('medium') || lower.contains('flow')) {
+      bg = isDark ? const Color(0xFF26231C) : PinTokens.energyMediumBg;
+      textColor = isDark ? const Color(0xFFE2E8F0) : PinTokens.energyMediumText;
+    } else if (lower.contains('creative')) {
+      bg = isDark ? const Color(0xFF2D2311) : PinTokens.energyCreativeBg;
+      textColor = isDark ? const Color(0xFFFCD34D) : PinTokens.energyCreativeText;
+    } else if (lower.contains('admin')) {
+      bg = isDark ? const Color(0xFF1F2432) : PinTokens.energyAdminBg;
+      textColor = isDark ? const Color(0xFF94A3B8) : PinTokens.energyAdminText;
+    } else {
+      bg = isDark ? const Color(0xFF062E1D) : PinTokens.energyLowBg;
+      textColor = isDark ? const Color(0xFF34D399) : PinTokens.energyLowText;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: PinTokens.radiusFull,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            task.energyEmoji,
+            style: const TextStyle(fontSize: 11),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            task.energyDisplayLabel,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDurationPill(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF3F4F6),
+        borderRadius: PinTokens.radiusFull,
+      ),
+      child: Text(
+        DateHelpers.formatMinutes(task.estimatedMinutes),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF4B5563),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrackedPill(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2A1B4E) : const Color(0xFFEDE9FE),
+        borderRadius: PinTokens.radiusFull,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_rounded,
+            size: 11,
+            color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            DateHelpers.formatSeconds(task.trackedSeconds),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTagChip(String tag, bool isDark) {
+    final clean = tag.startsWith('#') ? tag : '#$tag';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF3F4F6),
+        borderRadius: PinTokens.radiusFull,
+      ),
+      child: Text(
+        clean,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF4B5563),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubtasksPill(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF192534) : const Color(0xFFE0F2FE),
+        borderRadius: PinTokens.radiusFull,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.checklist_rounded,
+            size: 12,
+            color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            '${task.completedSubtasksCount}/${task.totalSubtasksCount}',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

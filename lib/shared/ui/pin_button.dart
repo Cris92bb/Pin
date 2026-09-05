@@ -1,0 +1,145 @@
+import 'package:flutter/material.dart';
+import 'pin_tokens.dart';
+
+enum PinButtonVariant { primary, secondary, ghost, danger }
+
+/// Sleek desktop button with hover feedback and calm styling.
+class PinButton extends StatefulWidget {
+  final String? text;
+  final IconData? icon;
+  final VoidCallback? onPressed;
+  final PinButtonVariant variant;
+  final bool isCompact;
+  final String? tooltip;
+
+  const PinButton({
+    super.key,
+    this.text,
+    this.icon,
+    required this.onPressed,
+    this.variant = PinButtonVariant.secondary,
+    this.isCompact = false,
+    this.tooltip,
+  });
+
+  const PinButton.primary({
+    super.key,
+    required this.text,
+    this.icon,
+    required this.onPressed,
+    this.isCompact = false,
+    this.tooltip,
+  })  : variant = PinButtonVariant.primary;
+
+  const PinButton.icon({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.variant = PinButtonVariant.ghost,
+    this.isCompact = true,
+    this.tooltip,
+  })  : text = null;
+
+  @override
+  State<PinButton> createState() => _PinButtonState();
+}
+
+class _PinButtonState extends State<PinButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color fg;
+    Color border;
+
+    switch (widget.variant) {
+      case PinButtonVariant.primary:
+        bg = _isHovered
+            ? PinTokens.accentEmerald.withValues(alpha: 0.85)
+            : PinTokens.accentEmerald;
+        fg = PinTokens.textInverse;
+        border = Colors.transparent;
+        break;
+      case PinButtonVariant.secondary:
+        bg = _isHovered ? PinTokens.surfaceCardHover : PinTokens.surfaceCard;
+        fg = PinTokens.textPrimary;
+        border = _isHovered ? PinTokens.borderFocus : PinTokens.borderDefault;
+        break;
+      case PinButtonVariant.ghost:
+        bg = _isHovered
+            ? PinTokens.surfaceCardHover.withValues(alpha: 0.6)
+            : Colors.transparent;
+        fg = _isHovered ? PinTokens.textPrimary : PinTokens.textSecondary;
+        border = Colors.transparent;
+        break;
+      case PinButtonVariant.danger:
+        bg = _isHovered
+            ? PinTokens.accentRose.withValues(alpha: 0.25)
+            : PinTokens.accentRose.withValues(alpha: 0.12);
+        fg = PinTokens.accentRose;
+        border = PinTokens.accentRose.withValues(alpha: 0.4);
+        break;
+    }
+
+    final verticalPadding = widget.isCompact ? 6.0 : 9.0;
+    final horizontalPadding =
+        widget.text == null ? verticalPadding : (widget.isCompact ? 10.0 : 14.0);
+
+    Widget button = MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: widget.onPressed != null
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: PinTokens.animFast,
+          padding: EdgeInsets.symmetric(
+            vertical: verticalPadding,
+            horizontal: horizontalPadding,
+          ),
+          decoration: BoxDecoration(
+            color: widget.onPressed == null ? bg.withValues(alpha: 0.4) : bg,
+            borderRadius: PinTokens.radiusMd,
+            border: Border.all(color: border, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (widget.icon != null) ...[
+                Icon(
+                  widget.icon,
+                  size: widget.isCompact ? 16 : 18,
+                  color: widget.onPressed == null ? fg.withValues(alpha: 0.5) : fg,
+                ),
+                if (widget.text != null) SizedBox(width: widget.isCompact ? 6 : 8),
+              ],
+              if (widget.text != null)
+                Text(
+                  widget.text!,
+                  style: TextStyle(
+                    fontSize: widget.isCompact ? 12 : 13,
+                    fontWeight: FontWeight.w600,
+                    color: widget.onPressed == null ? fg.withValues(alpha: 0.5) : fg,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (widget.tooltip != null) {
+      return Tooltip(
+        message: widget.tooltip!,
+        waitDuration: const Duration(milliseconds: 400),
+        child: button,
+      );
+    }
+
+    return button;
+  }
+}

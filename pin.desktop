@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Pin
+GenericName=Kanban & Task Management
+Comment=Minimalist, high-focus companion Kanban app
+Exec=/home/cris92bb/Desktop/Projects/Pin/launch_pin.sh
+Icon=pin
+Terminal=false
+Categories=Utility;Office;
+StartupWMClass=pin
+Keywords=pin;kanban;tasks;todo;focus;

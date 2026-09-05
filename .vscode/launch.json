@@ -1,0 +1,55 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Pin (Desktop)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "linux",
+      "flutterMode": "debug",
+      "env": {
+        "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
+        "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
+        "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
+      }
+    },
+    {
+      "name": "Pin (Web - Server)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "web-server",
+      "flutterMode": "debug",
+      "args": ["--web-port", "8080", "--web-hostname", "0.0.0.0"]
+    },
+    {
+      "name": "Pin (Web - Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Pin (Smartphone / Connected Device)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Pin (Desktop Release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "linux",
+      "flutterMode": "release",
+      "env": {
+        "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
+        "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
+        "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
+      }
+    }
+  ]
+}
