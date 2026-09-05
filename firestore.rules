@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Isolated user tree: /users/{userId}/...
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Board snapshot & metadata subcollection
+      match /meta/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Tasks subcollection (if saving individually)
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

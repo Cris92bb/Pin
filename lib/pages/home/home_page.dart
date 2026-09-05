@@ -11,6 +11,8 @@ import '../../features/task_export_import/ui/task_export_import_modal.dart';
 import '../../shared/ui/pin_tokens.dart';
 import '../../widgets/kanban_board/layered_deck_view.dart';
 import '../../features/ai/ui/ai_settings_modal.dart';
+import '../../features/sync/ui/firebase_account_modal.dart';
+import '../../features/sync/ui/sync_status_badge.dart';
 
 /// The primary companion view assembling the mobile/companion frame,
 /// layered card deck, header with dynamic notch, and quick actions.
@@ -356,10 +358,15 @@ class _HomePageState extends ConsumerState<HomePage> {
 
           const Spacer(),
 
-          // Right Controls: Sun/Moon Theme Toggle & Menu horizontally aligned
+          // Right Controls: Cloud Sync Badge, Theme Toggle & Menu horizontally aligned
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Cloud Sync Status Badge
+              const SyncStatusBadge(),
+
+              const SizedBox(width: 6),
+
               // Theme Toggle Button
               InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -403,6 +410,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 onSelected: (val) {
                   switch (val) {
+                    case 'cloud_sync':
+                      FirebaseAccountModal.show(context);
+                      break;
                     case 'wip_4':
                       notifier.setWipLimit(4);
                       break;
@@ -454,6 +464,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 : 'Switch WIP Limit to 5',
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'cloud_sync',
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_sync_rounded, size: 16, color: PinTokens.primary),
+                        SizedBox(width: 8),
+                        Expanded(child: Text('Cloud Sync & Account')),
                       ],
                     ),
                   ),

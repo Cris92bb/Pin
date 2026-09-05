@@ -42,9 +42,17 @@ Designed to sit snugly alongside your IDE, terminal, or web browser, **Pin** ado
   - Frameless, modern interface without bulky OS title bars.
   - Custom draggable header bar for effortless positioning.
   - Vertical-only edge resizing locked to companion width (430px).
-- **💾 Local-First & Private**:
-  - 100% offline, stored locally via `SharedPreferences`.
-  - Zero cloud dependencies, accounts, tracking, or telemetry.
+- **🔥 Firebase Offline-First Dual-Layer Synchronization**:
+  - **Zero-Latency Optimistic UI**: UI updates immediately via Riverpod state (0ms latency).
+  - **Guaranteed Local Persistence**: Instant writes to local storage (`PrefsStorageAdapter`) on every single change ensure zero offline data loss, even in guest mode.
+  - **1,000ms Debounced Cloud Firestore Sync**: When signed in, rapid edits or checklist toggles debounce for 1,000ms before sending a single compact snapshot to `/users/{userId}/meta/board`, preventing write thrashing and API quota exhaustion.
+  - **Multi-Device Cloud Hydration**: Logging in automatically hydrates your board from the cloud; if logging into a new cloud account with existing local pins, your local pins seed the cloud board.
+  - **Tactile Header Badge**: Real-time cloud sync status indicator in the companion header (Synced, Syncing, Offline, Guest).
+  - **GDPR Right-to-Erasure**: One-click deletion of cloud board snapshot, user profile, and authentication account.
+  - **Security Rules**: User-scoped data isolation enforced via [`firestore.rules`](firestore.rules).
+- **💾 Local-First & Private by Default**:
+  - 100% functional without an account or internet connection.
+  - Zero required cloud dependencies or telemetry; guest mode works entirely offline.
 - **📤 Export & Import**:
   - Full JSON backup and restore capabilities for data safety and cross-machine migration.
 - **✨ Gemini AI Decomposition & Auto-Fill**:

@@ -54,11 +54,13 @@ class TaskListState {
 /// State notifier managing task (Pin) operations and strictly enforcing WIP limits.
 class TaskStateNotifier extends StateNotifier<TaskListState> {
   final StorageAdapter storage;
+  void Function(List<PinTask> tasks)? onTasksPersisted;
 
   TaskStateNotifier({
     required this.storage,
     int initialWipLimit = PinTokens.defaultWipLimit,
     bool seedInitialSample = false,
+    this.onTasksPersisted,
   }) : super(TaskListState(wipLimit: initialWipLimit)) {
     loadTasks(seedIfEmpty: seedInitialSample);
   }
@@ -449,10 +451,20 @@ class TaskStateNotifier extends StateNotifier<TaskListState> {
     await _persist();
   }
 
+  /// Hydrates tasks from Cloud Firestore snapshot and updates local storage.
+  Future<void> hydrateFromCloud(List<PinTask> cloudTasks) async {
+    state = state.copyWith(tasks: cloudTasks);
+    final taskMaps = cloudTasks.map((t) => t.toJson()).toList();
+    try {
+      await storage.saveTasks(taskMaps);
+    } catch (_) {}
+  }
+
   Future<void> _persist() async {
     try {
       final taskMaps = state.tasks.map((t) => t.toJson()).toList();
       await storage.saveTasks(taskMaps);
+      onTasksPersisted?.call(state.tasks);
     } catch (e) {
       state = state.copyWith(
         alertMessage: 'Failed to save pins: ${e.toString()}',
