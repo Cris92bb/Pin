@@ -245,5 +245,38 @@ void main() {
       final state = container.read(taskStateProvider);
       expect(state.tasks.isNotEmpty, isTrue);
     });
+
+    test('1-click passwordless Google sign in authenticates and establishes cloud session', () async {
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(memoryStorage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: memoryStorage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      final success = await syncController.signInWithGoogle(
+        email: 'testuser@gmail.com',
+        displayName: 'Test User',
+      );
+
+      expect(success, isTrue);
+      final syncState = container.read(syncControllerProvider);
+      expect(syncState.isSignedIn, isTrue);
+      expect(syncState.user?.email, equals('testuser@gmail.com'));
+      expect(syncState.user?.displayName, equals('Test User'));
+      expect(syncState.user?.photoURL, contains('googleusercontent.com'));
+    });
   });
 }

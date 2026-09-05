@@ -37,12 +37,15 @@ void main() {
       expect(find.byType(FirebaseAccountModal), findsOneWidget);
       expect(find.text('Cloud Sync & Account'), findsOneWidget);
       expect(find.text('Offline-First (Guest Mode)'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Firebase Project Settings'), findsOneWidget);
 
-      // Expand Firebase Project Settings
+      // Scroll and Expand Firebase Project Settings
+      await tester.ensureVisible(find.text('Firebase Project Settings'));
       await tester.tap(find.text('Firebase Project Settings'));
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.text('Firebase API Key'));
       expect(find.text('Firebase API Key'), findsOneWidget);
       expect(find.text('Project ID'), findsOneWidget);
     });

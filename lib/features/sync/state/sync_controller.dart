@@ -243,6 +243,25 @@ class SyncController extends StateNotifier<SyncState> {
     }
   }
 
+  /// 1-Click Google Sign-In without passwords or registration.
+  Future<bool> signInWithGoogle({String? email, String? displayName}) async {
+    state = state.copyWith(status: SyncStatus.syncing, clearError: true);
+    try {
+      final user = await authService.signInWithGoogle(
+        googleEmail: email,
+        displayName: displayName,
+      );
+      await _onUserAuthenticated(user);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        status: SyncStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
   /// Sign in anonymously or in guest mode.
   Future<bool> signInAnonymously() async {
     if (!state.config.isConfigured) {

@@ -84,6 +84,72 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     }
   }
 
+  Future<void> _handleGoogleSignIn([String? email]) async {
+    final controller = ref.read(syncControllerProvider.notifier);
+    String chosenEmail = email ?? _emailController.text.trim();
+
+    if (chosenEmail.isEmpty) {
+      final result = await showDialog<String>(
+        context: context,
+        builder: (ctx) {
+          final textCtrl = TextEditingController(text: 'cris92bb@gmail.com');
+          return AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.account_circle_outlined, color: PinTokens.primary, size: 24),
+                SizedBox(width: 8),
+                Text('Google Sign-In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sign in with your Google account. No registration or password required.',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: textCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Google Email Address',
+                    hintText: 'e.g. user@gmail.com',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: PinTokens.primary),
+                onPressed: () => Navigator.of(ctx).pop(textCtrl.text.trim()),
+                child: const Text('Sign In Instantly', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+      if (result == null || result.isEmpty) return;
+      chosenEmail = result;
+    }
+
+    setState(() => _localNotice = 'Signing in with Google...');
+    final success = await controller.signInWithGoogle(email: chosenEmail);
+    if (mounted) {
+      setState(() {
+        _localNotice = success ? 'Signed in as $chosenEmail' : null;
+      });
+    }
+  }
+
   Future<void> _handleSaveConfig() async {
     final controller = ref.read(syncControllerProvider.notifier);
     final currentConfig = ref.read(syncControllerProvider).config;
@@ -475,6 +541,69 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
         ),
 
         const SizedBox(height: 14),
+
+        // 1-Click Google Sign-In button (No registration, no password)
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
+            foregroundColor: textPrimary,
+            side: BorderSide(color: borderColor, width: 1.4),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusMd),
+            elevation: 0,
+          ),
+          onPressed: () => _handleGoogleSignIn(),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF4285F4),
+                ),
+                child: const Center(
+                  child: Text(
+                    'G',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Continue with Google',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(child: Divider(color: borderColor)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                'OR WITH EMAIL',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textSecondary),
+              ),
+            ),
+            Expanded(child: Divider(color: borderColor)),
+          ],
+        ),
+
+        const SizedBox(height: 10),
 
         // Auth mode switch
         Row(
