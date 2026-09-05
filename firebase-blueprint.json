@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Firebase Blueprint for PIN Focus Deck",
+  "description": "Firestore schema for PIN focus task manager, storing user tasks and daily readiness checkins per user.",
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "description": "Root user profile document",
+      "fields": {
+        "email": { "type": "string", "description": "User email" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User avatar URL" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      }
+    },
+    "Task": {
+      "collection": "users/{userId}/tasks",
+      "description": "Tasks created or managed by the user",
+      "fields": {
+        "id": { "type": "string", "description": "Unique task ID" },
+        "title": { "type": "string", "description": "Task title" },
+        "description": { "type": "string", "description": "Task description details" },
+        "category": { "type": "string", "description": "routine | deep_work | admin" },
+        "energy": { "type": "string", "description": "low | medium | high" },
+        "intensity": { "type": "string", "description": "recovery | standard | focus" },
+        "status": { "type": "string", "description": "today | in_progress | completed | backlog" },
+        "subtasks": { "type": "array", "description": "Atomic micro-steps" },
+        "pinned": { "type": "boolean", "description": "Pinned status" },
+        "createdAt": { "type": "number", "description": "Creation epoch ms" },
+        "completedAt": { "type": "number", "description": "Completion epoch ms" },
+        "scheduledFor": { "type": "string", "description": "Scheduled date" },
+        "source": { "type": "string", "description": "manual | voice | vision | breakdown" }
+      }
+    },
+    "Checkin": {
+      "collection": "users/{userId}/meta",
+      "description": "Daily check-in and board metadata",
+      "fields": {
+        "dailyCheckin": { "type": "object", "description": "Energy readiness & intensity checkin" },
+        "lastSyncedAt": { "type": "number", "description": "Last synced epoch ms" }
+      }
+    }
+  }
+}

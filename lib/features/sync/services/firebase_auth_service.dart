@@ -197,6 +197,7 @@ class FirebaseAuthService {
         'email': user.email ?? '',
         'displayName': user.displayName ?? '',
         'photoURL': user.photoURL ?? '',
+        'updatedAt': DateTime.now().toIso8601String(),
         'lastActiveAt': DateTime.now().millisecondsSinceEpoch,
       });
 
