@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Firebase credentials and project identifiers.
@@ -50,6 +52,20 @@ class FirebaseConfig {
       );
 
   static Future<FirebaseConfig> load() async {
+    // 1. Check if firebase-applet-config.json exists on disk
+    try {
+      final file = File('firebase-applet-config.json');
+      if (file.existsSync()) {
+        final content = file.readAsStringSync();
+        final json = jsonDecode(content) as Map<String, dynamic>;
+        final fileConfig = FirebaseConfig.fromJson(json);
+        if (fileConfig.isConfigured) {
+          return fileConfig;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback to persisted SharedPreferences credentials
     try {
       final prefs = await SharedPreferences.getInstance();
       final apiKey = prefs.getString(_keyApiKey) ?? '';
