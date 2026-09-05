@@ -48,11 +48,28 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
       final p = _prefs ?? await SharedPreferences.getInstance();
       String? key = p.getString(keyPref);
 
-      // Fallback to environment variable if available and not configured in prefs
+      // Fallback to environment variable or .env file if available and not configured in prefs
       if ((key == null || key.trim().isEmpty) && !kIsWeb) {
         final envKey = Platform.environment['GEMINI_API_KEY'];
         if (envKey != null && envKey.trim().isNotEmpty) {
           key = envKey.trim();
+        } else {
+          try {
+            final envFile = File('.env');
+            if (envFile.existsSync()) {
+              final lines = envFile.readAsLinesSync();
+              for (final line in lines) {
+                final trimmed = line.trim();
+                if (trimmed.startsWith('GEMINI_API_KEY=')) {
+                  final val = trimmed.substring('GEMINI_API_KEY='.length).trim();
+                  if (val.isNotEmpty) {
+                    key = val.replaceAll('"', '').replaceAll("'", '');
+                    break;
+                  }
+                }
+              }
+            }
+          } catch (_) {}
         }
       }
 
