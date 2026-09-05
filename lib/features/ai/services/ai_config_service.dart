@@ -28,11 +28,12 @@ class AiConfig {
 class AiConfigNotifier extends StateNotifier<AiConfig> {
   static const String keyPref = 'pin_gemini_api_key';
   static const String modelPref = 'pin_gemini_model';
-  static const String defaultModel = 'gemini-1.5-flash';
+  static const String defaultModel = 'gemini-3.6-flash';
   static const List<String> availableModels = [
-    'gemini-1.5-flash',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-3.7-flash',
+    'gemini-3.8-flash',
   ];
 
   final SharedPreferences? _prefs;
@@ -55,7 +56,16 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
         }
       }
 
-      final model = p.getString(modelPref) ?? defaultModel;
+      var model = p.getString(modelPref);
+      if (model == null ||
+          model == 'gemini-2.5-flash' ||
+          model == 'gemini-1.5-flash' ||
+          model == 'gemini-2.0-flash' ||
+          !availableModels.contains(model)) {
+        model = defaultModel;
+        await p.setString(modelPref, defaultModel);
+      }
+
       state = AiConfig(apiKey: key?.trim() ?? '', selectedModel: model);
     } catch (_) {
       // Gracefully ignore local read errors

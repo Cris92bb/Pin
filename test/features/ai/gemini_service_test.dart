@@ -33,7 +33,7 @@ void main() {
 
       expect(notifier.state.hasKey, isFalse);
       expect(notifier.state.apiKey, isEmpty);
-      expect(notifier.state.selectedModel, 'gemini-1.5-flash');
+      expect(notifier.state.selectedModel, 'gemini-3.6-flash');
     });
 
     test('setApiKey updates state and persists', () async {
@@ -54,9 +54,9 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final notifier = AiConfigNotifier(prefs);
 
-      await notifier.setModel('gemini-2.5-flash');
-      expect(notifier.state.selectedModel, 'gemini-2.5-flash');
-      expect(prefs.getString(AiConfigNotifier.modelPref), 'gemini-2.5-flash');
+      await notifier.setModel('gemini-3.5-flash');
+      expect(notifier.state.selectedModel, 'gemini-3.5-flash');
+      expect(prefs.getString(AiConfigNotifier.modelPref), 'gemini-3.5-flash');
     });
   });
 

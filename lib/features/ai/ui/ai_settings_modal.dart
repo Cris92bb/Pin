@@ -307,7 +307,7 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
                     dropdownColor: cardBg,
                     style: TextStyle(fontSize: 13, color: textPrimary),
                     items: AiConfigNotifier.availableModels.map((m) {
-                      final label = m == 'gemini-1.5-flash'
+                      final label = m == 'gemini-3.6-flash'
                           ? '$m (Recommended)'
                           : m;
                       return DropdownMenuItem<String>(

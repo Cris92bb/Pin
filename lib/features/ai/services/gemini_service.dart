@@ -55,14 +55,21 @@ class GeminiService {
   /// Tests whether the provided Gemini API key and model are valid.
   Future<bool> testConnection(
     String apiKey, {
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-3.6-flash',
   }) async {
     final key = apiKey.trim();
     if (key.isEmpty) {
       throw const GeminiApiException('API key cannot be empty');
     }
 
-    final url = Uri.parse('$_baseUrl/$model:generateContent?key=$key');
+    final resolvedModel = (model == 'gemini-2.5-flash' ||
+            model == 'gemini-1.5-flash' ||
+            model == 'gemini-2.0-flash' ||
+            model.trim().isEmpty)
+        ? 'gemini-3.6-flash'
+        : model.trim();
+
+    final url = Uri.parse('$_baseUrl/$resolvedModel:generateContent?key=$key');
     try {
       final response = await _client.post(
         url,
@@ -98,7 +105,7 @@ class GeminiService {
     required String apiKey,
     required String prompt,
     String? currentDescription,
-    String model = 'gemini-1.5-flash',
+    String model = 'gemini-3.6-flash',
   }) async {
     final key = apiKey.trim();
     if (key.isEmpty) {
@@ -110,7 +117,14 @@ class GeminiService {
       throw const GeminiApiException('Please enter a task title or description to analyze');
     }
 
-    final url = Uri.parse('$_baseUrl/$model:generateContent?key=$key');
+    final resolvedModel = (model == 'gemini-2.5-flash' ||
+            model == 'gemini-1.5-flash' ||
+            model == 'gemini-2.0-flash' ||
+            model.trim().isEmpty)
+        ? 'gemini-3.6-flash'
+        : model.trim();
+
+    final url = Uri.parse('$_baseUrl/$resolvedModel:generateContent?key=$key');
 
     const systemInstruction =
         'You are an expert productivity companion for Pin, a minimalist desktop Kanban app. '
