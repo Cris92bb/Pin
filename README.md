@@ -47,6 +47,10 @@ Designed to sit snugly alongside your IDE, terminal, or web browser, **Pin** ado
   - Zero cloud dependencies, accounts, tracking, or telemetry.
 - **📤 Export & Import**:
   - Full JSON backup and restore capabilities for data safety and cross-machine migration.
+- **✨ Gemini AI Decomposition & Auto-Fill**:
+  - Securely configure your Google Gemini API key via the header menu or inside the task dialog.
+  - One-click task breakdown: type a quick idea or title, and Gemini refines the title, generates a clear objective description, sets the cognitive energy profile, estimates total duration, attaches relevant tags, and generates 2–6 bite-sized atomic subtasks (each $\le 15$ minutes).
+  - Supports model selection (`gemini-1.5-flash`, `gemini-2.5-flash`, `gemini-2.0-flash`) and zero-config fallback via the `GEMINI_API_KEY` environment variable.
 - **🐧 Native Linux Integration**:
   - GNOME Application Menu (`.desktop`) integration.
   - Multi-resolution hicolor icon assets (`16x16` through `512x512`).

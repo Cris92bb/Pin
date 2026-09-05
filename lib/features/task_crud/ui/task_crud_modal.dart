@@ -8,6 +8,9 @@ import 'package:pin/shared/lib/date_helpers.dart';
 import '../../../shared/ui/pill_chip.dart';
 import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
+import '../../ai/services/ai_config_service.dart';
+import '../../ai/services/gemini_service.dart';
+import '../../ai/ui/ai_settings_modal.dart';
 
 /// Modal dialog for creating or editing Pins with tags, estimation chips, and energy states.
 class TaskCrudModal extends ConsumerStatefulWidget {
@@ -51,6 +54,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
   late List<String> _tags;
   late List<AtomicStep> _subtasks;
   String? _inlineError;
+  bool _isGeneratingWithAi = false;
 
   static const List<int> _estimationOptions = [5, 15, 30, 45, 60, 120];
   static const List<String> _energyTags = [
@@ -122,6 +126,74 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
 
   void _removeTag(String tag) {
     setState(() => _tags.remove(tag));
+  }
+
+  Future<void> _generateTaskWithAi() async {
+    final aiConfig = ref.read(aiConfigProvider);
+    if (!aiConfig.hasKey) {
+      final configured = await AiSettingsModal.show(context);
+      if (configured != true || !mounted) return;
+      if (!ref.read(aiConfigProvider).hasKey) return;
+    }
+
+    final prompt = _titleController.text.trim();
+    if (prompt.isEmpty) {
+      setState(() {
+        _inlineError = 'Please enter a task title or idea first so Gemini can analyze it.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isGeneratingWithAi = true;
+      _inlineError = null;
+    });
+
+    try {
+      final service = GeminiService();
+      final currentDesc = _descController.text.trim();
+      final breakdown = await service.suggestTaskBreakdown(
+        apiKey: ref.read(aiConfigProvider).apiKey,
+        prompt: prompt,
+        currentDescription: currentDesc.isNotEmpty ? currentDesc : null,
+        model: ref.read(aiConfigProvider).selectedModel,
+      );
+
+      if (mounted) {
+        setState(() {
+          _titleController.text = breakdown.title;
+          if (breakdown.description.isNotEmpty) {
+            _descController.text = breakdown.description;
+          }
+          _selectedEnergyTag = breakdown.energyTag;
+          _selectedEstimateMinutes = breakdown.estimatedMinutes;
+          _tags = List.from(breakdown.tags);
+          _subtasks = List.from(breakdown.atomicSteps);
+          _inlineError = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✨ Gemini decomposed this into ${breakdown.atomicSteps.length} atomic steps and filled all properties!',
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _inlineError = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGeneratingWithAi = false;
+        });
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -228,10 +300,22 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                       color: textPrimary,
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.close_rounded, color: textPrimary),
-                    splashRadius: 18,
-                    onPressed: () => Navigator.of(context).pop(),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Gemini AI Settings',
+                        icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                        color: PinTokens.primary,
+                        splashRadius: 18,
+                        onPressed: () => AiSettingsModal.show(context),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close_rounded, color: textPrimary),
+                        splashRadius: 18,
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -310,6 +394,83 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                           ),
                         ),
                         onSubmitted: (_) => _submit(),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Gemini AI Auto-Fill & Breakdown Button
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: PinTokens.radiusMd,
+                          onTap: _isGeneratingWithAi ? null : _generateTaskWithAi,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              borderRadius: PinTokens.radiusMd,
+                              gradient: LinearGradient(
+                                colors: isDark
+                                    ? [
+                                        const Color(0xFF6366F1).withValues(alpha: 0.22),
+                                        const Color(0xFFA855F7).withValues(alpha: 0.18),
+                                      ]
+                                    : [
+                                        const Color(0xFF6366F1).withValues(alpha: 0.10),
+                                        const Color(0xFFA855F7).withValues(alpha: 0.08),
+                                      ],
+                              ),
+                              border: Border.all(
+                                color: const Color(0xFF818CF8).withValues(alpha: 0.4),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (_isGeneratingWithAi) ...[
+                                  const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF818CF8)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Flexible(
+                                    child: Text(
+                                      'Decomposing task with Gemini...',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF818CF8),
+                                      ),
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 15,
+                                    color: Color(0xFF818CF8),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Flexible(
+                                    child: Text(
+                                      'Break down & auto-fill with Gemini',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF818CF8),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
 

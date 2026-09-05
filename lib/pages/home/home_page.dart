@@ -10,6 +10,7 @@ import '../../features/task_crud/ui/task_crud_modal.dart';
 import '../../features/task_export_import/ui/task_export_import_modal.dart';
 import '../../shared/ui/pin_tokens.dart';
 import '../../widgets/kanban_board/layered_deck_view.dart';
+import '../../features/ai/ui/ai_settings_modal.dart';
 
 /// The primary companion view assembling the mobile/companion frame,
 /// layered card deck, header with dynamic notch, and quick actions.
@@ -411,6 +412,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     case 'blueprints':
                       _openExportImportModal();
                       break;
+                    case 'ai_settings':
+                      AiSettingsModal.show(context);
+                      break;
                     case 'clear_done':
                       notifier.clearDoneTasks();
                       break;
@@ -460,6 +464,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                         Icon(Icons.sync_alt_rounded, size: 16),
                         SizedBox(width: 8),
                         Expanded(child: Text('Blueprints (Import / Export)')),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'ai_settings',
+                    child: Row(
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, size: 16, color: PinTokens.primary),
+                        SizedBox(width: 8),
+                        Expanded(child: Text('Gemini AI Settings')),
                       ],
                     ),
                   ),

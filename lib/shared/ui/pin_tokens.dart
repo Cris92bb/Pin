@@ -21,6 +21,7 @@ class PinTokens {
   static const Color lightMaxFocusText = Color(0xFF4338CA);
   static const Color lightTagBg = Color(0xFFF3F4F6);
   static const Color lightTagText = Color(0xFF374151);
+  static const Color primary = lightActiveFocus;
 
   // Dark Mode Palette
   static const Color darkCanvasBg = Color(0xFF090A0F);
