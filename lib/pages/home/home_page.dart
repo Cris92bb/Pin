@@ -573,12 +573,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         width: 68,
         height: 46,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B),
+          color: isDark ? const Color(0xFFF8FAFC) : PinTokens.lightFabBg,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: (isDark ? Colors.black : const Color(0xFF0F172A))
-                  .withValues(alpha: isDark ? 0.35 : 0.22),
+              color: (isDark ? Colors.black : PinTokens.lightFabBg)
+                  .withValues(alpha: isDark ? 0.35 : 0.25),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),

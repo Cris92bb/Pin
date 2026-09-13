@@ -7,29 +7,33 @@ import 'package:flutter/material.dart';
 class PinTokens {
   const PinTokens._();
 
-  // Light Mode Palette (Atmospheric warm tint & editorial depth)
-  static const Color lightCanvasBg = Color(0xFFE8E5DE); // Outer desktop canvas backdrop
-  static const Color lightPhoneFrameBg = Color(0xFFF4F1EA); // Subtle sand/eggshell companion container
-  static const Color lightCardBg = Color(0xFFFCFBF8); // Soft warm-white card surfaces
-  static const Color lightBorder = Color(0x140F172A); // Low-opacity slate/neutral border (rgba(15, 23, 42, 0.08))
-  static const Color lightBorderSubtle = Color(0x0A0F172A); // rgba(15, 23, 42, 0.04)
-  static const Color lightTextPrimary = Color(0xFF0F172A);
-  static const Color lightTextSecondary = Color(0xFF475569);
-  static const Color lightTextMuted = Color(0xFF94A3B8);
-  static const Color lightActiveFocus = Color(0xFF2563EB); // Royal blue
-  static const Color lightMaxFocusBg = Color(0xFFEEF2FF); // Soft indigo tint
-  static const Color lightMaxFocusText = Color(0xFF4338CA);
-  static const Color lightTagBg = Color(0x0A0F172A); // Ultra-light neutral fill
-  static const Color lightTagText = Color(0xFF475569);
-  static const Color primary = lightActiveFocus;
+  // Light Mode Palette (Faded Sage Green Design Palette)
+  static const Color lightCanvasBg = Color(0xFFF3F5EE); // Main page backdrop behind the card stack
+  static const Color lightPhoneFrameBg = Color(0xFFF3F5EE); // Companion container background
+  static const Color lightSheetBg = Color(0xFFE7ECE1); // Active bottom sheet / sliding sheet body surface
+  static const Color lightStackedTabBg = Color(0xFFDEE3D7); // Stacked card tabs (Backlog & Done)
+  static const Color lightCardBg = Color(0xFFEFF3EA); // Foreground inner task item cards
+  static const Color lightBorder = Color(0xFFD4DCCE); // Subtle leafy gray card borders & dividers
+  static const Color lightBorderSubtle = Color(0xFFD4DCCE);
+  static const Color lightTextPrimary = Color(0xFF1A241E); // Deep forest near-black
+  static const Color lightTextSecondary = Color(0xFF5F6D64); // Muted sage slate
+  static const Color lightTextTertiary = Color(0xFF8E9C92); // Soft olive-slate for unpin, trash, radio ring, grab handle
+  static const Color lightTextMuted = Color(0xFF8E9C92);
+  static const Color lightFabBg = Color(0xFF2B3B32); // Dark spruce evergreen action accent
+  static const Color lightActiveFocus = Color(0xFF2B3B32); // Dark spruce evergreen for active focus & completed progress
+  static const Color lightMaxFocusBg = Color(0xFFDEE3D7); // Muted desaturated olive-gray
+  static const Color lightMaxFocusText = Color(0xFF1A241E);
+  static const Color lightTagBg = Color(0xFFE2E9DC); // Ultra-light desaturated fill
+  static const Color lightTagText = Color(0xFF5F6D64);
+  static const Color primary = lightFabBg;
 
   // Header Utility Accent Tokens (Light Mode)
-  static const Color headerSyncBgLight = Color(0xFFE7F4ED); // Muted sage green base
-  static const Color headerSyncBorderLight = Color(0xFFD1E7DD);
-  static const Color headerSyncFgLight = Color(0xFF166534); // Deep forest icon
-  static const Color headerThemeBgLight = Color(0xFFFEF3C7); // Warm amber base
-  static const Color headerThemeBorderLight = Color(0xFFFDE68A);
-  static const Color headerThemeFgLight = Color(0xFFB45309); // Warm amber icon
+  static const Color headerSyncBgLight = Color(0xFFDEE3D7); // Muted desaturated olive-gray base
+  static const Color headerSyncBorderLight = Color(0xFFD4DCCE); // Leafy gray border
+  static const Color headerSyncFgLight = Color(0xFF1A241E); // Deep forest icon
+  static const Color headerThemeBgLight = Color(0xFFDEE3D7);
+  static const Color headerThemeBorderLight = Color(0xFFD4DCCE);
+  static const Color headerThemeFgLight = Color(0xFF1A241E);
 
   // Dark Mode Palette
   static const Color darkCanvasBg = Color(0xFF090A0F);
