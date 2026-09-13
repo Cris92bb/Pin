@@ -21,29 +21,7 @@ class FirebaseAccountModal extends ConsumerStatefulWidget {
 }
 
 class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
-  late TextEditingController _apiKeyController;
-  late TextEditingController _projectIdController;
-  late TextEditingController _databaseIdController;
-
-  bool _showConfigSection = false;
   String? _localNotice;
-
-  @override
-  void initState() {
-    super.initState();
-    final config = ref.read(syncControllerProvider).config;
-    _apiKeyController = TextEditingController(text: config.apiKey);
-    _projectIdController = TextEditingController(text: config.projectId);
-    _databaseIdController = TextEditingController(text: config.firestoreDatabaseId);
-  }
-
-  @override
-  void dispose() {
-    _apiKeyController.dispose();
-    _projectIdController.dispose();
-    _databaseIdController.dispose();
-    super.dispose();
-  }
 
   Future<void> _handleGoogleSignIn([String? email]) async {
     final controller = ref.read(syncControllerProvider.notifier);
@@ -107,26 +85,6 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     if (mounted) {
       setState(() {
         _localNotice = success ? 'Signed in as $chosenEmail' : null;
-      });
-    }
-  }
-
-  Future<void> _handleSaveConfig() async {
-    final controller = ref.read(syncControllerProvider.notifier);
-    final currentConfig = ref.read(syncControllerProvider).config;
-
-    final newConfig = currentConfig.copyWith(
-      apiKey: _apiKeyController.text.trim(),
-      projectId: _projectIdController.text.trim(),
-      firestoreDatabaseId: _databaseIdController.text.trim().isEmpty
-          ? '(default)'
-          : _databaseIdController.text.trim(),
-    );
-
-    await controller.updateConfig(newConfig);
-    if (mounted) {
-      setState(() {
-        _localNotice = 'Firebase configuration saved!';
       });
     }
   }
@@ -262,48 +220,6 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 _buildSignedInCard(syncState, textPrimary, textSecondary, isDark, borderColor),
               ] else ...[
                 _buildGuestCard(syncState, textPrimary, textSecondary, isDark, borderColor),
-              ],
-
-              const SizedBox(height: 16),
-
-              // Firebase Project Configuration Accordion
-              InkWell(
-                onTap: () => setState(() => _showConfigSection = !_showConfigSection),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.settings_outlined,
-                        size: 16,
-                        color: textSecondary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Firebase Project Settings',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        _showConfigSection
-                            ? Icons.keyboard_arrow_up_rounded
-                            : Icons.keyboard_arrow_down_rounded,
-                        color: textSecondary,
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              if (_showConfigSection) ...[
-                const SizedBox(height: 8),
-                _buildConfigSection(textPrimary, textSecondary, isDark, borderColor),
               ],
             ],
           ),
@@ -548,76 +464,6 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildConfigSection(
-    Color textPrimary,
-    Color textSecondary,
-    bool isDark,
-    Color borderColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg,
-        borderRadius: PinTokens.radiusMd,
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Connect your Firebase Project',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Stores board snapshot under /users/{userId}/meta/board with 1,000ms debounce.',
-            style: TextStyle(fontSize: 11, color: textSecondary),
-          ),
-          const SizedBox(height: 10),
-
-          TextField(
-            controller: _apiKeyController,
-            decoration: const InputDecoration(
-              labelText: 'Firebase API Key',
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: PinTokens.radiusSm),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          TextField(
-            controller: _projectIdController,
-            decoration: const InputDecoration(
-              labelText: 'Project ID',
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: PinTokens.radiusSm),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          TextField(
-            controller: _databaseIdController,
-            decoration: const InputDecoration(
-              labelText: 'Firestore Database ID (default: (default))',
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: PinTokens.radiusSm),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          ElevatedButton(
-            onPressed: _handleSaveConfig,
-            child: const Text('Save Credentials'),
-          ),
-        ],
-      ),
     );
   }
 }

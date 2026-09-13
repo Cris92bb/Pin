@@ -10,17 +10,17 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Isolated user tree: /users/{userId}/...
+    // User profile document
     match /users/{userId} {
       allow read, write: if isOwner(userId);
 
-      // Board snapshot & metadata subcollection
-      match /meta/{docId} {
+      // Tasks subcollection
+      match /tasks/{taskId} {
         allow read, write: if isOwner(userId);
       }
 
-      // Tasks subcollection (if saving individually)
-      match /tasks/{taskId} {
+      // Metadata / Check-in subcollection
+      match /meta/{docId} {
         allow read, write: if isOwner(userId);
       }
     }

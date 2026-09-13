@@ -38,16 +38,9 @@ void main() {
       expect(find.text('Cloud Sync & Account'), findsOneWidget);
       expect(find.text('Offline-First (Guest Mode)'), findsOneWidget);
       expect(find.text('Continue with Google'), findsOneWidget);
-      expect(find.text('Firebase Project Settings'), findsOneWidget);
-
-      // Scroll and Expand Firebase Project Settings
-      await tester.ensureVisible(find.text('Firebase Project Settings'));
-      await tester.tap(find.text('Firebase Project Settings'));
-      await tester.pumpAndSettle();
-
-      await tester.ensureVisible(find.text('Firebase API Key'));
-      expect(find.text('Firebase API Key'), findsOneWidget);
-      expect(find.text('Project ID'), findsOneWidget);
+      // Verify manual Firebase Project Settings UI is removed in favor of config file
+      expect(find.text('Firebase Project Settings'), findsNothing);
+      expect(find.text('Firebase API Key'), findsNothing);
     });
   });
 }
