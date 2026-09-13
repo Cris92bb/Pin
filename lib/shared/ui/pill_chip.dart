@@ -119,10 +119,38 @@ class PillChip extends StatelessWidget {
 
     if (isSelected) {
       if (isDark) {
-        bgColor = baseAccent.withValues(alpha: 0.22);
-        borderColor = baseAccent;
-        textColor = baseAccent;
-        iconColor = baseAccent;
+        if (isDuration) {
+          bgColor = PinTokens.darkTimerBg;
+          borderColor = PinTokens.darkTimerText;
+          textColor = PinTokens.darkTimerText;
+          iconColor = PinTokens.darkTimerText;
+        } else {
+          switch (label) {
+            case 'low-friction':
+              bgColor = PinTokens.darkEnergyLowBg;
+              borderColor = PinTokens.darkEnergyLowText;
+              textColor = PinTokens.darkEnergyLowText;
+              iconColor = PinTokens.darkEnergyLowText;
+              break;
+            case 'medium-flow':
+              bgColor = PinTokens.darkEnergyMediumBg;
+              borderColor = PinTokens.darkEnergyMediumText;
+              textColor = PinTokens.darkEnergyMediumText;
+              iconColor = PinTokens.darkEnergyMediumText;
+              break;
+            case 'deep-focus':
+              bgColor = PinTokens.darkEnergyFocusBg;
+              borderColor = PinTokens.darkEnergyFocusText;
+              textColor = PinTokens.darkEnergyFocusText;
+              iconColor = PinTokens.darkEnergyFocusText;
+              break;
+            default:
+              bgColor = baseAccent.withValues(alpha: 0.22);
+              borderColor = baseAccent;
+              textColor = baseAccent;
+              iconColor = baseAccent;
+          }
+        }
       } else {
         if (isDuration) {
           bgColor = PinTokens.lightSheetBg;
@@ -174,7 +202,7 @@ class PillChip extends StatelessWidget {
         bgColor = PinTokens.darkCardBg;
         borderColor = PinTokens.darkBorder;
         textColor = PinTokens.darkTextSecondary;
-        iconColor = baseAccent.withValues(alpha: 0.7);
+        iconColor = isDuration ? PinTokens.darkTextTertiary : baseAccent.withValues(alpha: 0.7);
       } else {
         bgColor = PinTokens.lightTagBg;
         borderColor = PinTokens.lightBorder;

@@ -23,12 +23,12 @@ class SyncStatusBadge extends ConsumerWidget {
     switch (syncState.status) {
       case SyncStatus.synced:
         icon = Icons.cloud_done_rounded;
-        iconColor = isDark ? PinTokens.accentEmerald : PinTokens.headerSyncFgLight;
+        iconColor = isDark ? PinTokens.darkActionSyncFg : PinTokens.headerSyncFgLight;
         tooltip = 'Cloud Synced (${syncState.syncedTaskCount} pins)';
         break;
       case SyncStatus.syncing:
         icon = Icons.sync_rounded;
-        iconColor = isDark ? PinTokens.primary : PinTokens.headerSyncFgLight;
+        iconColor = isDark ? PinTokens.darkActionSyncFg : PinTokens.headerSyncFgLight;
         tooltip = 'Syncing with Firestore...';
         break;
       case SyncStatus.offline:
@@ -43,7 +43,7 @@ class SyncStatusBadge extends ConsumerWidget {
         break;
       case SyncStatus.guest:
         icon = Icons.cloud_queue_rounded;
-        iconColor = isDark ? PinTokens.darkTextSecondary : PinTokens.headerSyncFgLight;
+        iconColor = isDark ? PinTokens.darkActionSyncFg : PinTokens.headerSyncFgLight;
         tooltip = 'Guest Mode (Local Storage Only) - Tap to sync';
         break;
     }
@@ -58,20 +58,22 @@ class SyncStatusBadge extends ConsumerWidget {
           height: 32,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isDark ? const Color(0xFF11221A) : PinTokens.headerSyncBgLight,
+            color: isDark ? PinTokens.darkActionSyncBg : PinTokens.headerSyncBgLight,
             border: Border.all(
-              color: isDark ? const Color(0xFF1F3D2E) : PinTokens.headerSyncBorderLight,
-              width: 1.2,
+              color: isDark ? PinTokens.darkBorder : PinTokens.headerSyncBorderLight,
+              width: 1.0,
             ),
           ),
           child: Center(
             child: syncState.status == SyncStatus.syncing
-                ? const SizedBox(
+                ? SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.0,
-                      valueColor: AlwaysStoppedAnimation<Color>(PinTokens.primary),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isDark ? PinTokens.darkActionSyncFg : PinTokens.primary,
+                      ),
                     ),
                   )
                 : Icon(

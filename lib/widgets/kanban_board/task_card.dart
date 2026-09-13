@@ -100,11 +100,13 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       height: 22,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDone ? (isDark ? Colors.white : PinTokens.lightFabBg) : Colors.transparent,
+                        color: isDone
+                            ? (isDark ? PinTokens.darkTextPrimary : PinTokens.lightFabBg)
+                            : Colors.transparent,
                         border: Border.all(
                           color: isDone
-                              ? (isDark ? Colors.white : PinTokens.lightFabBg)
-                              : (isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary),
+                              ? (isDark ? PinTokens.darkTextPrimary : PinTokens.lightFabBg)
+                              : (isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary),
                           width: 1.5,
                         ),
                       ),
@@ -112,7 +114,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                           ? Icon(
                               Icons.check_rounded,
                               size: 14,
-                              color: isDark ? Colors.black : Colors.white,
+                              color: isDark ? PinTokens.darkCardBg : Colors.white,
                             )
                           : null,
                     ),
@@ -150,7 +152,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                           Icon(
                             isToday ? Icons.push_pin_outlined : Icons.push_pin_rounded,
                             size: 14,
-                            color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
+                            color: isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -160,7 +162,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0.6,
                               color: isDark
-                                  ? PinTokens.darkTextSecondary
+                                  ? PinTokens.darkTextTertiary
                                   : PinTokens.lightTextTertiary,
                             ),
                           ),
@@ -176,7 +178,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                     icon: Icon(
                       Icons.delete_outline_rounded,
                       size: 16,
-                      color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
+                      color: isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary,
                     ),
                     splashRadius: 16,
                     padding: EdgeInsets.zero,
@@ -262,11 +264,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
     final lower = task.energyTag.toLowerCase();
     if (lower.contains('deep') || lower.contains('focus')) {
-      bg = isDark ? const Color(0xFF1E1B4B) : PinTokens.energyDeepBg;
-      textColor = isDark ? const Color(0xFF818CF8) : PinTokens.energyDeepText;
+      bg = isDark ? PinTokens.darkEnergyFocusBg : PinTokens.energyDeepBg;
+      textColor = isDark ? PinTokens.darkEnergyFocusText : PinTokens.energyDeepText;
     } else if (lower.contains('medium') || lower.contains('flow')) {
-      bg = isDark ? const Color(0xFF26231C) : PinTokens.energyMediumBg;
-      textColor = isDark ? const Color(0xFFE2E8F0) : PinTokens.energyMediumText;
+      bg = isDark ? PinTokens.darkEnergyMediumBg : PinTokens.energyMediumBg;
+      textColor = isDark ? PinTokens.darkEnergyMediumText : PinTokens.energyMediumText;
     } else if (lower.contains('creative')) {
       bg = isDark ? const Color(0xFF2D2311) : PinTokens.energyCreativeBg;
       textColor = isDark ? const Color(0xFFFCD34D) : PinTokens.energyCreativeText;
@@ -274,8 +276,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       bg = isDark ? const Color(0xFF1F2432) : PinTokens.energyAdminBg;
       textColor = isDark ? const Color(0xFF94A3B8) : PinTokens.energyAdminText;
     } else {
-      bg = isDark ? const Color(0xFF062E1D) : PinTokens.energyLowBg;
-      textColor = isDark ? const Color(0xFF34D399) : PinTokens.energyLowText;
+      bg = isDark ? PinTokens.darkEnergyLowBg : PinTokens.energyLowBg;
+      textColor = isDark ? PinTokens.darkEnergyLowText : PinTokens.energyLowText;
     }
 
     return Container(
@@ -310,7 +312,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E2330) : PinTokens.lightTagBg,
+        color: isDark ? PinTokens.darkSheetBg : PinTokens.lightTagBg,
         borderRadius: PinTokens.radiusFull,
       ),
       child: Text(
@@ -318,7 +320,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w500,
-          color: isDark ? const Color(0xFF94A3B8) : PinTokens.lightTextSecondary,
+          color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
         ),
       ),
     );
@@ -328,7 +330,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A1B4E) : PinTokens.energyTimerBg,
+        color: isDark ? PinTokens.darkTimerBg : PinTokens.energyTimerBg,
         borderRadius: PinTokens.radiusFull,
       ),
       child: Row(
@@ -337,7 +339,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
           Icon(
             Icons.timer_rounded,
             size: 11,
-            color: isDark ? const Color(0xFFA78BFA) : PinTokens.energyTimerText,
+            color: isDark ? PinTokens.darkTimerText : PinTokens.energyTimerText,
           ),
           const SizedBox(width: 3),
           Text(
@@ -345,7 +347,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: isDark ? const Color(0xFFA78BFA) : PinTokens.energyTimerText,
+              color: isDark ? PinTokens.darkTimerText : PinTokens.energyTimerText,
             ),
           ),
         ],
@@ -374,7 +376,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E2330) : PinTokens.lightTagBg,
+        color: isDark ? PinTokens.darkSheetBg : PinTokens.lightTagBg,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -382,7 +384,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: isDark ? const Color(0xFF94A3B8) : PinTokens.lightTextSecondary,
+          color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
         ),
       ),
     );
@@ -392,7 +394,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF192534) : PinTokens.lightTagBg,
+        color: isDark ? PinTokens.darkSheetBg : PinTokens.lightTagBg,
         borderRadius: PinTokens.radiusFull,
       ),
       child: Row(
@@ -401,7 +403,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
           Icon(
             Icons.checklist_rounded,
             size: 12,
-            color: isDark ? const Color(0xFF38BDF8) : PinTokens.lightTextSecondary,
+            color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
           ),
           const SizedBox(width: 3),
           Text(
@@ -409,7 +411,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
-              color: isDark ? const Color(0xFF38BDF8) : PinTokens.lightTextSecondary,
+              color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
             ),
           ),
         ],

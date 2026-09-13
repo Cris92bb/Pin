@@ -96,7 +96,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     final isDark = theme.brightness == Brightness.dark;
 
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
-    final cardBg = isDark ? PinTokens.darkCardBg : PinTokens.lightSheetBg;
+    final cardBg = isDark ? PinTokens.darkSheetBg : PinTokens.lightSheetBg;
     final textPrimary =
         isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary =
@@ -128,8 +128,8 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
             state: state,
             isDark: isDark,
             borderColor: borderColor,
-            cardBg: isDark ? cardBg : PinTokens.lightStackedTabBg,
-            hoverBg: isDark ? const Color(0xFF222838) : const Color(0xFFD6DCCF),
+            cardBg: isDark ? PinTokens.darkStackedTabBg : PinTokens.lightStackedTabBg,
+            hoverBg: isDark ? const Color(0xFF1E242C) : const Color(0xFFD6DCCF),
             textPrimary: textPrimary,
             onTap: () {
               ref.read(activeDeckProvider.notifier).state = inactiveTabs[0];
@@ -148,8 +148,8 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
             state: state,
             isDark: isDark,
             borderColor: borderColor,
-            cardBg: isDark ? cardBg : PinTokens.lightStackedTabBg,
-            hoverBg: isDark ? const Color(0xFF222838) : const Color(0xFFD6DCCF),
+            cardBg: isDark ? PinTokens.darkStackedTabBg : PinTokens.lightStackedTabBg,
+            hoverBg: isDark ? const Color(0xFF1E242C) : const Color(0xFFD6DCCF),
             textPrimary: textPrimary,
             onTap: () {
               ref.read(activeDeckProvider.notifier).state = inactiveTabs[1];
@@ -270,7 +270,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
           color: borderColor,
-          width: isDark ? 1.8 : 1.0,
+          width: 1.0,
         ),
         boxShadow: [
           BoxShadow(
@@ -295,7 +295,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                 height: 4,
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF374151)
+                      ? PinTokens.darkTextTertiary
                       : PinTokens.lightTextTertiary,
                   borderRadius: BorderRadius.circular(2),
                 ),
@@ -379,8 +379,11 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white : PinTokens.lightFabBg,
+                            color: isDark ? PinTokens.darkFabBg : PinTokens.lightFabBg,
                             borderRadius: PinTokens.radiusFull,
+                            border: isDark
+                                ? Border.all(color: PinTokens.darkBorder, width: 1.0)
+                                : null,
                           ),
                           child: Text(
                             activeDeck == TaskStatus.today
@@ -391,7 +394,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.black : Colors.white,
+                              color: isDark ? PinTokens.darkTextPrimary : Colors.white,
                             ),
                           ),
                         ),
@@ -415,9 +418,9 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                                 margin: const EdgeInsets.only(right: 5),
                                 decoration: BoxDecoration(
                                   color: isFilled
-                                      ? (isDark ? Colors.white : PinTokens.lightFabBg)
+                                      ? (isDark ? PinTokens.darkTextPrimary : PinTokens.lightFabBg)
                                       : (isDark
-                                          ? const Color(0xFF2A3042)
+                                          ? PinTokens.darkBorder
                                           : PinTokens.lightBorder),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
@@ -434,7 +437,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: isDark
-                                  ? PinTokens.darkTextMuted
+                                  ? PinTokens.darkTextSecondary
                                   : PinTokens.lightTextSecondary,
                             ),
                           ),
@@ -766,14 +769,14 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
             padding: const EdgeInsets.fromLTRB(18, 8, 16, 12),
             decoration: BoxDecoration(
               color: widget.isDark
-                  ? (_isHovered ? const Color(0xFF222838) : widget.cardBg)
+                  ? (_isHovered ? const Color(0xFF1E242C) : widget.cardBg)
                   : (_isHovered ? (widget.hoverBg ?? const Color(0xFFECE7DE)) : widget.cardBg),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               border: Border.all(
                 color: _isHovered
-                    ? (widget.isDark ? const Color(0xFF475569) : PinTokens.lightTextTertiary)
+                    ? (widget.isDark ? PinTokens.darkBorder : PinTokens.lightTextTertiary)
                     : widget.borderColor,
-                width: widget.isDark ? 1.8 : 1.0,
+                width: 1.0,
               ),
               boxShadow: [
                 BoxShadow(
@@ -827,9 +830,12 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
                       color: widget.isDark
-                          ? const Color(0xFF242938)
+                          ? PinTokens.darkCardBg
                           : PinTokens.lightTagBg,
                       borderRadius: PinTokens.radiusFull,
+                      border: widget.isDark
+                          ? Border.all(color: PinTokens.darkBorder, width: 1.0)
+                          : null,
                     ),
                     child: Text(
                       '$count',

@@ -50,19 +50,49 @@ class PinTokens {
   static const Color headerThemeFgLight = Color(0xFF1A241E);
 
   // Dark Mode Palette
-  static const Color darkCanvasBg = Color(0xFF090A0F);
-  static const Color darkPhoneFrameBg = Color(0xFF11141D);
-  static const Color darkCardBg = Color(0xFF181C28);
-  static const Color darkBorder = Color(0xFF2E3547);
-  static const Color darkBorderSubtle = Color(0xFF232838);
-  static const Color darkTextPrimary = Color(0xFFF8FAFC);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  static const Color darkCanvasBg =
+      Color(0xFF0D1117); // App Canvas / Root: Deep obsidian slate
+  static const Color darkPhoneFrameBg =
+      Color(0xFF0D1117); // Base viewport background
+  static const Color darkStackedTabBg =
+      Color(0xFF161B22); // Collapsed Cards Layer: Dark charcoal slate
+  static const Color darkSheetBg =
+      Color(0xFF11161D); // Active Sheet Background: Deep gunmetal blue-gray
+  static const Color darkCardBg =
+      Color(0xFF18202A); // Task Card Surface: Muted twilight blue-black
+  static const Color darkBorder =
+      Color(0xFF26303D); // Border / Hairline: Low-contrast steel slate
+  static const Color darkBorderSubtle = Color(0xFF26303D);
+  static const Color darkTextPrimary =
+      Color(0xFFE6EDF3); // Text Primary: Crisp frosted white
+  static const Color darkTextSecondary =
+      Color(0xFF8B949E); // Text Secondary: Cool stone gray
+  static const Color darkTextTertiary =
+      Color(0xFF64748B); // Tertiary Icons: Desaturated slate
   static const Color darkTextMuted = Color(0xFF64748B);
-  static const Color darkActiveFocus = Color(0xFF60A5FA);
-  static const Color darkMaxFocusBg = Color(0xFF1E1B4B);
-  static const Color darkMaxFocusText = Color(0xFF818CF8);
-  static const Color darkTagBg = Color(0xFF1F2432);
-  static const Color darkTagText = Color(0xFFCBD5E1);
+  static const Color darkFabBg =
+      Color(0xFF1F2937); // FAB (Floating Button): Elevated dark charcoal
+  static const Color darkActiveFocus = Color(0xFFA5B4FC);
+  static const Color darkMaxFocusBg = Color(0xFF22243C);
+  static const Color darkMaxFocusText = Color(0xFFA5B4FC);
+  static const Color darkTagBg = Color(0xFF11161D);
+  static const Color darkTagText = Color(0xFF8B949E);
+
+  // Tag & Semantic Accents (Dark Mode Adjusted)
+  static const Color darkEnergyLowBg = Color(0xFF162E25);
+  static const Color darkEnergyLowText = Color(0xFF4ADE80);
+  static const Color darkEnergyMediumBg = Color(0xFF2F2119);
+  static const Color darkEnergyMediumText = Color(0xFFFB923C);
+  static const Color darkEnergyFocusBg = Color(0xFF22243C);
+  static const Color darkEnergyFocusText = Color(0xFFA5B4FC);
+  static const Color darkTimerBg = Color(0xFF22243C);
+  static const Color darkTimerText = Color(0xFFA5B4FC);
+
+  // Action Accents (Top) - Dark Mode
+  static const Color darkActionSyncBg = Color(0xFF193836);
+  static const Color darkActionSyncFg = Color(0xFF5EEAD4);
+  static const Color darkActionThemeBg = Color(0xFF362C1C);
+  static const Color darkActionThemeFg = Color(0xFFFBBF24);
 
   // Backward Compatible Aliases
   static const Color canvasBg = Color(0xFF0D0F14);

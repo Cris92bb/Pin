@@ -83,5 +83,57 @@ void main() {
       expect(decoration.color, PinTokens.darkCardBg);
       expect(decoration.border?.top.color, PinTokens.darkBorder);
     });
+
+    testWidgets('renders dark theme selected energy pill with adjusted dark accents',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: PinTheme.darkTheme,
+          home: Scaffold(
+            body: Center(
+              child: PillChip.energy(
+                tag: 'low-friction',
+                isSelected: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final textWidget = tester.widget<Text>(find.text('low-friction'));
+      expect(textWidget.style?.color, PinTokens.darkEnergyLowText);
+
+      final container = tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.color, PinTokens.darkEnergyLowBg);
+      expect(decoration.border?.top.color, PinTokens.darkEnergyLowText);
+    });
+
+    testWidgets('renders dark theme selected duration pill with indigo/lavender accents',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: PinTheme.darkTheme,
+          home: Scaffold(
+            body: Center(
+              child: PillChip.duration(
+                durationText: '~15m',
+                isSelected: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final textWidget = tester.widget<Text>(find.text('~15m'));
+      expect(textWidget.style?.color, PinTokens.darkTimerText);
+
+      final container = tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.color, PinTokens.darkTimerBg);
+      expect(decoration.border?.top.color, PinTokens.darkTimerText);
+    });
   });
 }

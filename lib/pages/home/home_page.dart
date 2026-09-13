@@ -239,7 +239,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               border: isDesktopOrWeb
                   ? Border.all(
                       color: isDark ? borderColor : const Color(0x1F0F172A),
-                      width: isDark ? 2.0 : 1.5,
+                      width: 1.0,
                     )
                   : null,
               boxShadow: isDesktopOrWeb
@@ -384,16 +384,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                   height: 32,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isDark ? const Color(0xFF231E15) : PinTokens.headerThemeBgLight,
+                    color: isDark ? PinTokens.darkActionThemeBg : PinTokens.headerThemeBgLight,
                     border: Border.all(
-                      color: isDark ? const Color(0xFF3A3020) : PinTokens.headerThemeBorderLight,
-                      width: 1.2,
+                      color: isDark ? PinTokens.darkBorder : PinTokens.headerThemeBorderLight,
+                      width: 1.0,
                     ),
                   ),
                   child: Icon(
                     isDark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
                     size: 16,
-                    color: isDark ? const Color(0xFFFCD34D) : PinTokens.headerThemeFgLight,
+                    color: isDark ? PinTokens.darkActionThemeFg : PinTokens.headerThemeFgLight,
                   ),
                 ),
               ),
@@ -573,12 +573,15 @@ class _HomePageState extends ConsumerState<HomePage> {
         width: 68,
         height: 46,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFFF8FAFC) : PinTokens.lightFabBg,
+          color: isDark ? PinTokens.darkFabBg : PinTokens.lightFabBg,
           borderRadius: BorderRadius.circular(24),
+          border: isDark
+              ? Border.all(color: PinTokens.darkBorder, width: 1.0)
+              : null,
           boxShadow: [
             BoxShadow(
               color: (isDark ? Colors.black : PinTokens.lightFabBg)
-                  .withValues(alpha: isDark ? 0.35 : 0.25),
+                  .withValues(alpha: isDark ? 0.4 : 0.25),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),
@@ -588,7 +591,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           child: Icon(
             Icons.add_rounded,
             size: 28,
-            color: isDark ? const Color(0xFF0F172A) : Colors.white,
+            color: isDark ? PinTokens.darkTextPrimary : Colors.white,
           ),
         ),
       ),
