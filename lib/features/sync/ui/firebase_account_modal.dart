@@ -28,36 +28,63 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     String chosenEmail = email ?? '';
 
     if (chosenEmail.isEmpty) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+      final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+      final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+      final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
+      final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+
       final result = await showDialog<String>(
         context: context,
         builder: (ctx) {
           final textCtrl = TextEditingController(text: 'cris92bb@gmail.com');
           return AlertDialog(
-            title: const Row(
+            backgroundColor: dialogBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: PinTokens.radiusLg,
+              side: BorderSide(color: borderCol),
+            ),
+            title: Row(
               children: [
-                Icon(Icons.account_circle_outlined, color: PinTokens.primary, size: 24),
-                SizedBox(width: 8),
-                Text('Google Sign-In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Icon(Icons.account_circle_outlined, color: PinTokens.primary, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'Google Sign-In',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                ),
               ],
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Sign in with your Google account. No registration or password required.',
-                  style: TextStyle(fontSize: 12),
+                  style: TextStyle(fontSize: 12, color: textSecondary),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: textCtrl,
                   keyboardType: TextInputType.emailAddress,
                   autofocus: true,
-                  decoration: const InputDecoration(
+                  style: TextStyle(fontSize: 14, color: textPrimary),
+                  decoration: InputDecoration(
                     labelText: 'Google Email Address',
+                    labelStyle: TextStyle(color: textSecondary),
                     hintText: 'e.g. user@gmail.com',
+                    hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
+                    filled: true,
+                    fillColor: inputBg,
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: PinTokens.radiusSm,
+                      borderSide: BorderSide(color: borderCol),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderRadius: PinTokens.radiusSm,
+                      borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                    ),
                   ),
                 ),
               ],
@@ -65,12 +92,16 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
+                child: Text('Cancel', style: TextStyle(color: textSecondary)),
               ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: PinTokens.primary),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: PinTokens.primary,
+                  elevation: 0,
+                  shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
+                ),
                 onPressed: () => Navigator.of(ctx).pop(textCtrl.text.trim()),
-                child: const Text('Sign In Instantly', style: TextStyle(color: Colors.white)),
+                child: const Text('Sign In Instantly', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
               ),
             ],
           );
@@ -90,24 +121,43 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
   }
 
   Future<void> _confirmDeleteAccount() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+    final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+    final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Account & Cloud Data?'),
-        content: const Text(
+        backgroundColor: dialogBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: PinTokens.radiusLg,
+          side: BorderSide(color: borderCol),
+        ),
+        title: Text(
+          'Delete Account & Cloud Data?',
+          style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
           'This will permanently delete your Cloud Firestore board document (/users/{userId}/meta/board) '
           'and erase your Firebase authentication account under GDPR Right-to-Erasure regulations. '
           'Your local offline data will remain untouched on this machine.',
+          style: TextStyle(color: textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: textSecondary)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: PinTokens.accentRose),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: PinTokens.accentRose,
+              elevation: 0,
+              shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
+            ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete Permanently', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete Permanently', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -142,6 +192,8 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
     final bgColor = isDark ? PinTokens.darkCardBg : Colors.white;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
+    final cardBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
+    final cardBorder = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
@@ -163,7 +215,15 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               // Header
               Row(
                 children: [
-                  const Icon(Icons.cloud_sync_rounded, color: PinTokens.primary, size: 24),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: PinTokens.primary.withValues(alpha: isDark ? 0.2 : 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.cloud_sync_rounded, color: PinTokens.primary, size: 20),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -177,6 +237,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   ),
                   IconButton(
                     icon: Icon(Icons.close_rounded, color: textSecondary, size: 20),
+                    splashRadius: 18,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -192,12 +253,12 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                     color: (syncState.errorMessage != null
                             ? PinTokens.accentRose
                             : PinTokens.primary)
-                        .withValues(alpha: 0.12),
+                        .withValues(alpha: isDark ? 0.12 : 0.08),
                     borderRadius: PinTokens.radiusSm,
                     border: Border.all(
                       color: syncState.errorMessage != null
                           ? PinTokens.accentRose
-                          : PinTokens.primary,
+                          : PinTokens.primary.withValues(alpha: 0.4),
                       width: 1.0,
                     ),
                   ),
@@ -208,7 +269,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                       fontWeight: FontWeight.w600,
                       color: syncState.errorMessage != null
                           ? PinTokens.accentRose
-                          : PinTokens.primary,
+                          : (isDark ? PinTokens.primary : const Color(0xFF1D4ED8)),
                     ),
                   ),
                 ),
@@ -217,9 +278,22 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
               // Active Profile / User Section
               if (syncState.isSignedIn) ...[
-                _buildSignedInCard(syncState, textPrimary, textSecondary, isDark, borderColor),
+                _buildSignedInCard(
+                  syncState,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                  isDark: isDark,
+                  cardBg: cardBg,
+                  cardBorder: cardBorder,
+                ),
               ] else ...[
-                _buildGuestCard(syncState, textPrimary, textSecondary, isDark, borderColor),
+                _buildGuestCard(
+                  syncState,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                  isDark: isDark,
+                  cardBorder: cardBorder,
+                ),
               ],
             ],
           ),
@@ -229,19 +303,20 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
   }
 
   Widget _buildSignedInCard(
-    SyncState syncState,
-    Color textPrimary,
-    Color textSecondary,
-    bool isDark,
-    Color borderColor,
-  ) {
+    SyncState syncState, {
+    required Color textPrimary,
+    required Color textSecondary,
+    required bool isDark,
+    required Color cardBg,
+    required Color cardBorder,
+  }) {
     final user = syncState.user!;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg,
+        color: cardBg,
         borderRadius: PinTokens.radiusMd,
-        border: Border.all(color: borderColor),
+        border: Border.all(color: cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -250,7 +325,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: PinTokens.primary.withValues(alpha: 0.15),
+                backgroundColor: PinTokens.primary.withValues(alpha: isDark ? 0.2 : 0.12),
                 child: Text(
                   (user.displayName?.isNotEmpty == true
                           ? user.displayName![0]
@@ -289,15 +364,17 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: PinTokens.accentEmerald.withValues(alpha: 0.15),
+                  color: isDark
+                      ? PinTokens.accentEmerald.withValues(alpha: 0.15)
+                      : const Color(0xFFDCFCE7),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   syncState.status.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: PinTokens.accentEmerald,
+                    color: isDark ? PinTokens.accentEmerald : const Color(0xFF15803D),
                   ),
                 ),
               ),
@@ -305,7 +382,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
           ),
 
           const SizedBox(height: 12),
-          const Divider(height: 1),
+          Divider(height: 1, color: cardBorder),
           const SizedBox(height: 10),
 
           Row(
@@ -321,7 +398,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -344,6 +421,13 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.sync_rounded, size: 16),
                   label: const Text('Sync Now'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: textPrimary,
+                    backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                    side: BorderSide(color: cardBorder),
+                    padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                   onPressed: () => ref.read(syncControllerProvider.notifier).syncNow(),
                 ),
               ),
@@ -352,6 +436,13 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.logout_rounded, size: 16),
                   label: const Text('Sign Out'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: textPrimary,
+                    backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                    side: BorderSide(color: cardBorder),
+                    padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                   onPressed: () => ref.read(syncControllerProvider.notifier).signOut(),
                 ),
               ),
@@ -364,7 +455,10 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
             icon: const Icon(Icons.delete_forever_rounded, size: 16, color: PinTokens.accentRose),
             label: const Text(
               'Delete Account & Cloud Data (GDPR)',
-              style: TextStyle(color: PinTokens.accentRose, fontSize: 11),
+              style: TextStyle(color: PinTokens.accentRose, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 4),
             ),
             onPressed: _confirmDeleteAccount,
           ),
@@ -374,21 +468,27 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
   }
 
   Widget _buildGuestCard(
-    SyncState syncState,
-    Color textPrimary,
-    Color textSecondary,
-    bool isDark,
-    Color borderColor,
-  ) {
+    SyncState syncState, {
+    required Color textPrimary,
+    required Color textSecondary,
+    required bool isDark,
+    required Color cardBorder,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: PinTokens.primary.withValues(alpha: 0.08),
+            color: isDark
+                ? PinTokens.primary.withValues(alpha: 0.10)
+                : const Color(0xFFEFF6FF),
             borderRadius: PinTokens.radiusMd,
-            border: Border.all(color: PinTokens.primary.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: isDark
+                  ? PinTokens.primary.withValues(alpha: 0.25)
+                  : const Color(0xFFBFDBFE),
+            ),
           ),
           child: Row(
             children: [
@@ -406,6 +506,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                         color: textPrimary,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       'All pins write instantly to local storage. Zero network latency.',
                       style: TextStyle(fontSize: 11, color: textSecondary),
@@ -424,10 +525,14 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
           style: ElevatedButton.styleFrom(
             backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
             foregroundColor: textPrimary,
-            side: BorderSide(color: borderColor, width: 1.4),
+            side: BorderSide(
+              color: isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle,
+              width: 1.2,
+            ),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusMd),
-            elevation: 0,
+            elevation: isDark ? 0 : 0.5,
+            shadowColor: Colors.black.withValues(alpha: 0.08),
           ),
           onPressed: () => _handleGoogleSignIn(),
           child: Row(
