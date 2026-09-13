@@ -413,8 +413,6 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView> {
               ),
             ),
 
-            const Divider(height: 1, thickness: 1),
-
             // Pins List in Active Deck with cascading staggered reveal
             Expanded(
               child: _buildTaskList(
