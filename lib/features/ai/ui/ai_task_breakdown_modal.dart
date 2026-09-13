@@ -206,7 +206,7 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final modalBg = isDark ? const Color(0xFF141824) : Colors.white;
+    final modalBg = isDark ? const Color(0xFF141824) : PinTokens.lightCardBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
@@ -215,7 +215,7 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
       backgroundColor: modalBg,
       shape: RoundedRectangleBorder(
         borderRadius: PinTokens.radiusDeck,
-        side: BorderSide(color: borderColor, width: 1.5),
+        side: BorderSide(color: borderColor, width: isDark ? 1.5 : 1.0),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
@@ -418,24 +418,28 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1B2030) : const Color(0xFFF8FAFC),
+            color: isDark ? const Color(0xFF1B2030) : PinTokens.lightCanvasBg,
             borderRadius: PinTokens.radiusMd,
             border: Border.all(color: borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.auto_awesome_rounded, size: 14, color: Color(0xFF818CF8)),
-                  SizedBox(width: 6),
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 14,
+                    color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
+                  ),
+                  const SizedBox(width: 6),
                   Text(
                     'REFINED OBJECTIVE',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
-                      color: Color(0xFF818CF8),
+                      color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                     ),
                   ),
                 ],
@@ -471,15 +475,15 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1B4B) : const Color(0xFFEEF2FF),
+                      color: isDark ? const Color(0xFF1E1B4B) : PinTokens.energyDeepBg,
                       borderRadius: PinTokens.radiusFull,
                     ),
                     child: Text(
                       '⚡ ${_energyTag.toUpperCase()}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF818CF8),
+                        color: isDark ? const Color(0xFF818CF8) : PinTokens.energyDeepText,
                       ),
                     ),
                   ),
@@ -488,7 +492,7 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF3F4F6),
+                      color: isDark ? const Color(0xFF1E2330) : PinTokens.lightTagBg,
                       borderRadius: PinTokens.radiusFull,
                     ),
                     child: Text(
@@ -506,7 +510,7 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF3F4F6),
+                        color: isDark ? const Color(0xFF1E2330) : PinTokens.lightTagBg,
                         borderRadius: PinTokens.radiusFull,
                       ),
                       child: Text(
@@ -563,7 +567,7 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
             margin: const EdgeInsets.only(bottom: 6),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF181D2A) : const Color(0xFFF9FAFB),
+              color: isDark ? const Color(0xFF181D2A) : PinTokens.lightCanvasBg,
               borderRadius: PinTokens.radiusMd,
               border: Border.all(color: borderColor),
             ),
@@ -574,15 +578,17 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
                   height: 22,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                    color: isDark
+                        ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                        : PinTokens.lightTagBg,
                     shape: BoxShape.circle,
                   ),
                   child: Text(
                     '${i + 1}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF818CF8),
+                      color: isDark ? const Color(0xFF818CF8) : PinTokens.lightFabBg,
                     ),
                   ),
                 ),
@@ -600,7 +606,7 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
                 IconButton(
                   icon: const Icon(Icons.remove_circle_outline_rounded, size: 16),
                   splashRadius: 14,
-                  color: isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF),
+                  color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
                   tooltip: 'Remove step',
                   onPressed: () => _removeStep(i),
                 ),
@@ -621,10 +627,10 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
                   hintText: 'Add another atomic step...',
                   hintStyle: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
+                    color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
                   ),
                   filled: true,
-                  fillColor: isDark ? const Color(0xFF1E2330) : const Color(0xFFF3F4F6),
+                  fillColor: isDark ? const Color(0xFF1E2330) : PinTokens.lightCanvasBg,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   border: OutlineInputBorder(
                     borderRadius: PinTokens.radiusMd,

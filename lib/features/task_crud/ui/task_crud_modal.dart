@@ -278,24 +278,23 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
     final taskState = ref.watch(taskStateProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
     final modalBg = isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCardBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary =
         isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
-    final inputBg = isDark ? PinTokens.darkCardBg : const Color(0x0A0F172A);
+    final inputBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCanvasBg;
 
     return Dialog(
       backgroundColor: modalBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: borderColor, width: isDark ? 1.8 : 1.0),
+        borderRadius: PinTokens.radiusDeck,
+        side: BorderSide(color: borderColor, width: isDark ? 1.5 : 1.0),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440, maxHeight: 680),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -307,9 +306,10 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                   Text(
                     isEditing ? 'Edit Pin' : 'Capture New Pin',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 19,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   Row(
@@ -318,12 +318,16 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                       IconButton(
                         tooltip: 'Gemini AI Settings',
                         icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                        color: PinTokens.primary,
+                        color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                         splashRadius: 18,
                         onPressed: () => AiSettingsModal.show(context),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close_rounded, color: textPrimary),
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
+                          size: 20,
+                        ),
                         splashRadius: 18,
                         onPressed: () => Navigator.of(context).pop(),
                       ),
@@ -342,7 +346,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                     color: PinTokens.accentAmber.withValues(alpha: 0.12),
                     borderRadius: PinTokens.radiusMd,
                     border: Border.all(
-                      color: PinTokens.accentAmber.withValues(alpha: 0.6),
+                      color: PinTokens.accentAmber.withValues(alpha: 0.5),
                       width: 1,
                     ),
                   ),
@@ -380,29 +384,36 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                         controller: _titleController,
                         autofocus: true,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: textPrimary,
                         ),
                         decoration: InputDecoration(
                           hintText: 'What needs execution?',
                           hintStyle: TextStyle(
-                            color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
-                            fontSize: 15,
+                            color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
+                            fontSize: 14,
                           ),
                           filled: true,
                           fillColor: inputBg,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14,
-                            vertical: 12,
+                            vertical: 11,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: PinTokens.radiusMd,
-                            borderSide: BorderSide(color: borderColor),
+                            borderSide: BorderSide(color: borderColor, width: 1.0),
                           ),
-                          focusedBorder: const OutlineInputBorder(
+                          enabledBorder: OutlineInputBorder(
                             borderRadius: PinTokens.radiusMd,
-                            borderSide: BorderSide(color: PinTokens.lightActiveFocus, width: 1.6),
+                            borderSide: BorderSide(color: borderColor, width: 1.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: PinTokens.radiusMd,
+                            borderSide: BorderSide(
+                              color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                              width: 1.2,
+                            ),
                           ),
                         ),
                         onSubmitted: (_) => _submit(),
@@ -417,54 +428,50 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                           onTap: _isGeneratingWithAi ? null : _generateTaskWithAi,
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                             decoration: BoxDecoration(
                               borderRadius: PinTokens.radiusMd,
-                              gradient: LinearGradient(
-                                colors: isDark
-                                    ? [
-                                        const Color(0xFF6366F1).withValues(alpha: 0.22),
-                                        const Color(0xFFA855F7).withValues(alpha: 0.18),
-                                      ]
-                                    : [
-                                        const Color(0xFF6366F1).withValues(alpha: 0.10),
-                                        const Color(0xFFA855F7).withValues(alpha: 0.08),
-                                      ],
-                              ),
+                              color: isDark
+                                  ? const Color(0xFF1B2520)
+                                  : PinTokens.lightTagBg,
                               border: Border.all(
-                                color: const Color(0xFF818CF8).withValues(alpha: 0.4),
-                                width: 1.2,
+                                color: isDark
+                                    ? const Color(0xFF2E4536)
+                                    : PinTokens.lightBorder,
+                                width: 1.0,
                               ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 if (_isGeneratingWithAi) ...[
-                                  const SizedBox(
+                                  SizedBox(
                                     width: 14,
                                     height: 14,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF818CF8)),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Flexible(
+                                  Flexible(
                                     child: Text(
                                       'Decomposing task with Gemini...',
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF818CF8),
+                                        color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                                       ),
                                     ),
                                   ),
                                 ] else ...[
-                                  const Icon(
+                                  Icon(
                                     Icons.auto_awesome_rounded,
                                     size: 15,
-                                    color: Color(0xFF818CF8),
+                                    color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                                   ),
                                   const SizedBox(width: 8),
                                   Flexible(
@@ -473,10 +480,10 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                                           ? 'Re-analyze & break down with Gemini'
                                           : 'Break down & auto-fill with Gemini',
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFF818CF8),
+                                        color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                                       ),
                                     ),
                                   ),
@@ -499,7 +506,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                         decoration: InputDecoration(
                           hintText: 'Optional notes, blockers, or context...',
                           hintStyle: TextStyle(
-                            color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
+                            color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
                             fontSize: 13,
                           ),
                           filled: true,
@@ -510,11 +517,18 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: PinTokens.radiusMd,
-                            borderSide: BorderSide(color: borderColor),
+                            borderSide: BorderSide(color: borderColor, width: 1.0),
                           ),
-                          focusedBorder: const OutlineInputBorder(
+                          enabledBorder: OutlineInputBorder(
                             borderRadius: PinTokens.radiusMd,
-                            borderSide: BorderSide(color: PinTokens.lightActiveFocus, width: 1.6),
+                            borderSide: BorderSide(color: borderColor, width: 1.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: PinTokens.radiusMd,
+                            borderSide: BorderSide(
+                              color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                              width: 1.2,
+                            ),
                           ),
                         ),
                       ),
@@ -588,20 +602,20 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: isDark ? PinTokens.darkTextPrimary : const Color(0xFF111827),
+                                  color: isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary,
                                 ),
                               ),
                               shape: StadiumBorder(
                                 side: BorderSide(
-                                  color: isDark ? PinTokens.darkBorder : const Color(0xFF111827),
-                                  width: 1.4,
+                                  color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
+                                  width: 1.0,
                                 ),
                               ),
-                              backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                              backgroundColor: isDark ? PinTokens.darkCardBg : PinTokens.lightSheetBg,
                               deleteIcon: Icon(
                                 Icons.close_rounded,
                                 size: 13,
-                                color: isDark ? PinTokens.darkTextMuted : const Color(0xFF374151),
+                                color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
                               ),
                               onDeleted: () => _removeTag(tag),
                               visualDensity: VisualDensity.compact,
@@ -615,20 +629,58 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
-                                    color: isDark ? PinTokens.darkTextSecondary : const Color(0xFF4B5563),
+                                    color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
                                   ),
                                 ),
-                                shape: StadiumBorder(
+                                shape: const StadiumBorder(
                                   side: BorderSide(
-                                    color: isDark ? PinTokens.darkBorder : const Color(0xFFE5E7EB),
+                                    color: PinTokens.lightBorder,
                                     width: 1.0,
                                   ),
                                 ),
-                                backgroundColor: isDark ? PinTokens.darkCardBg : const Color(0xFFF3F4F6),
+                                backgroundColor: isDark ? PinTokens.darkCardBg : PinTokens.lightTagBg,
                                 visualDensity: VisualDensity.compact,
                                 padding: const EdgeInsets.symmetric(horizontal: 4),
                                 onPressed: () => _addTag(qTag),
                               ),
+                          SizedBox(
+                            width: 80,
+                            child: TextField(
+                              controller: _tagController,
+                              style: TextStyle(fontSize: 11, color: textPrimary),
+                              decoration: InputDecoration(
+                                hintText: '+ tag',
+                                hintStyle: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
+                                ),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                filled: true,
+                                fillColor: isDark ? PinTokens.darkCardBg : PinTokens.lightTagBg,
+                                border: OutlineInputBorder(
+                                  borderRadius: PinTokens.radiusFull,
+                                  borderSide: BorderSide(color: borderColor, width: 1.0),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: PinTokens.radiusFull,
+                                  borderSide: BorderSide(color: borderColor, width: 1.0),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: PinTokens.radiusFull,
+                                  borderSide: BorderSide(
+                                    color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                                    width: 1.2,
+                                  ),
+                                ),
+                              ),
+                              onSubmitted: (val) {
+                                if (val.trim().isNotEmpty) {
+                                  _addTag(val.trim());
+                                }
+                              },
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -716,7 +768,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                               decoration: InputDecoration(
                                 hintText: 'Add micro action...',
                                 hintStyle: TextStyle(
-                                  color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted,
+                                  color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
                                   fontSize: 12,
                                 ),
                                 filled: true,
@@ -728,7 +780,18 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                                 ),
                                 border: OutlineInputBorder(
                                   borderRadius: PinTokens.radiusMd,
-                                  borderSide: BorderSide(color: borderColor),
+                                  borderSide: BorderSide(color: borderColor, width: 1.0),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: PinTokens.radiusMd,
+                                  borderSide: BorderSide(color: borderColor, width: 1.0),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: PinTokens.radiusMd,
+                                  borderSide: BorderSide(
+                                    color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                                    width: 1.2,
+                                  ),
                                 ),
                               ),
                               onSubmitted: (_) => _addSubtask(),
@@ -816,6 +879,28 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
             ? Icons.check_circle_outline_rounded
             : Icons.inventory_2_outlined);
 
+    final bgCol = isSelected
+        ? (isDark ? const Color(0xFF1E2638) : PinTokens.lightSheetBg)
+        : (isDark ? PinTokens.darkCardBg : PinTokens.lightCanvasBg);
+
+    final borderCol = isSelected
+        ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg)
+        : (isDark ? PinTokens.darkBorder : PinTokens.lightBorder);
+
+    final iconCol = isSelected
+        ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg)
+        : (isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary);
+
+    final labelCol = isSelected
+        ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg)
+        : (isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary);
+
+    final badgeCol = isFull
+        ? PinTokens.accentAmber
+        : (isSelected
+            ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightTextSecondary)
+            : (isDark ? PinTokens.darkTextMuted : PinTokens.lightTextSecondary));
+
     return Expanded(
       child: InkWell(
         onTap: () => setState(() => _selectedStatus = status),
@@ -824,16 +909,21 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
           duration: PinTokens.animFast,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? const Color(0xFF1E2638) : PinTokens.lightMaxFocusBg)
-                : (isDark ? PinTokens.darkCardBg : const Color(0xFFF9FAFB)),
+            color: bgCol,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected
-                  ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
-                  : (isDark ? PinTokens.darkBorder : const Color(0xFFE5E7EB)),
-              width: isSelected ? 1.8 : 1.0,
+              color: borderCol,
+              width: isSelected ? 1.2 : 1.0,
             ),
+            boxShadow: isSelected && !isDark
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF1A241E).withValues(alpha: 0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -844,9 +934,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                   Icon(
                     icon,
                     size: 14,
-                    color: isSelected
-                        ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
-                        : (isDark ? PinTokens.darkTextMuted : const Color(0xFF6B7280)),
+                    color: iconCol,
                   ),
                   const SizedBox(width: 6),
                   Flexible(
@@ -857,9 +945,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
-                            : textPrimary,
+                        color: labelCol,
                       ),
                     ),
                   ),
@@ -873,9 +959,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: isFull
-                      ? PinTokens.accentAmber
-                      : (isDark ? PinTokens.darkTextMuted : const Color(0xFF6B7280)),
+                  color: badgeCol,
                 ),
               ),
             ],

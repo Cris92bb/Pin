@@ -115,6 +115,8 @@ class PillChip extends StatelessWidget {
     Color textColor;
     Color iconColor;
 
+    final isDuration = icon == Icons.timer_outlined;
+
     if (isSelected) {
       if (isDark) {
         bgColor = baseAccent.withValues(alpha: 0.22);
@@ -122,10 +124,50 @@ class PillChip extends StatelessWidget {
         textColor = baseAccent;
         iconColor = baseAccent;
       } else {
-        bgColor = baseAccent.withValues(alpha: 0.12);
-        borderColor = baseAccent;
-        textColor = _getLightText(baseAccent);
-        iconColor = _getLightText(baseAccent);
+        if (isDuration) {
+          bgColor = PinTokens.lightSheetBg;
+          borderColor = PinTokens.lightFabBg;
+          textColor = PinTokens.lightTextPrimary;
+          iconColor = PinTokens.lightFabBg;
+        } else {
+          switch (label) {
+            case 'low-friction':
+              bgColor = PinTokens.energyLowBg;
+              borderColor = const Color(0xFFA7D7BE);
+              textColor = PinTokens.energyLowText;
+              iconColor = PinTokens.energyLowText;
+              break;
+            case 'medium-flow':
+              bgColor = PinTokens.energyMediumBg;
+              borderColor = const Color(0xFFF6C3A6);
+              textColor = PinTokens.energyMediumText;
+              iconColor = PinTokens.energyMediumText;
+              break;
+            case 'deep-focus':
+              bgColor = PinTokens.energyDeepBg;
+              borderColor = const Color(0xFFC7CDFA);
+              textColor = PinTokens.energyDeepText;
+              iconColor = PinTokens.energyDeepText;
+              break;
+            case 'creative':
+              bgColor = PinTokens.energyCreativeBg;
+              borderColor = const Color(0xFFFDE68A);
+              textColor = PinTokens.energyCreativeText;
+              iconColor = PinTokens.energyCreativeText;
+              break;
+            case 'administrative':
+              bgColor = PinTokens.energyAdminBg;
+              borderColor = const Color(0xFFD8D2C4);
+              textColor = PinTokens.energyAdminText;
+              iconColor = PinTokens.energyAdminText;
+              break;
+            default:
+              bgColor = baseAccent.withValues(alpha: 0.12);
+              borderColor = baseAccent;
+              textColor = _getLightText(baseAccent);
+              iconColor = _getLightText(baseAccent);
+          }
+        }
       }
     } else {
       if (isDark) {
@@ -137,7 +179,7 @@ class PillChip extends StatelessWidget {
         bgColor = PinTokens.lightTagBg;
         borderColor = PinTokens.lightBorder;
         textColor = PinTokens.lightTextSecondary;
-        iconColor = baseAccent.withValues(alpha: 0.85);
+        iconColor = PinTokens.lightTextTertiary;
       }
     }
 
@@ -176,14 +218,14 @@ class PillChip extends StatelessWidget {
         borderRadius: PinTokens.radiusFull,
         border: Border.all(
           color: borderColor,
-          width: isSelected ? 1.5 : 1.0,
+          width: isSelected ? 1.2 : 1.0,
         ),
         boxShadow: isSelected && !isDark
             ? [
                 BoxShadow(
-                  color: baseAccent.withValues(alpha: 0.14),
+                  color: const Color(0xFF1A241E).withValues(alpha: 0.05),
                   blurRadius: 4,
-                  offset: const Offset(0, 1.5),
+                  offset: const Offset(0, 1),
                 ),
               ]
             : null,

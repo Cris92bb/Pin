@@ -31,11 +31,11 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
     if (chosenEmail.isEmpty) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
-      final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+      final dialogBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
       final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
       final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
-      final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
-      final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+      final inputBg = isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg;
+      final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
 
       final result = await showDialog<Map<String, String>>(
         context: context,
@@ -50,7 +50,11 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
             ),
             title: Row(
               children: [
-                const Icon(Icons.account_circle_outlined, color: PinTokens.primary, size: 24),
+                Icon(
+                  Icons.account_circle_outlined,
+                  color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
+                  size: 24,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Google Sign-In',
@@ -83,9 +87,12 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                       borderRadius: PinTokens.radiusSm,
                       borderSide: BorderSide(color: borderCol),
                     ),
-                    focusedBorder: const OutlineInputBorder(
+                    focusedBorder: OutlineInputBorder(
                       borderRadius: PinTokens.radiusSm,
-                      borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                      borderSide: BorderSide(
+                        color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                        width: 1.4,
+                      ),
                     ),
                   ),
                 ),
@@ -107,9 +114,12 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                       borderRadius: PinTokens.radiusSm,
                       borderSide: BorderSide(color: borderCol),
                     ),
-                    focusedBorder: const OutlineInputBorder(
+                    focusedBorder: OutlineInputBorder(
                       borderRadius: PinTokens.radiusSm,
-                      borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                      borderSide: BorderSide(
+                        color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                        width: 1.4,
+                      ),
                     ),
                   ),
                 ),
@@ -122,7 +132,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: PinTokens.primary,
+                  backgroundColor: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                   elevation: 0,
                   shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
                 ),
@@ -130,7 +140,13 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   'email': emailCtrl.text.trim(),
                   'name': nameCtrl.text.trim(),
                 }),
-                child: const Text('Sign In Instantly', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Sign In Instantly',
+                  style: TextStyle(
+                    color: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           );
@@ -187,11 +203,11 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
   Future<void> _handleEditDisplayName(String currentName) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+    final dialogBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
-    final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
-    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+    final inputBg = isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg;
+    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
 
     final nameCtrl = TextEditingController(text: currentName);
 
@@ -218,6 +234,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 labelText: 'Full Name',
                 labelStyle: TextStyle(color: textSecondary),
                 hintText: 'e.g. Cristian',
+                hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
                 filled: true,
                 fillColor: inputBg,
                 isDense: true,
@@ -225,9 +242,12 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   borderRadius: PinTokens.radiusSm,
                   borderSide: BorderSide(color: borderCol),
                 ),
-                focusedBorder: const OutlineInputBorder(
+                focusedBorder: OutlineInputBorder(
                   borderRadius: PinTokens.radiusSm,
-                  borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                  borderSide: BorderSide(
+                    color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                    width: 1.4,
+                  ),
                 ),
               ),
             ),
@@ -240,12 +260,18 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: PinTokens.primary,
+              backgroundColor: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
               elevation: 0,
               shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
             ),
             onPressed: () => Navigator.of(ctx).pop(nameCtrl.text.trim()),
-            child: const Text('Save Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Save Name',
+              style: TextStyle(
+                color: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -263,10 +289,10 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
   Future<void> _confirmDeleteAccount() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+    final dialogBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
-    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -331,23 +357,23 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final bgColor = isDark ? PinTokens.darkCardBg : Colors.white;
+    final bgColor = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
-    final cardBorder = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+    final cardBorder = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
     return Dialog(
       backgroundColor: bgColor,
       shape: RoundedRectangleBorder(
-        borderRadius: PinTokens.radiusLg,
-        side: BorderSide(color: borderColor),
+        borderRadius: PinTokens.radiusDeck,
+        side: BorderSide(color: borderColor, width: isDark ? 1.5 : 1.0),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400, maxHeight: 680),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -356,13 +382,21 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               Row(
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      color: PinTokens.primary.withValues(alpha: isDark ? 0.2 : 0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      color: isDark ? const Color(0xFF11221A) : PinTokens.headerSyncBgLight,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF1F3D2E) : PinTokens.headerSyncBorderLight,
+                        width: 1.0,
+                      ),
                     ),
-                    child: const Icon(Icons.cloud_sync_rounded, color: PinTokens.primary, size: 20),
+                    child: Icon(
+                      Icons.cloud_sync_rounded,
+                      color: isDark ? PinTokens.accentEmerald : PinTokens.headerSyncFgLight,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -372,11 +406,16 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, color: textSecondary, size: 20),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
+                      size: 20,
+                    ),
                     splashRadius: 18,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -390,15 +429,14 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: (syncState.errorMessage != null
-                            ? PinTokens.accentRose
-                            : PinTokens.primary)
-                        .withValues(alpha: isDark ? 0.12 : 0.08),
+                    color: syncState.errorMessage != null
+                        ? (isDark ? PinTokens.accentRose.withValues(alpha: 0.12) : const Color(0xFFFDF2F2))
+                        : (isDark ? const Color(0xFF1B2520) : PinTokens.lightTagBg),
                     borderRadius: PinTokens.radiusSm,
                     border: Border.all(
                       color: syncState.errorMessage != null
-                          ? PinTokens.accentRose
-                          : PinTokens.primary.withValues(alpha: 0.4),
+                          ? PinTokens.accentRose.withValues(alpha: 0.4)
+                          : (isDark ? const Color(0xFF2E4536) : PinTokens.lightBorder),
                       width: 1.0,
                     ),
                   ),
@@ -409,7 +447,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                       fontWeight: FontWeight.w600,
                       color: syncState.errorMessage != null
                           ? PinTokens.accentRose
-                          : (isDark ? PinTokens.primary : const Color(0xFF1D4ED8)),
+                          : (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg),
                     ),
                   ),
                 ),
@@ -509,15 +547,19 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               decoration: BoxDecoration(
                 color: isDark
                     ? PinTokens.accentEmerald.withValues(alpha: 0.15)
-                    : const Color(0xFFDCFCE7),
+                    : PinTokens.energyLowBg,
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF1F3D2E) : const Color(0xFFA7D7BE),
+                  width: 1.0,
+                ),
               ),
               child: Text(
                 syncState.status.label,
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? PinTokens.accentEmerald : const Color(0xFF15803D),
+                  color: isDark ? PinTokens.accentEmerald : PinTokens.energyLowText,
                 ),
               ),
             ),
@@ -566,7 +608,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 label: const Text('Sync Now'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textPrimary,
-                  backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                  backgroundColor: isDark ? PinTokens.darkCardBg : PinTokens.lightTagBg,
                   side: BorderSide(color: cardBorder),
                   padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -581,7 +623,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 label: const Text('Sign Out'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textPrimary,
-                  backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                  backgroundColor: isDark ? PinTokens.darkCardBg : PinTokens.lightTagBg,
                   side: BorderSide(color: cardBorder),
                   padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -623,18 +665,23 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: isDark
-                ? PinTokens.primary.withValues(alpha: 0.10)
-                : const Color(0xFFEFF6FF),
+                ? PinTokens.darkPhoneFrameBg
+                : PinTokens.lightTagBg,
             borderRadius: PinTokens.radiusMd,
             border: Border.all(
               color: isDark
-                  ? PinTokens.primary.withValues(alpha: 0.25)
-                  : const Color(0xFFBFDBFE),
+                  ? PinTokens.darkBorder
+                  : PinTokens.lightBorder,
+              width: 1.0,
             ),
           ),
           child: Row(
             children: [
-              const Icon(Icons.offline_pin_rounded, color: PinTokens.primary, size: 20),
+              Icon(
+                Icons.offline_pin_rounded,
+                color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -665,16 +712,15 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
         // 1-Click Google Sign-In button (No registration, no password)
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
+            backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
             foregroundColor: textPrimary,
             side: BorderSide(
-              color: isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle,
-              width: 1.2,
+              color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
+              width: 1.0,
             ),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusMd),
-            elevation: isDark ? 0 : 0.5,
-            shadowColor: Colors.black.withValues(alpha: 0.08),
+            elevation: 0,
           ),
           onPressed: () => _handleGoogleSignIn(),
           child: Row(

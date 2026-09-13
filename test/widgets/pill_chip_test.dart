@@ -32,7 +32,7 @@ void main() {
       expect(decoration.border?.top.color, PinTokens.lightBorder);
     });
 
-    testWidgets('renders light theme selected energy pill with vibrant accent and tint',
+    testWidgets('renders light theme selected energy pill with harmonic accent and tint',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -50,12 +50,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final textWidget = tester.widget<Text>(find.text('low-friction'));
-      // High contrast emerald text
-      expect(textWidget.style?.color, const Color(0xFF047857));
+      // Harmonic deep forest text
+      expect(textWidget.style?.color, PinTokens.energyLowText);
 
       final container = tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
       final decoration = container.decoration as BoxDecoration;
-      expect(decoration.border?.top.color, const Color(0xFF10B981));
+      expect(decoration.border?.top.color, const Color(0xFFA7D7BE));
     });
 
     testWidgets('renders dark theme unselected pill with obsidian background and slate text',

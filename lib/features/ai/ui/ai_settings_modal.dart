@@ -108,15 +108,15 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
-    final cardBg = isDark ? PinTokens.darkCardBg : Colors.white;
+    final cardBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
-    final surfaceBg = isDark ? Colors.white.withValues(alpha: 0.04) : PinTokens.lightTagBg;
+    final surfaceBg = isDark ? Colors.white.withValues(alpha: 0.04) : PinTokens.lightCanvasBg;
 
     return Dialog(
       backgroundColor: cardBg,
       shape: RoundedRectangleBorder(
-        borderRadius: PinTokens.radiusLg,
-        side: BorderSide(color: borderColor, width: 1.5),
+        borderRadius: PinTokens.radiusDeck,
+        side: BorderSide(color: borderColor, width: isDark ? 1.5 : 1.0),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
@@ -134,13 +134,19 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: PinTokens.primary.withValues(alpha: 0.15),
+                      color: isDark
+                          ? PinTokens.accentEmerald.withValues(alpha: 0.15)
+                          : PinTokens.headerSyncBgLight,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF1F3D2E) : PinTokens.headerSyncBorderLight,
+                        width: 1.0,
+                      ),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.auto_awesome_rounded,
-                      size: 20,
-                      color: PinTokens.primary,
+                      size: 18,
+                      color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -169,10 +175,13 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    color: textSecondary,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -196,12 +205,12 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'aistudio.google.com',
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: PinTokens.primary,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                     ),
                   ),
                 ],
@@ -233,9 +242,12 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
                     borderRadius: PinTokens.radiusMd,
                     borderSide: BorderSide(color: borderColor),
                   ),
-                  focusedBorder: const OutlineInputBorder(
+                  focusedBorder: OutlineInputBorder(
                     borderRadius: PinTokens.radiusMd,
-                    borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                    borderSide: BorderSide(
+                      color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                      width: 1.2,
+                    ),
                   ),
                   suffixIcon: Row(
                     mainAxisSize: MainAxisSize.min,
