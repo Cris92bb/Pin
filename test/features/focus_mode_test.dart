@@ -158,4 +158,84 @@ void main() {
     expect(pauseSize.width, equals(resetSize.width));
     expect(pauseSize.height, equals(resetSize.height));
   });
+
+  testWidgets(
+      'FocusModeView displays sticky minimized timer banner when scrolling past hero timer',
+      (tester) async {
+    tester.view.physicalSize = const Size(500, 400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final now = DateTime.now();
+    final task = PinTask(
+      id: 'task_scroll_test',
+      title: 'Long Focus Task for Sticky Banner Scroll Verification',
+      description: 'Verifying scroll-triggered sticky minimized timer banner',
+      status: TaskStatus.today,
+      energyTag: 'deep-focus',
+      estimatedMinutes: 45,
+      trackedSeconds: 120,
+      subtasks: List.generate(
+        10,
+        (i) => AtomicStep(
+          id: 'step_$i',
+          title: 'Step number $i in focus sequence',
+          isCompleted: false,
+        ),
+      ),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final fakeStorage = MemoryStorageAdapter([task.toJson()]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.darkTheme,
+          home: FocusModeView(
+            task: task,
+            onExit: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // At top of page, sticky banner should not be present
+    expect(find.byKey(const ValueKey('sticky_timer_banner')), findsNothing);
+
+    // Scroll down past 170px threshold
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+
+    // Sticky banner should now be visible
+    expect(find.byKey(const ValueKey('sticky_timer_banner')), findsOneWidget);
+
+    // Test pause interaction on sticky banner
+    final stickyPauseBtn = find.descendant(
+      of: find.byKey(const ValueKey('sticky_timer_banner')),
+      matching: find.text('Pause'),
+    );
+    expect(stickyPauseBtn, findsOneWidget);
+    await tester.tap(stickyPauseBtn);
+    await tester.pumpAndSettle();
+
+    final stickyResumeBtn = find.descendant(
+      of: find.byKey(const ValueKey('sticky_timer_banner')),
+      matching: find.text('Resume'),
+    );
+    expect(stickyResumeBtn, findsOneWidget);
+
+    // Scroll back to top
+    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
+    await tester.pumpAndSettle();
+
+    // Sticky banner should hide when scrolled back to top
+    expect(find.byKey(const ValueKey('sticky_timer_banner')), findsNothing);
+  });
 }
+
