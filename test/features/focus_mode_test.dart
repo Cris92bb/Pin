@@ -237,5 +237,54 @@ void main() {
     // Sticky banner should hide when scrolled back to top
     expect(find.byKey(const ValueKey('sticky_timer_banner')), findsNothing);
   });
+
+  testWidgets(
+      'FocusModeView intercepts system/Android back navigation via PopScope and acts as back button',
+      (tester) async {
+    final now = DateTime.now();
+    final task = PinTask(
+      id: 'task_back_test',
+      title: 'Back Navigation Test Task',
+      description: 'Verifying PopScope Android back gesture interception',
+      status: TaskStatus.today,
+      energyTag: 'deep-focus',
+      estimatedMinutes: 20,
+      trackedSeconds: 0,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final fakeStorage = MemoryStorageAdapter([task.toJson()]);
+    bool hasExited = false;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.darkTheme,
+          home: FocusModeView(
+            task: task,
+            onExit: () => hasExited = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Back Navigation Test Task'), findsOneWidget);
+    expect(hasExited, isFalse);
+
+    // Simulate system back navigation (Android back gesture / button)
+    final dynamic widgetsAppState = tester.state(find.byType(WidgetsApp));
+    final didHandle = await widgetsAppState.didPopRoute();
+    expect(didHandle, isTrue);
+    await tester.pumpAndSettle();
+
+    // Verify focus mode exited
+    expect(hasExited, isTrue);
+  });
 }
+
 

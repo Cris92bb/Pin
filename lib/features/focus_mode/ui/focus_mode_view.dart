@@ -98,7 +98,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     }
   }
 
+  bool _isExiting = false;
+
   Future<void> _exitFocus() async {
+    if (_isExiting) return;
+    _isExiting = true;
+    _pauseTimer();
     await _persistLoggedTime();
     ref.read(activeFocusTaskProvider.notifier).state = null;
     widget.onExit();
@@ -200,37 +205,44 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     final progress = _currentTask.subtaskProgress;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Focus(
-      focusNode: _keyboardFocusNode,
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.escape) {
-            _exitFocus();
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.space &&
-              !_stepController.text.isNotEmpty &&
-              !FocusScope.of(context).hasPrimaryFocus) {
-            _toggleTimer();
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _exitFocus();
       },
-      child: Scaffold(
-        backgroundColor:
-            isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
-        body: SafeArea(
-          child: AnimatedSwitcher(
-            duration: PinTokens.animNormal,
-            child: _isCompletedState
-                ? _buildCelebrationView(isDark)
-                : _buildImmersiveView(
-                    totalElapsedSeconds,
-                    totalSteps,
-                    completedSteps,
-                    progress,
-                  ),
+      child: Focus(
+        focusNode: _keyboardFocusNode,
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.escape) {
+              _exitFocus();
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.space &&
+                !_stepController.text.isNotEmpty &&
+                !FocusScope.of(context).hasPrimaryFocus) {
+              _toggleTimer();
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Scaffold(
+          backgroundColor:
+              isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
+          body: SafeArea(
+            child: AnimatedSwitcher(
+              duration: PinTokens.animNormal,
+              child: _isCompletedState
+                  ? _buildCelebrationView(isDark)
+                  : _buildImmersiveView(
+                      totalElapsedSeconds,
+                      totalSteps,
+                      completedSteps,
+                      progress,
+                    ),
+            ),
           ),
         ),
       ),
