@@ -15,7 +15,7 @@ class PinTheme {
       cardColor: PinTokens.lightCardBg,
       dividerColor: PinTokens.lightBorderSubtle,
       colorScheme: const ColorScheme.light(
-        primary: PinTokens.lightBorder,
+        primary: PinTokens.lightActiveFocus,
         secondary: PinTokens.lightActiveFocus,
         surface: PinTokens.lightCardBg,
         surfaceContainerHighest: PinTokens.lightTagBg,
@@ -27,7 +27,7 @@ class PinTheme {
       fontFamily: 'sans-serif',
       tooltipTheme: const TooltipThemeData(
         decoration: BoxDecoration(
-          color: PinTokens.lightBorder,
+          color: Color(0xFF1E293B),
           borderRadius: PinTokens.radiusSm,
         ),
         textStyle: TextStyle(

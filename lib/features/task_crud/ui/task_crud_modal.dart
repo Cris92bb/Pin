@@ -279,17 +279,17 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final modalBg = isDark ? PinTokens.darkPhoneFrameBg : Colors.white;
+    final modalBg = isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCardBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary =
         isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
-    final inputBg = isDark ? PinTokens.darkCardBg : const Color(0xFFF9FAFB);
+    final inputBg = isDark ? PinTokens.darkCardBg : const Color(0x0A0F172A);
 
     return Dialog(
       backgroundColor: modalBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: borderColor, width: 1.8),
+        side: BorderSide(color: borderColor, width: isDark ? 1.8 : 1.0),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(

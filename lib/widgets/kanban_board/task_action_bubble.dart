@@ -118,8 +118,8 @@ class TaskActionBubble extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final bgColor = isDark ? const Color(0xFF161A23) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF2E3648) : const Color(0xFFE2E8F0);
+    final bgColor = isDark ? const Color(0xFF161A23) : PinTokens.lightCardBg;
+    final borderColor = isDark ? const Color(0xFF2E3648) : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
@@ -130,11 +130,12 @@ class TaskActionBubble extends StatelessWidget {
         borderRadius: PinTokens.radiusFull,
         border: Border.all(
           color: borderColor,
-          width: 1.4,
+          width: isDark ? 1.4 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.16),
+            color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                .withValues(alpha: isDark ? 0.55 : 0.08),
             blurRadius: 20,
             spreadRadius: 2,
             offset: const Offset(0, 8),

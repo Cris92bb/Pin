@@ -289,7 +289,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     Color textMuted,
     Color borderSubtle,
   ) {
-    final bannerBg = isDark ? PinTokens.surfaceColumn : Colors.white;
+    final bannerBg = isDark ? PinTokens.surfaceColumn : PinTokens.lightCardBg;
 
     return Container(
       key: const ValueKey('sticky_timer_banner'),
@@ -403,9 +403,9 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
         // Subtasks background has a slightly different background color from the timer
         final subtasksBg = isDark
             ? const Color(0xFF161A26)
-            : const Color(0xFFF3F4F6);
+            : const Color(0xFFEDE8DF);
 
-        final inputBg = isDark ? PinTokens.surfaceCard : Colors.white;
+        final inputBg = isDark ? PinTokens.surfaceCard : PinTokens.lightCardBg;
 
         return Column(
           children: [

@@ -23,17 +23,17 @@ class SyncStatusBadge extends ConsumerWidget {
     switch (syncState.status) {
       case SyncStatus.synced:
         icon = Icons.cloud_done_rounded;
-        iconColor = PinTokens.accentEmerald;
+        iconColor = isDark ? PinTokens.accentEmerald : PinTokens.headerSyncFgLight;
         tooltip = 'Cloud Synced (${syncState.syncedTaskCount} pins)';
         break;
       case SyncStatus.syncing:
         icon = Icons.sync_rounded;
-        iconColor = PinTokens.primary;
+        iconColor = isDark ? PinTokens.primary : PinTokens.headerSyncFgLight;
         tooltip = 'Syncing with Firestore...';
         break;
       case SyncStatus.offline:
         icon = Icons.cloud_off_rounded;
-        iconColor = isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted;
+        iconColor = isDark ? PinTokens.darkTextMuted : const Color(0xFF64748B);
         tooltip = 'Offline - Local storage active';
         break;
       case SyncStatus.error:
@@ -43,7 +43,7 @@ class SyncStatusBadge extends ConsumerWidget {
         break;
       case SyncStatus.guest:
         icon = Icons.cloud_queue_rounded;
-        iconColor = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+        iconColor = isDark ? PinTokens.darkTextSecondary : PinTokens.headerSyncFgLight;
         tooltip = 'Guest Mode (Local Storage Only) - Tap to sync';
         break;
     }
@@ -58,9 +58,10 @@ class SyncStatusBadge extends ConsumerWidget {
           height: 32,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
+            color: isDark ? const Color(0xFF11221A) : PinTokens.headerSyncBgLight,
             border: Border.all(
-              color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
-              width: 1.4,
+              color: isDark ? const Color(0xFF1F3D2E) : PinTokens.headerSyncBorderLight,
+              width: 1.2,
             ),
           ),
           child: Center(

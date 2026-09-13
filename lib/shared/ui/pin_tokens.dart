@@ -7,21 +7,29 @@ import 'package:flutter/material.dart';
 class PinTokens {
   const PinTokens._();
 
-  // Light Mode Palette (from screenshot)
-  static const Color lightCanvasBg = Color(0xFF18181B); // Outer desktop canvas backdrop
-  static const Color lightPhoneFrameBg = Color(0xFFFFFFFF); // Companion card container
-  static const Color lightCardBg = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFF111827);
-  static const Color lightBorderSubtle = Color(0xFFE5E7EB);
-  static const Color lightTextPrimary = Color(0xFF111827);
-  static const Color lightTextSecondary = Color(0xFF4B5563);
-  static const Color lightTextMuted = Color(0xFF9CA3AF);
+  // Light Mode Palette (Atmospheric warm tint & editorial depth)
+  static const Color lightCanvasBg = Color(0xFFE8E5DE); // Outer desktop canvas backdrop
+  static const Color lightPhoneFrameBg = Color(0xFFF4F1EA); // Subtle sand/eggshell companion container
+  static const Color lightCardBg = Color(0xFFFCFBF8); // Soft warm-white card surfaces
+  static const Color lightBorder = Color(0x140F172A); // Low-opacity slate/neutral border (rgba(15, 23, 42, 0.08))
+  static const Color lightBorderSubtle = Color(0x0A0F172A); // rgba(15, 23, 42, 0.04)
+  static const Color lightTextPrimary = Color(0xFF0F172A);
+  static const Color lightTextSecondary = Color(0xFF475569);
+  static const Color lightTextMuted = Color(0xFF94A3B8);
   static const Color lightActiveFocus = Color(0xFF2563EB); // Royal blue
   static const Color lightMaxFocusBg = Color(0xFFEEF2FF); // Soft indigo tint
   static const Color lightMaxFocusText = Color(0xFF4338CA);
-  static const Color lightTagBg = Color(0xFFF3F4F6);
-  static const Color lightTagText = Color(0xFF374151);
+  static const Color lightTagBg = Color(0x0A0F172A); // Ultra-light neutral fill
+  static const Color lightTagText = Color(0xFF475569);
   static const Color primary = lightActiveFocus;
+
+  // Header Utility Accent Tokens (Light Mode)
+  static const Color headerSyncBgLight = Color(0xFFE7F4ED); // Muted sage green base
+  static const Color headerSyncBorderLight = Color(0xFFD1E7DD);
+  static const Color headerSyncFgLight = Color(0xFF166534); // Deep forest icon
+  static const Color headerThemeBgLight = Color(0xFFFEF3C7); // Warm amber base
+  static const Color headerThemeBorderLight = Color(0xFFFDE68A);
+  static const Color headerThemeFgLight = Color(0xFFB45309); // Warm amber icon
 
   // Dark Mode Palette
   static const Color darkCanvasBg = Color(0xFF090A0F);
@@ -71,17 +79,19 @@ class PinTokens {
     'administrative': Color(0xFF38BDF8),
   };
 
-  // Energy Badges
-  static const Color energyLowBg = Color(0xFFDCFCE7);
-  static const Color energyLowText = Color(0xFF15803D);
-  static const Color energyMediumBg = Color(0xFFF4F1E8);
-  static const Color energyMediumText = Color(0xFF1F2937);
-  static const Color energyDeepBg = Color(0xFFEEF2FF);
-  static const Color energyDeepText = Color(0xFF4338CA);
+  // Energy Badges (Balanced desaturated pastels)
+  static const Color energyLowBg = Color(0xFFE7F4ED); // Soft sage / eucalyptus
+  static const Color energyLowText = Color(0xFF166534); // Deep forest
+  static const Color energyMediumBg = Color(0xFFFBE9DD); // Muted terra-cotta / apricot
+  static const Color energyMediumText = Color(0xFF9A3412); // Warm mahogany
+  static const Color energyDeepBg = Color(0xFFEEF0FB); // Soft periwinkle / lavender
+  static const Color energyDeepText = Color(0xFF4338CA); // Indigo
+  static const Color energyTimerBg = Color(0xFFEEF0FB); // Soft periwinkle
+  static const Color energyTimerText = Color(0xFF4338CA);
   static const Color energyCreativeBg = Color(0xFFFEF3C7);
   static const Color energyCreativeText = Color(0xFFB45309);
-  static const Color energyAdminBg = Color(0xFFF3F4F6);
-  static const Color energyAdminText = Color(0xFF374151);
+  static const Color energyAdminBg = Color(0xFFF1ECE1);
+  static const Color energyAdminText = Color(0xFF475569);
 
   // Border Radii
   static const BorderRadius radiusSm = BorderRadius.all(Radius.circular(6));

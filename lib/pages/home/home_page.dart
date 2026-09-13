@@ -109,12 +109,16 @@ class _HomePageState extends ConsumerState<HomePage> {
               color: frameBg,
               borderRadius: isDesktopOrWeb ? BorderRadius.circular(36) : BorderRadius.zero,
               border: isDesktopOrWeb
-                  ? Border.all(color: borderColor, width: 2.0)
+                  ? Border.all(
+                      color: isDark ? borderColor : const Color(0x1F0F172A),
+                      width: isDark ? 2.0 : 1.5,
+                    )
                   : null,
               boxShadow: isDesktopOrWeb
                   ? [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
+                        color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                            .withValues(alpha: isDark ? 0.45 : 0.12),
                         blurRadius: 28,
                         offset: const Offset(0, 14),
                       ),
@@ -233,12 +237,16 @@ class _HomePageState extends ConsumerState<HomePage> {
               color: frameBg,
               borderRadius: isDesktopOrWeb ? BorderRadius.circular(36) : BorderRadius.zero,
               border: isDesktopOrWeb
-                  ? Border.all(color: borderColor, width: 2.0)
+                  ? Border.all(
+                      color: isDark ? borderColor : const Color(0x1F0F172A),
+                      width: isDark ? 2.0 : 1.5,
+                    )
                   : null,
               boxShadow: isDesktopOrWeb
                   ? [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
+                        color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                            .withValues(alpha: isDark ? 0.45 : 0.12),
                         blurRadius: 28,
                         offset: const Offset(0, 14),
                       ),
@@ -376,15 +384,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                   height: 32,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    color: isDark ? const Color(0xFF231E15) : PinTokens.headerThemeBgLight,
                     border: Border.all(
-                      color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
-                      width: 1.4,
+                      color: isDark ? const Color(0xFF3A3020) : PinTokens.headerThemeBorderLight,
+                      width: 1.2,
                     ),
                   ),
                   child: Icon(
                     isDark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
                     size: 16,
-                    color: textPrimary,
+                    color: isDark ? const Color(0xFFFCD34D) : PinTokens.headerThemeFgLight,
                   ),
                 ),
               ),
@@ -401,7 +410,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   size: 20,
                   color: textPrimary,
                 ),
-                color: isDark ? PinTokens.darkCardBg : Colors.white,
+                color: isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg,
                 shape: RoundedRectangleBorder(
                   borderRadius: PinTokens.radiusMd,
                   side: BorderSide(
@@ -558,30 +567,29 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildFloatingActionButton(bool isDark, Color borderColor) {
     return InkWell(
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(24),
       onTap: () => _openCreateTaskModal(),
       child: Container(
-        width: 58,
-        height: 58,
+        width: 68,
+        height: 46,
         decoration: BoxDecoration(
-          color: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isDark ? Colors.white : Colors.black,
-            width: 2.2,
-          ),
+          color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                  .withValues(alpha: isDark ? 0.35 : 0.22),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-        child: Icon(
-          Icons.add_rounded,
-          size: 32,
-          color: isDark ? Colors.white : Colors.black,
+        child: Center(
+          child: Icon(
+            Icons.add_rounded,
+            size: 28,
+            color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          ),
         ),
       ),
     );

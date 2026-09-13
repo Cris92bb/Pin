@@ -117,7 +117,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
 
     return Stack(
       children: [
-        // Background Tab 0 (e.g. Backlog)
+        // Background Tab 0 (e.g. Backlog - deepest layer in stack)
         Positioned(
           top: 0,
           left: 0,
@@ -128,7 +128,8 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
             state: state,
             isDark: isDark,
             borderColor: borderColor,
-            cardBg: cardBg,
+            cardBg: isDark ? cardBg : const Color(0xFFEDE8E0),
+            hoverBg: isDark ? const Color(0xFF222838) : const Color(0xFFE5E0D6),
             textPrimary: textPrimary,
             onTap: () {
               ref.read(activeDeckProvider.notifier).state = inactiveTabs[0];
@@ -136,7 +137,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
           ),
         ),
 
-        // Background Tab 1 (e.g. Done)
+        // Background Tab 1 (e.g. Done - middle layer in stack)
         Positioned(
           top: 36,
           left: 0,
@@ -147,7 +148,8 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
             state: state,
             isDark: isDark,
             borderColor: borderColor,
-            cardBg: cardBg,
+            cardBg: isDark ? cardBg : const Color(0xFFF5F1E9),
+            hoverBg: isDark ? const Color(0xFF222838) : const Color(0xFFECE7DE),
             textPrimary: textPrimary,
             onTap: () {
               ref.read(activeDeckProvider.notifier).state = inactiveTabs[1];
@@ -268,11 +270,12 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
           color: borderColor,
-          width: 1.8,
+          width: isDark ? 1.8 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+            color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                .withValues(alpha: isDark ? 0.3 : 0.04),
             blurRadius: 16,
             spreadRadius: 1,
             offset: const Offset(0, -5),
@@ -293,7 +296,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                 decoration: BoxDecoration(
                   color: isDark
                       ? const Color(0xFF374151)
-                      : const Color(0xFFD1D5DB),
+                      : const Color(0x260F172A),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -376,7 +379,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white : Colors.black,
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
                             borderRadius: PinTokens.radiusFull,
                           ),
                           child: Text(
@@ -412,10 +415,10 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                                 margin: const EdgeInsets.only(right: 5),
                                 decoration: BoxDecoration(
                                   color: isFilled
-                                      ? (isDark ? Colors.white : Colors.black)
+                                      ? (isDark ? Colors.white : const Color(0xFF1E293B))
                                       : (isDark
                                           ? const Color(0xFF2A3042)
-                                          : const Color(0xFFE5E7EB)),
+                                          : const Color(0x140F172A)),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               );
@@ -709,6 +712,7 @@ class _InactiveTabCard extends StatefulWidget {
   final bool isDark;
   final Color borderColor;
   final Color cardBg;
+  final Color? hoverBg;
   final Color textPrimary;
   final VoidCallback onTap;
 
@@ -718,6 +722,7 @@ class _InactiveTabCard extends StatefulWidget {
     required this.isDark,
     required this.borderColor,
     required this.cardBg,
+    this.hoverBg,
     required this.textPrimary,
     required this.onTap,
   });
@@ -762,17 +767,18 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
             decoration: BoxDecoration(
               color: widget.isDark
                   ? (_isHovered ? const Color(0xFF222838) : widget.cardBg)
-                  : (_isHovered ? const Color(0xFFF9FAFB) : widget.cardBg),
+                  : (_isHovered ? (widget.hoverBg ?? const Color(0xFFECE7DE)) : widget.cardBg),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               border: Border.all(
                 color: _isHovered
-                    ? (widget.isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1))
+                    ? (widget.isDark ? const Color(0xFF475569) : const Color(0x260F172A))
                     : widget.borderColor,
-                width: 1.8,
+                width: widget.isDark ? 1.8 : 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.04),
+                  color: (widget.isDark ? Colors.black : const Color(0xFF0F172A))
+                      .withValues(alpha: _isHovered ? (widget.isDark ? 0.12 : 0.07) : (widget.isDark ? 0.08 : 0.04)),
                   blurRadius: _isHovered ? 8 : 4,
                   offset: Offset(0, _isHovered ? -3 : -2),
                 ),
@@ -818,7 +824,7 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
                     decoration: BoxDecoration(
                       color: widget.isDark
                           ? const Color(0xFF242938)
-                          : const Color(0xFFF3F4F6),
+                          : const Color(0x0F0F172A),
                       borderRadius: PinTokens.radiusFull,
                     ),
                     child: Text(
@@ -828,7 +834,7 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
                         fontWeight: FontWeight.w800,
                         color: widget.isDark
                             ? PinTokens.darkTextPrimary
-                            : const Color(0xFF374151),
+                            : const Color(0xFF475569),
                       ),
                     ),
                   ),

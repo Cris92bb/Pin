@@ -25,16 +25,16 @@ class AtomicStepTile extends StatelessWidget {
     final tileBg = step.isCompleted
         ? (isDark
             ? PinTokens.canvasBg.withValues(alpha: 0.3)
-            : const Color(0xFFF3F4F6).withValues(alpha: 0.6))
+            : const Color(0x0A0F172A))
         : (isDark
             ? PinTokens.surfaceCard.withValues(alpha: 0.5)
-            : Colors.white);
+            : PinTokens.lightCardBg);
 
     final borderColor = step.isCompleted
         ? (isDark ? PinTokens.borderSubtle : PinTokens.lightBorderSubtle)
         : (isDark
             ? PinTokens.borderDefault.withValues(alpha: 0.5)
-            : PinTokens.lightBorderSubtle);
+            : PinTokens.lightBorder);
 
     final textPrimary =
         isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
