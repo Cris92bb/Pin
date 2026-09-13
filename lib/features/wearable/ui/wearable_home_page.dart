@@ -726,7 +726,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                         fontWeight: FontWeight.w600,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -798,30 +798,15 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: PinTokens.accentEmerald.withValues(alpha: 0.2),
-                          border: Border.all(
-                            color: PinTokens.accentEmerald.withValues(alpha: 0.6),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            (syncState.user?.displayName?.isNotEmpty == true)
-                                ? syncState.user!.displayName![0].toUpperCase()
-                                : (syncState.user?.email?.isNotEmpty == true)
-                                    ? syncState.user!.email![0].toUpperCase()
-                                    : 'U',
-                            style: const TextStyle(
-                              color: PinTokens.accentEmerald,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: PinTokens.accentEmerald.withValues(alpha: 0.2),
+                        backgroundImage: syncState.user?.photoURL != null
+                            ? NetworkImage(syncState.user!.photoURL!)
+                            : null,
+                        child: syncState.user?.photoURL == null
+                            ? const Icon(Icons.person, size: 14, color: PinTokens.accentEmerald)
+                            : null,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -832,8 +817,8 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                               syncState.user?.displayName ?? 'Pin User',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1031,6 +1016,9 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
             TextField(
               controller: emailCtrl,
               keyboardType: TextInputType.emailAddress,
+              textCapitalization: TextCapitalization.none,
+              autocorrect: false,
+              enableSuggestions: false,
               autofocus: true,
               style: const TextStyle(color: Colors.white, fontSize: 11),
               decoration: InputDecoration(
@@ -1077,10 +1065,22 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                   ),
                   onPressed: () async {
                     Navigator.of(ctx).pop();
-                    final email = emailCtrl.text.trim();
-                    await controller.signInWithGoogle(
+                    final email = emailCtrl.text.trim().toLowerCase();
+                    final success = await controller.signInWithGoogle(
                       email: email.isNotEmpty ? email : null,
                     );
+                    if (!success && context.mounted) {
+                      final errorMsg =
+                          ref.read(syncControllerProvider).errorMessage ?? '';
+                      if (errorMsg.contains('password') ||
+                          errorMsg.contains('EMAIL_EXISTS')) {
+                        _showWatchEmailSignIn(
+                          context,
+                          prefillEmail: email,
+                          hintMessage: 'Password required for this email',
+                        );
+                      }
+                    }
                   },
                   child: const Text('SIGN IN',
                       style: TextStyle(
@@ -1094,10 +1094,15 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
     );
   }
 
-  Future<void> _showWatchEmailSignIn(BuildContext context) async {
+  Future<void> _showWatchEmailSignIn(
+    BuildContext context, {
+    String? prefillEmail,
+    String? hintMessage,
+  }) async {
     final controller = ref.read(syncControllerProvider.notifier);
-    final emailCtrl = TextEditingController();
+    final emailCtrl = TextEditingController(text: prefillEmail ?? '');
     final passCtrl = TextEditingController();
+    final hasPrefill = prefillEmail != null && prefillEmail.trim().isNotEmpty;
 
     await showDialog(
       context: context,
@@ -1133,10 +1138,34 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (hintMessage != null) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: PinTokens.accentSage.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  hintMessage,
+                  style: const TextStyle(
+                    color: PinTokens.accentSage,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
             TextField(
               controller: emailCtrl,
               keyboardType: TextInputType.emailAddress,
-              autofocus: true,
+              textCapitalization: TextCapitalization.none,
+              autocorrect: false,
+              enableSuggestions: false,
+              autofocus: !hasPrefill,
               style: const TextStyle(color: Colors.white, fontSize: 11),
               decoration: InputDecoration(
                 hintText: 'Email',
@@ -1162,6 +1191,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
             TextField(
               controller: passCtrl,
               obscureText: true,
+              autofocus: hasPrefill,
               style: const TextStyle(color: Colors.white, fontSize: 11),
               decoration: InputDecoration(
                 hintText: 'Password',

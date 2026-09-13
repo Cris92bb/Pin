@@ -123,35 +123,60 @@ class FirebaseAuthService {
           idToken: idToken, providerId: 'google.com');
     }
 
-    final targetEmail = googleEmail?.trim().isNotEmpty == true
+    final rawEmail = googleEmail?.trim().isNotEmpty == true
         ? googleEmail!.trim()
         : 'user@gmail.com';
+    final normalizedEmail = rawEmail.toLowerCase();
     final targetName = displayName?.trim().isNotEmpty == true
         ? displayName!.trim()
-        : targetEmail.split('@').first;
+        : normalizedEmail.split('@').first;
 
     // Fallback deterministic UID based strictly on the email (offline mode)
-    final sanitizedEmail = targetEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    final sanitizedEmail =
+        normalizedEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final deterministicUid = 'google_$sanitizedEmail';
 
     // 2. Derive a stable pseudo-password from the email.
-    final pseudoPassword =
-        'Pin__${targetEmail.split('').reversed.join()}__Sync';
+    String makePseudoPassword(String email) =>
+        'Pin__${email.split('').reversed.join()}__Sync';
+
+    final pseudoPassword = makePseudoPassword(normalizedEmail);
 
     if (config.isConfigured) {
       try {
         final url = Uri.parse(
           'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${config.apiKey}',
         );
-        final response = await _client.post(
+
+        // Step A: Attempt sign-in with normalized lowercase email and pseudoPassword
+        var response = await _client.post(
           url,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'email': targetEmail,
+            'email': normalizedEmail,
             'password': pseudoPassword,
             'returnSecureToken': true,
           }),
         );
+
+        // Step B: If failed and rawEmail differs in casing, try with rawEmail pseudoPassword
+        // (to preserve backward-compatibility with any legacy account created with uppercase casing)
+        if ((response.statusCode < 200 || response.statusCode >= 300) &&
+            rawEmail != normalizedEmail) {
+          final rawPseudoPassword = makePseudoPassword(rawEmail);
+          final rawResponse = await _client.post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': rawEmail,
+              'password': rawPseudoPassword,
+              'returnSecureToken': true,
+            }),
+          );
+          if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+            response = rawResponse;
+          }
+        }
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -164,7 +189,7 @@ class FirebaseAuthService {
 
           final user = AppUser(
             uid: resolvedUid,
-            email: targetEmail,
+            email: normalizedEmail,
             displayName: displayName?.trim().isNotEmpty == true
                 ? displayName!.trim()
                 : (data['displayName'] as String? ?? targetName),
@@ -190,7 +215,7 @@ class FirebaseAuthService {
           signUpUrl,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'email': targetEmail,
+            'email': normalizedEmail,
             'password': pseudoPassword,
             'returnSecureToken': true,
           }),
@@ -208,7 +233,7 @@ class FirebaseAuthService {
 
           final user = AppUser(
             uid: resolvedUid,
-            email: targetEmail,
+            email: normalizedEmail,
             displayName: targetName,
             photoURL: (data['photoUrl'] as String?) ??
                 'https://lh3.googleusercontent.com/a/default-user',
@@ -225,6 +250,11 @@ class FirebaseAuthService {
         }
 
         final error = _parseError(signUpResponse.body);
+        if (error == 'EMAIL_EXISTS') {
+          throw Exception(
+            'This account was created with a password. Please sign in with Email & Password.',
+          );
+        }
         throw Exception('Google Sign-In failed: $error');
       } catch (e) {
         final err = e.toString();
@@ -242,7 +272,7 @@ class FirebaseAuthService {
     // 3. Offline / fallback path
     final user = AppUser(
       uid: deterministicUid,
-      email: targetEmail,
+      email: normalizedEmail,
       displayName: targetName,
       photoURL: 'https://lh3.googleusercontent.com/a/default-user',
       isAnonymous: false,
@@ -254,6 +284,7 @@ class FirebaseAuthService {
   /// Signs in with Email and Password.
   Future<AppUser> signInWithEmail(String email, String password) async {
     _ensureConfigured();
+    final cleanEmail = email.trim().toLowerCase();
     final url = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${config.apiKey}',
     );
@@ -262,7 +293,7 @@ class FirebaseAuthService {
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'email': email.trim(),
+        'email': cleanEmail,
         'password': password,
         'returnSecureToken': true,
       }),
@@ -274,7 +305,7 @@ class FirebaseAuthService {
           int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
-        email: data['email'] as String?,
+        email: data['email'] as String? ?? cleanEmail,
         displayName: data['displayName'] as String?,
         idToken: data['idToken'] as String?,
         refreshToken: data['refreshToken'] as String?,
@@ -288,6 +319,11 @@ class FirebaseAuthService {
       return user;
     } else {
       final error = _parseError(response.body);
+      if (error == 'INVALID_LOGIN_CREDENTIALS' || error == 'INVALID_PASSWORD') {
+        throw Exception('Invalid email or password.');
+      } else if (error == 'EMAIL_NOT_FOUND') {
+        throw Exception('No account found for this email. Please check your email or sign up.');
+      }
       throw Exception('Firebase Sign-In failed: $error');
     }
   }
@@ -299,6 +335,7 @@ class FirebaseAuthService {
     String? displayName,
   }) async {
     _ensureConfigured();
+    final cleanEmail = email.trim().toLowerCase();
     final url = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${config.apiKey}',
     );
@@ -307,7 +344,7 @@ class FirebaseAuthService {
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'email': email.trim(),
+        'email': cleanEmail,
         'password': password,
         'returnSecureToken': true,
       }),
@@ -319,7 +356,7 @@ class FirebaseAuthService {
           int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
-        email: data['email'] as String?,
+        email: data['email'] as String? ?? cleanEmail,
         displayName: displayName ?? (data['displayName'] as String?),
         idToken: data['idToken'] as String?,
         refreshToken: data['refreshToken'] as String?,
@@ -333,6 +370,9 @@ class FirebaseAuthService {
       return user;
     } else {
       final error = _parseError(response.body);
+      if (error == 'EMAIL_EXISTS') {
+        throw Exception('An account with this email already exists. Please sign in instead.');
+      }
       throw Exception('Firebase Sign-Up failed: $error');
     }
   }

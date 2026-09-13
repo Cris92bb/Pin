@@ -340,6 +340,51 @@ void main() {
       expect(syncState.errorMessage, contains('Firebase Anonymous sign-in is disabled'));
     });
 
+    test('normalizes email to lowercase and maps EMAIL_EXISTS to actionable password message', () async {
+      final errorClient = MockHttpClient();
+      final authService = FirebaseAuthService(
+        client: errorClient,
+        config: testConfig,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(memoryStorage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: memoryStorage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      errorClient.postErrorMessage = 'EMAIL_EXISTS';
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      final success = await syncController.signInWithGoogle(
+        email: '  User.Test@Gmail.COM  ',
+      );
+
+      expect(success, isFalse);
+      final syncState = container.read(syncControllerProvider);
+      expect(syncState.isSignedIn, isFalse);
+      expect(
+        syncState.errorMessage,
+        contains('This account was created with a password'),
+      );
+      // Verify the request sent lowercase normalized email
+      expect(errorClient.lastPostRequest, isNotNull);
+      final requestBody = jsonDecode(errorClient.lastPostRequest!.body) as Map<String, dynamic>;
+      expect(requestBody['email'], equals('user.test@gmail.com'));
+    });
+
     test('persists idToken in AppUser serialization and restores valid session', () async {
       SharedPreferences.setMockInitialValues({});
       const originalUser = AppUser(
