@@ -130,7 +130,7 @@ void main() {
       expect(find.byType(WearableHomePage), findsOneWidget);
       expect(find.text('TODAY 1/5'), findsOneWidget);
 
-      // Swipe right to Backlog page
+      // Swipe left to advance to Backlog page
       await tester.drag(find.byType(PageView), const Offset(-250, 0));
       await tester.pumpAndSettle();
 
@@ -141,10 +141,68 @@ void main() {
       await tester.tap(find.byTooltip('Move to Today'));
       await tester.pumpAndSettle();
 
-      // Swipe back to Today page
+      // Verify that dragging to the right (swiping backwards) is BLOCKED
       await tester.drag(find.byType(PageView), const Offset(250, 0));
+      await tester.pumpAndSettle();
+      // Should still be on Backlog, NOT Today
+      expect(find.text('BACKLOG (0)'), findsOneWidget);
+      expect(find.text('TODAY 2/5'), findsNothing);
+
+      // Swipe left to advance to Done page
+      await tester.drag(find.byType(PageView), const Offset(-250, 0));
+      await tester.pumpAndSettle();
+      expect(find.text('COMPLETED (0)'), findsOneWidget);
+
+      // Swipe left to advance to Account page
+      await tester.drag(find.byType(PageView), const Offset(-250, 0));
+      await tester.pumpAndSettle();
+      expect(find.text('ACCOUNT (GUEST)'), findsOneWidget);
+      expect(find.text('GOOGLE SIGN-IN'), findsOneWidget);
+      expect(find.text('EMAIL SIGN-IN'), findsOneWidget);
+
+      // Tap GOOGLE SIGN-IN to verify watch login dialog renders
+      await tester.tap(find.text('GOOGLE SIGN-IN'));
+      await tester.pumpAndSettle();
+      expect(find.text('Google Sign-In'), findsOneWidget);
+      expect(find.text('Enter your Google email to sync:'), findsOneWidget);
+      expect(find.text('SIGN IN'), findsOneWidget);
+      expect(find.text('CANCEL'), findsOneWidget);
+
+      // Cancel dialog
+      await tester.tap(find.text('CANCEL'));
+      await tester.pumpAndSettle();
+
+      // Swipe left to loop back around to Today page
+      await tester.drag(find.byType(PageView), const Offset(-250, 0));
       await tester.pumpAndSettle();
       expect(find.text('TODAY 2/5'), findsOneWidget);
     });
+
+    testWidgets('LeftOnlyPageScrollPhysics strictly restricts movement',
+        (tester) async {
+      const physics = LeftOnlyPageScrollPhysics();
+
+      final fakeMetrics = FixedScrollMetrics(
+        minScrollExtent: 0,
+        maxScrollExtent: 1000,
+        pixels: 400,
+        viewportDimension: 300,
+        axisDirection: AxisDirection.right,
+        devicePixelRatio: 1.0,
+      );
+
+      // Dragging right (swiping backwards) gives offset > 0 -> should be 0
+      expect(physics.applyPhysicsToUserOffset(fakeMetrics, 20.0), 0.0);
+
+      // Dragging left (swiping forwards) gives offset < 0 -> should be passed through
+      expect(physics.applyPhysicsToUserOffset(fakeMetrics, -20.0), -20.0);
+
+      // Scrolling towards lower pixels (backward) should be blocked by boundary condition
+      expect(physics.applyBoundaryConditions(fakeMetrics, 380.0), 380.0 - 400.0);
+
+      // Scrolling forwards should have zero boundary condition
+      expect(physics.applyBoundaryConditions(fakeMetrics, 420.0), 0.0);
+    });
   });
 }
+

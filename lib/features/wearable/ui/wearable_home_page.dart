@@ -5,7 +5,48 @@ import '../../../entities/atomic_step/model/atomic_step.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
 import '../../../shared/ui/pin_tokens.dart';
+import '../../sync/model/sync_status.dart';
+import '../../sync/state/sync_controller.dart';
 import '../wearable_utils.dart';
+
+/// Custom scroll physics that only permits leftward dragging (advancing forward)
+/// and strictly blocks rightward drags (which conflict with Wear OS system back/dismiss gestures).
+class LeftOnlyPageScrollPhysics extends PageScrollPhysics {
+  const LeftOnlyPageScrollPhysics({super.parent});
+
+  @override
+  LeftOnlyPageScrollPhysics applyTo(ScrollPhysics? ancestor) {
+    return LeftOnlyPageScrollPhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
+    // offset > 0 means dragging finger towards right (attempting to scroll backwards)
+    if (offset > 0) {
+      return 0.0;
+    }
+    return super.applyPhysicsToUserOffset(position, offset);
+  }
+
+  @override
+  double applyBoundaryConditions(ScrollMetrics position, double value) {
+    // Prevent any scrolling backwards towards lower pixel values
+    if (value < position.pixels) {
+      return value - position.pixels;
+    }
+    return super.applyBoundaryConditions(position, value);
+  }
+
+  @override
+  Simulation? createBallisticSimulation(
+      ScrollMetrics position, double velocity) {
+    // Clamp any backward velocity to zero so it snaps in place instead of moving backward
+    if (velocity > 0) {
+      return super.createBallisticSimulation(position, 0);
+    }
+    return super.createBallisticSimulation(position, velocity);
+  }
+}
 
 /// Optimized, glanceable smartwatch interface for Pin.
 /// Designed specifically for circular and square Wear OS screens.
@@ -17,13 +58,15 @@ class WearableHomePage extends ConsumerStatefulWidget {
 }
 
 class _WearableHomePageState extends ConsumerState<WearableHomePage> {
+  static const int _kPageCount = 4;
+  static const int _kInitialPage = 1000 * _kPageCount; // 4000
   late final PageController _pageController;
-  int _currentPage = 0;
+  int _currentPage = _kInitialPage;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _pageController = PageController(initialPage: _kInitialPage);
   }
 
   @override
@@ -32,10 +75,24 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
     super.dispose();
   }
 
+  void _goToPage(int targetModIndex) {
+    final currentMod = _currentPage % _kPageCount;
+    int diff = (targetModIndex - currentMod) % _kPageCount;
+    if (diff < 0) diff += _kPageCount;
+    if (diff > 0) {
+      _pageController.animateToPage(
+        _currentPage + diff,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeFocus = ref.watch(activeFocusTaskProvider);
     final taskState = ref.watch(taskStateProvider);
+    final syncState = ref.watch(syncControllerProvider);
 
     // If focus mode is active, directly render the dedicated watch focus view
     if (activeFocus != null) {
@@ -54,14 +111,25 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
       body: SafeArea(
         child: Stack(
           children: [
-            PageView(
+            PageView.builder(
               controller: _pageController,
+              physics: const LeftOnlyPageScrollPhysics(),
               onPageChanged: (page) => setState(() => _currentPage = page),
-              children: [
-                _buildTodayPage(context, taskState, safePadding),
-                _buildBacklogPage(context, taskState, safePadding),
-                _buildDonePage(context, taskState, safePadding),
-              ],
+              itemBuilder: (context, index) {
+                final normalizedIndex =
+                    (index % _kPageCount + _kPageCount) % _kPageCount;
+                switch (normalizedIndex) {
+                  case 0:
+                    return _buildTodayPage(context, taskState, safePadding);
+                  case 1:
+                    return _buildBacklogPage(context, taskState, safePadding);
+                  case 2:
+                    return _buildDonePage(context, taskState, safePadding);
+                  case 3:
+                  default:
+                    return _buildAccountPage(context, syncState, safePadding);
+                }
+              },
             ),
             // Page indicator dots at top
             Positioned(
@@ -70,18 +138,23 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
               right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final isActive = index == _currentPage;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                    width: isActive ? 12 : 5,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? PinTokens.accentSage
-                          : Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(2),
+                children: List.generate(_kPageCount, (index) {
+                  final activeIndex =
+                      (_currentPage % _kPageCount + _kPageCount) % _kPageCount;
+                  final isActive = index == activeIndex;
+                  return GestureDetector(
+                    onTap: () => _goToPage(index),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                      width: isActive ? 12 : 5,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? PinTokens.accentSage
+                            : Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   );
                 }),
@@ -134,7 +207,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
           ),
           const SizedBox(height: 8),
           if (todayTasks.isEmpty)
-            _buildEmptyCard('No tasks for today', 'Swipe right for Backlog')
+            _buildEmptyCard('No tasks for today', 'Swipe left for Backlog')
           else ...[
             // Hero Top Task Card
             _buildHeroTaskCard(todayTasks.first),
@@ -330,7 +403,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
           ),
           const SizedBox(height: 8),
           if (backlogTasks.isEmpty)
-            _buildEmptyCard('Backlog is empty', 'Add pins from companion app')
+            _buildEmptyCard('Backlog is empty', 'Swipe left for Completed')
           else ...[
             for (final task in backlogTasks) ...[
               Container(
@@ -412,7 +485,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
           ),
           const SizedBox(height: 8),
           if (doneTasks.isEmpty)
-            _buildEmptyCard('No finished pins', 'Completed pins appear here')
+            _buildEmptyCard('No finished pins', 'Swipe left for Account')
           else ...[
             for (final task in doneTasks.take(10)) ...[
               Container(
@@ -444,6 +517,596 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
             ],
           ],
           const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountPage(
+    BuildContext context,
+    SyncState syncState,
+    EdgeInsets safePadding,
+  ) {
+    final isGuest = !syncState.isSignedIn;
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: safePadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isGuest
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : PinTokens.accentEmerald.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isGuest
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : PinTokens.accentEmerald.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  isGuest ? 'ACCOUNT (GUEST)' : 'ACCOUNT',
+                  style: TextStyle(
+                    color: isGuest ? Colors.white70 : PinTokens.accentEmerald,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (isGuest) ...[
+            // Guest Sign-In Card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141916),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: PinTokens.accentSage.withValues(alpha: 0.3),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.cloud_queue_rounded,
+                    size: 26,
+                    color: PinTokens.accentSage,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Cloud Sync',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Sign in to sync your pins across phone, web & watch.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 10,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (syncState.errorMessage != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      syncState.errorMessage!,
+                      style: const TextStyle(
+                        color: PinTokens.accentRose,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 34,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: PinTokens.accentSage,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                      icon: const Icon(Icons.account_circle_outlined, size: 16),
+                      label: const Text(
+                        'GOOGLE SIGN-IN',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      onPressed: () => _showWatchGoogleSignIn(context),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 32,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      icon: const Icon(Icons.mail_outline_rounded, size: 15),
+                      label: const Text(
+                        'EMAIL SIGN-IN',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      onPressed: () => _showWatchEmailSignIn(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Authenticated User Profile Card
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141916),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: PinTokens.accentEmerald.withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: PinTokens.accentEmerald.withValues(alpha: 0.2),
+                          border: Border.all(
+                            color: PinTokens.accentEmerald.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            (syncState.user?.displayName?.isNotEmpty == true)
+                                ? syncState.user!.displayName![0].toUpperCase()
+                                : (syncState.user?.email?.isNotEmpty == true)
+                                    ? syncState.user!.email![0].toUpperCase()
+                                    : 'U',
+                            style: const TextStyle(
+                              color: PinTokens.accentEmerald,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              syncState.user?.displayName ?? 'Pin User',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              syncState.user?.email ?? 'Logged In',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 9,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Sync status pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A211D),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (syncState.status == SyncStatus.syncing)
+                          const SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.8,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  PinTokens.accentEmerald),
+                            ),
+                          )
+                        else
+                          Icon(
+                            syncState.status == SyncStatus.synced
+                                ? Icons.cloud_done_rounded
+                                : syncState.status == SyncStatus.error
+                                    ? Icons.cloud_off_rounded
+                                    : Icons.cloud_queue_rounded,
+                            size: 13,
+                            color: syncState.status == SyncStatus.synced
+                                ? PinTokens.accentEmerald
+                                : syncState.status == SyncStatus.error
+                                    ? PinTokens.accentRose
+                                    : Colors.white54,
+                          ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            syncState.status == SyncStatus.syncing
+                                ? 'Syncing...'
+                                : syncState.status == SyncStatus.synced
+                                    ? 'Synced (${syncState.syncedTaskCount} pins)'
+                                    : syncState.status == SyncStatus.error
+                                        ? 'Sync error'
+                                        : 'Offline mode',
+                            style: TextStyle(
+                              color: syncState.status == SyncStatus.synced
+                                  ? PinTokens.accentEmerald
+                                  : Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 32,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: PinTokens.accentSage,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      icon: const Icon(Icons.sync_rounded, size: 15),
+                      label: const Text(
+                        'SYNC NOW',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      onPressed: () {
+                        ref.read(syncControllerProvider.notifier).syncNow();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 30,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      icon: const Icon(Icons.logout_rounded, size: 14),
+                      label: const Text(
+                        'SIGN OUT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () {
+                        ref.read(syncControllerProvider.notifier).signOut();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Swipe left for Today',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 9,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showWatchGoogleSignIn(BuildContext context) async {
+    final controller = ref.read(syncControllerProvider.notifier);
+    final emailCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141916),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: PinTokens.accentSage, width: 1.2),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        actionsPadding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.account_circle_outlined,
+                color: PinTokens.accentSage, size: 16),
+            SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                'Google Sign-In',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter your Google email to sync:',
+              style: TextStyle(color: Colors.white70, fontSize: 10),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 11),
+              decoration: InputDecoration(
+                hintText: 'user@gmail.com',
+                hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
+                filled: true,
+                fillColor: const Color(0xFF1E211F),
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: PinTokens.accentSage),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('CANCEL',
+                      style: TextStyle(fontSize: 10, color: Colors.white54)),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: PinTokens.accentSage,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    final email = emailCtrl.text.trim();
+                    await controller.signInWithGoogle(
+                      email: email.isNotEmpty ? email : null,
+                    );
+                  },
+                  child: const Text('SIGN IN',
+                      style: TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showWatchEmailSignIn(BuildContext context) async {
+    final controller = ref.read(syncControllerProvider.notifier);
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141916),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: PinTokens.accentSage, width: 1.2),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        actionsPadding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.mail_outline_rounded,
+                color: PinTokens.accentSage, size: 16),
+            SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                'Email Sign-In',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 11),
+              decoration: InputDecoration(
+                hintText: 'Email',
+                hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
+                filled: true,
+                fillColor: const Color(0xFF1E211F),
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: PinTokens.accentSage),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: passCtrl,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white, fontSize: 11),
+              decoration: InputDecoration(
+                hintText: 'Password',
+                hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
+                filled: true,
+                fillColor: const Color(0xFF1E211F),
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: PinTokens.accentSage),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('CANCEL',
+                      style: TextStyle(fontSize: 10, color: Colors.white54)),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: PinTokens.accentSage,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    await controller.signInWithEmail(
+                      emailCtrl.text.trim(),
+                      passCtrl.text.trim(),
+                    );
+                  },
+                  child: const Text('SIGN IN',
+                      style: TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
