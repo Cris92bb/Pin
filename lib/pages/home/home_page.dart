@@ -12,6 +12,8 @@ import '../../widgets/kanban_board/layered_deck_view.dart';
 import '../../features/ai/ui/ai_settings_modal.dart';
 import '../../features/sync/ui/firebase_account_modal.dart';
 import '../../features/sync/ui/sync_status_badge.dart';
+import '../../features/wearable/wearable_utils.dart';
+import '../../features/wearable/ui/wearable_home_page.dart';
 
 /// The primary companion view assembling the mobile/companion frame,
 /// layered card deck, header with dynamic notch, and quick actions.
@@ -73,6 +75,10 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (WearableUtils.isWearable(context)) {
+      return const WearableHomePage();
+    }
+
     final activeFocusTask = ref.watch(activeFocusTaskProvider);
     final taskState = ref.watch(taskStateProvider);
     final notifier = ref.read(taskStateProvider.notifier);

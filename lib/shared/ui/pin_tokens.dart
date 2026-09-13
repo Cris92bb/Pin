@@ -115,6 +115,7 @@ class PinTokens {
 
   static const Color accentSky = Color(0xFF0EA5E9);
   static const Color accentEmerald = Color(0xFF10B981);
+  static const Color accentSage = Color(0xFF7E9A86);
   static const Color accentViolet = Color(0xFF8B5CF6);
   static const Color accentAmber = Color(0xFFF59E0B);
   static const Color accentRose = Color(0xFFEF4444);
