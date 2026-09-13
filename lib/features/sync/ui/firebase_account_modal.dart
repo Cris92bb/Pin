@@ -308,158 +308,151 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     required Color cardBorder,
   }) {
     final user = syncState.user!;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: PinTokens.radiusMd,
-        border: Border.all(color: cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: PinTokens.primary.withValues(alpha: isDark ? 0.2 : 0.12),
-                child: Text(
-                  (user.displayName?.isNotEmpty == true
-                          ? user.displayName![0]
-                          : user.email?.isNotEmpty == true
-                              ? user.email![0]
-                              : 'U')
-                      .toUpperCase(),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: PinTokens.primary,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: PinTokens.primary.withValues(alpha: isDark ? 0.2 : 0.12),
+              child: Text(
+                (user.displayName?.isNotEmpty == true
+                        ? user.displayName![0]
+                        : user.email?.isNotEmpty == true
+                            ? user.email![0]
+                            : 'U')
+                    .toUpperCase(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: PinTokens.primary,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.displayName ?? user.email ?? 'Authenticated User',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      'UID: ${user.uid.substring(0, user.uid.length.clamp(0, 8))}...',
-                      style: TextStyle(fontSize: 11, color: textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? PinTokens.accentEmerald.withValues(alpha: 0.15)
-                      : const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  syncState.status.label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? PinTokens.accentEmerald : const Color(0xFF15803D),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-          Divider(height: 1, color: cardBorder),
-          const SizedBox(height: 10),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Last Synced:',
-                style: TextStyle(fontSize: 12, color: textSecondary),
-              ),
-              Text(
-                _formatTimestamp(syncState.lastSyncedAt),
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPrimary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Synced Pins:',
-                style: TextStyle(fontSize: 12, color: textSecondary),
-              ),
-              Text(
-                '${syncState.syncedTaskCount} pins',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPrimary),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.sync_rounded, size: 16),
-                  label: const Text('Sync Now'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: textPrimary,
-                    backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
-                    side: BorderSide(color: cardBorder),
-                    padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () => ref.read(syncControllerProvider.notifier).syncNow(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.logout_rounded, size: 16),
-                  label: const Text('Sign Out'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: textPrimary,
-                    backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
-                    side: BorderSide(color: cardBorder),
-                    padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () => ref.read(syncControllerProvider.notifier).signOut(),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          TextButton.icon(
-            icon: const Icon(Icons.delete_forever_rounded, size: 16, color: PinTokens.accentRose),
-            label: const Text(
-              'Delete Account & Cloud Data (GDPR)',
-              style: TextStyle(color: PinTokens.accentRose, fontSize: 11, fontWeight: FontWeight.w600),
             ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName ?? user.email ?? 'Authenticated User',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'UID: ${user.uid.substring(0, user.uid.length.clamp(0, 8))}...',
+                    style: TextStyle(fontSize: 11, color: textSecondary),
+                  ),
+                ],
+              ),
             ),
-            onPressed: _confirmDeleteAccount,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? PinTokens.accentEmerald.withValues(alpha: 0.15)
+                    : const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                syncState.status.label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? PinTokens.accentEmerald : const Color(0xFF15803D),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 14),
+        Divider(height: 1, color: cardBorder),
+        const SizedBox(height: 12),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Last Synced:',
+              style: TextStyle(fontSize: 12, color: textSecondary),
+            ),
+            Text(
+              _formatTimestamp(syncState.lastSyncedAt),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPrimary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Synced Pins:',
+              style: TextStyle(fontSize: 12, color: textSecondary),
+            ),
+            Text(
+              '${syncState.syncedTaskCount} pins',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPrimary),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.sync_rounded, size: 16),
+                label: const Text('Sync Now'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: textPrimary,
+                  backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                  side: BorderSide(color: cardBorder),
+                  padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () => ref.read(syncControllerProvider.notifier).syncNow(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.logout_rounded, size: 16),
+                label: const Text('Sign Out'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: textPrimary,
+                  backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                  side: BorderSide(color: cardBorder),
+                  padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: () => ref.read(syncControllerProvider.notifier).signOut(),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
+        TextButton.icon(
+          icon: const Icon(Icons.delete_forever_rounded, size: 16, color: PinTokens.accentRose),
+          label: const Text(
+            'Delete Account & Cloud Data (GDPR)',
+            style: TextStyle(color: PinTokens.accentRose, fontSize: 11, fontWeight: FontWeight.w600),
           ),
-        ],
-      ),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+          ),
+          onPressed: _confirmDeleteAccount,
+        ),
+      ],
     );
   }
 
