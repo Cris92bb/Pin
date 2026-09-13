@@ -811,10 +811,14 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        color: widget.textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.3,
+                        color: _isHovered
+                            ? widget.textPrimary
+                            : (widget.isDark
+                                ? PinTokens.darkTextSecondary
+                                : PinTokens.lightTextSecondary),
                       ),
                     ),
                   ),
@@ -831,10 +835,10 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
                       '$count',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w600,
                         color: widget.isDark
-                            ? PinTokens.darkTextPrimary
-                            : const Color(0xFF475569),
+                            ? PinTokens.darkTextSecondary
+                            : const Color(0xFF64748B),
                       ),
                     ),
                   ),
