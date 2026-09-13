@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Firebase credentials and project identifiers.
@@ -63,17 +63,19 @@ class FirebaseConfig {
         oAuthClientId: json['oAuthClientId'] as String? ?? '',
       );
 
+  /// Loads Firebase configuration.
+  ///
+  /// Priority:
+  ///   1. Bundled asset `firebase-applet-config.json` (works on all platforms).
+  ///   2. Persisted [SharedPreferences] credentials entered by the user.
   static Future<FirebaseConfig> load() async {
-    // 1. Check if firebase-applet-config.json exists on disk
+    // 1. Load from the bundled asset — reliable on Android, iOS, and desktop.
     try {
-      final file = File('firebase-applet-config.json');
-      if (file.existsSync()) {
-        final content = file.readAsStringSync();
-        final json = jsonDecode(content) as Map<String, dynamic>;
-        final fileConfig = FirebaseConfig.fromJson(json);
-        if (fileConfig.isConfigured) {
-          return fileConfig;
-        }
+      final content = await rootBundle.loadString('firebase-applet-config.json');
+      final json = jsonDecode(content) as Map<String, dynamic>;
+      final fileConfig = FirebaseConfig.fromJson(json);
+      if (fileConfig.isConfigured) {
+        return fileConfig;
       }
     } catch (_) {}
 
