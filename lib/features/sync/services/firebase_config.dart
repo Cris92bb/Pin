@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -65,21 +66,35 @@ class FirebaseConfig {
 
   /// Loads Firebase configuration.
   ///
-  /// Priority:
-  ///   1. Bundled asset `firebase-applet-config.json` (works on all platforms).
-  ///   2. Persisted [SharedPreferences] credentials entered by the user.
+  /// Loading priority:
+  ///   1. Bundled Flutter asset `firebase-applet-config.json` — works on
+  ///      Android, iOS, and packaged desktop builds.
+  ///   2. `File('firebase-applet-config.json')` relative to the process CWD —
+  ///      works on Linux/macOS/Windows desktop during `flutter run` development
+  ///      where the project root is the working directory.
+  ///   3. Persisted [SharedPreferences] credentials entered by the user in the
+  ///      Cloud Sync settings panel.
   static Future<FirebaseConfig> load() async {
-    // 1. Load from the bundled asset — reliable on Android, iOS, and desktop.
+    // 1. Flutter asset bundle (mobile & packaged desktop).
     try {
       final content = await rootBundle.loadString('firebase-applet-config.json');
       final json = jsonDecode(content) as Map<String, dynamic>;
       final fileConfig = FirebaseConfig.fromJson(json);
-      if (fileConfig.isConfigured) {
-        return fileConfig;
+      if (fileConfig.isConfigured) return fileConfig;
+    } catch (_) {}
+
+    // 2. Filesystem file relative to CWD (desktop development via flutter run).
+    try {
+      final file = File('firebase-applet-config.json');
+      if (file.existsSync()) {
+        final content = file.readAsStringSync();
+        final json = jsonDecode(content) as Map<String, dynamic>;
+        final fileConfig = FirebaseConfig.fromJson(json);
+        if (fileConfig.isConfigured) return fileConfig;
       }
     } catch (_) {}
 
-    // 2. Fallback to persisted SharedPreferences credentials
+    // 3. Persisted SharedPreferences credentials (user-entered via settings).
     try {
       final prefs = await SharedPreferences.getInstance();
       final apiKey = prefs.getString(_keyApiKey) ?? '';
