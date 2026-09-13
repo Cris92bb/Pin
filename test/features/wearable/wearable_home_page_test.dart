@@ -104,8 +104,17 @@ void main() {
       expect(find.byType(WearableHomePage), findsOneWidget);
       expect(find.text('TODAY 1/5'), findsOneWidget);
       expect(find.text('Review Wear OS Spec'), findsOneWidget);
+      // Verify description is rendered on the watch card
+      expect(find.text('Ensure watch UI fits edge margins'), findsOneWidget);
       expect(find.text('0/2 steps completed'), findsOneWidget);
       expect(find.text('START FOCUS'), findsOneWidget);
+
+      // Verify title is configured for 2 lines and description for 3 lines
+      final titleWidget = tester.widget<Text>(find.text('Review Wear OS Spec'));
+      expect(titleWidget.maxLines, 2);
+      final descWidget =
+          tester.widget<Text>(find.text('Ensure watch UI fits edge margins'));
+      expect(descWidget.maxLines, 3);
 
       // Tap START FOCUS to enter WearableFocusView
       await tester.tap(find.text('START FOCUS'));
@@ -113,6 +122,7 @@ void main() {
 
       expect(find.byType(WearableFocusView), findsOneWidget);
       expect(find.text('00:00'), findsOneWidget);
+      expect(find.text('Ensure watch UI fits edge margins'), findsOneWidget);
       expect(find.text('STEPS (0/2)'), findsOneWidget);
 
       // Toggle first subtask in watch focus view
@@ -136,6 +146,7 @@ void main() {
 
       expect(find.text('BACKLOG (1)'), findsOneWidget);
       expect(find.text('Backlog Standby Pin'), findsOneWidget);
+      expect(find.text('Queued item in backlog'), findsOneWidget);
 
       // Move task from Backlog to Today
       await tester.tap(find.byTooltip('Move to Today'));

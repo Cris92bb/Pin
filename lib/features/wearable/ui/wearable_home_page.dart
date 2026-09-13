@@ -105,6 +105,13 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
     }
 
     final safePadding = WearableUtils.getSafeCircularPadding(context, extra: 4);
+    // Use the full width of the screen on the watch with safe top/bottom margins for circular clipping
+    final fullWidthPadding = EdgeInsets.fromLTRB(
+      6.0,
+      safePadding.top,
+      6.0,
+      safePadding.bottom + 8.0,
+    );
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -120,14 +127,14 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                     (index % _kPageCount + _kPageCount) % _kPageCount;
                 switch (normalizedIndex) {
                   case 0:
-                    return _buildTodayPage(context, taskState, safePadding);
+                    return _buildTodayPage(context, taskState, fullWidthPadding);
                   case 1:
-                    return _buildBacklogPage(context, taskState, safePadding);
+                    return _buildBacklogPage(context, taskState, fullWidthPadding);
                   case 2:
-                    return _buildDonePage(context, taskState, safePadding);
+                    return _buildDonePage(context, taskState, fullWidthPadding);
                   case 3:
                   default:
-                    return _buildAccountPage(context, syncState, safePadding);
+                    return _buildAccountPage(context, syncState, fullWidthPadding);
                 }
               },
             ),
@@ -224,11 +231,13 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
   }
 
   Widget _buildHeroTaskCard(PinTask task) {
+    final hasDescription = task.description.trim().isNotEmpty;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: const Color(0xFF141916),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: PinTokens.accentSage.withValues(alpha: 0.4),
           width: 1.2,
@@ -238,25 +247,45 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  task.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (hasDescription) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        task.description.trim(),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 9.5,
+                          height: 1.2,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
                 ),
               ),
+              const SizedBox(width: 4),
               IconButton(
                 visualDensity: VisualDensity.compact,
                 iconSize: 18,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                 icon: const Icon(Icons.check_circle_outline, color: PinTokens.accentEmerald),
                 tooltip: 'Complete',
                 onPressed: () {
@@ -270,29 +299,29 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
             Text(
               '${task.completedSubtasksCount}/${task.totalSubtasksCount} steps completed',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 10,
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 9.5,
               ),
             ),
           ],
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            height: 34,
+            height: 32,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: PinTokens.accentSage,
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
               ),
-              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+              icon: const Icon(Icons.play_arrow_rounded, size: 16),
               label: const Text(
                 'START FOCUS',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.5,
                 ),
@@ -308,30 +337,54 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
   }
 
   Widget _buildCompactTaskCard(PinTask task) {
+    final hasDescription = task.description.trim().isNotEmpty;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         color: const Color(0xFF1E211F),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Text(
-              task.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  task.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    height: 1.15,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (hasDescription) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    task.description.trim(),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.65),
+                      fontSize: 9.5,
+                      height: 1.18,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
             ),
           ),
+          const SizedBox(width: 4),
           InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: () {
@@ -406,39 +459,67 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
             _buildEmptyCard('Backlog is empty', 'Swipe left for Completed')
           else ...[
             for (final task in backlogTasks) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1B1D1C),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        task.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
+              Builder(
+                builder: (context) {
+                  final hasDescription = task.description.trim().isNotEmpty;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B1D1C),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                task.title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.15,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (hasDescription) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  task.description.trim(),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                    fontSize: 9.5,
+                                    height: 1.18,
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 16,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                          icon: const Icon(Icons.north_rounded, color: PinTokens.accentSage),
+                          tooltip: 'Move to Today',
+                          onPressed: () {
+                            ref.read(taskStateProvider.notifier).moveToToday(task.id);
+                          },
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      iconSize: 16,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                      icon: const Icon(Icons.north_rounded, color: PinTokens.accentSage),
-                      tooltip: 'Move to Today',
-                      onPressed: () {
-                        ref.read(taskStateProvider.notifier).moveToToday(task.id);
-                      },
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ],
@@ -488,31 +569,62 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
             _buildEmptyCard('No finished pins', 'Swipe left for Account')
           else ...[
             for (final task in doneTasks.take(10)) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF141A16),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle, size: 14, color: PinTokens.accentEmerald),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        task.title,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 12,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              Builder(
+                builder: (context) {
+                  final hasDescription = task.description.trim().isNotEmpty;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF141A16),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  ],
-                ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 2),
+                          child: Icon(Icons.check_circle,
+                              size: 13, color: PinTokens.accentEmerald),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                task.title,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.65),
+                                  fontSize: 11,
+                                  decoration: TextDecoration.lineThrough,
+                                  height: 1.15,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (hasDescription) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  task.description.trim(),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                    fontSize: 9.5,
+                                    decoration: TextDecoration.lineThrough,
+                                    height: 1.18,
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           ],
@@ -1280,15 +1392,34 @@ class _WearableFocusViewState extends ConsumerState<WearableFocusView> {
                     ),
                     const SizedBox(width: 4),
                     Expanded(
-                      child: Text(
-                        _currentTask.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _currentTask.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              height: 1.15,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (_currentTask.description.trim().isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              _currentTask.description.trim(),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.65),
+                                fontSize: 9.5,
+                                height: 1.18,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
