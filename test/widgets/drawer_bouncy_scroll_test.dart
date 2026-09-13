@@ -12,7 +12,8 @@ import 'package:pin/widgets/kanban_board/bouncy_drawer_scroll_wrapper.dart';
 import 'package:pin/widgets/kanban_board/layered_deck_view.dart';
 
 void main() {
-  testWidgets('drawer task list supports bouncy drag overscroll on scroll end',
+  testWidgets(
+      'drawer task list provides tight bouncy drag overscroll capped to prevent long empty space',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -56,24 +57,30 @@ void main() {
     final listViewFinder = find.byType(ListView);
     expect(listViewFinder, findsOneWidget);
 
-    final scrollableState = tester.state<ScrollableState>(
-      find.descendant(of: listViewFinder, matching: find.byType(Scrollable)),
-    );
-    final scrollPosition = scrollableState.position;
-    expect(scrollPosition.pixels, 0.0);
-
-    // Drag down to overscroll top
+    // Pull down to overscroll top
     await tester.drag(listViewFinder, const Offset(0, 100));
     await tester.pump();
-    expect(scrollPosition.pixels, lessThan(0.0));
 
-    // Pump and settle to verify it bounces back to 0.0
+    // Verify overscroll is tight and capped to prevent large empty void
+    final transformFinder = find.descendant(
+      of: find.byType(BouncyDrawerScrollWrapper),
+      matching: find.byType(Transform),
+    );
+    expect(transformFinder, findsWidgets);
+
+    final transform = tester.widget<Transform>(transformFinder.first);
+    final offsetY = transform.transform.getTranslation().y;
+    expect(offsetY, greaterThan(0.0));
+    expect(offsetY, lessThanOrEqualTo(10.0));
+
+    // Settle back to 0.0
     await tester.pumpAndSettle();
-    expect(scrollPosition.pixels, 0.0);
+    final settled = tester.widget<Transform>(transformFinder.first);
+    expect(settled.transform.getTranslation().y, 0.0);
   });
 
   testWidgets(
-      'drawer bouncy scroll wrapper responds to mouse wheel overscroll at scroll end',
+      'drawer bouncy scroll wrapper provides tight mouse wheel bounce (<= 10px) at scroll end',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -122,7 +129,7 @@ void main() {
     await tester.sendEventToBinding(pointer.scroll(const Offset(0, -60)));
     await tester.pump();
 
-    // Check that BouncyDrawerScrollWrapper applies positive downward offset
+    // Check that BouncyDrawerScrollWrapper applies tight downward offset (<= 10px)
     final wrapperFinder = find.byType(BouncyDrawerScrollWrapper);
     expect(wrapperFinder, findsOneWidget);
 
@@ -135,6 +142,7 @@ void main() {
     final initialTransform = tester.widget<Transform>(transformFinder.first);
     final initialOffsetY = initialTransform.transform.getTranslation().y;
     expect(initialOffsetY, greaterThan(0.0));
+    expect(initialOffsetY, lessThanOrEqualTo(10.0));
 
     // Pump to settle
     await tester.pumpAndSettle();
@@ -142,7 +150,8 @@ void main() {
     expect(settledTransform.transform.getTranslation().y, 0.0);
   });
 
-  testWidgets('empty deck is scrollable with bouncy overscroll', (tester) async {
+  testWidgets('empty deck is scrollable with tight bouncy overscroll',
+      (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -173,33 +182,34 @@ void main() {
     await tester.tap(find.text('Backlog'));
     await tester.pumpAndSettle();
 
-    // Verify empty state is rendered inside SingleChildScrollView with BouncingScrollPhysics
+    // Verify empty state is rendered inside SingleChildScrollView with ClampingScrollPhysics
     final scrollViewFinder = find.byType(SingleChildScrollView);
     expect(scrollViewFinder, findsOneWidget);
 
     final scrollableState = tester.state<ScrollableState>(
       find.descendant(of: scrollViewFinder, matching: find.byType(Scrollable)),
     );
-    expect(scrollableState.position.physics, isA<BouncingScrollPhysics>());
+    expect(scrollableState.position.physics, isA<ClampingScrollPhysics>());
 
     // Drag empty state to overscroll
-    final gesture = await tester.startGesture(
-      tester.getCenter(scrollViewFinder),
-      kind: PointerDeviceKind.mouse,
-    );
-    await gesture.moveBy(const Offset(0, 70));
+    await tester.drag(scrollViewFinder, const Offset(0, 70));
     await tester.pump();
 
-    expect(scrollableState.position.pixels, lessThan(0.0));
+    final transformFinder = find.descendant(
+      of: find.byType(BouncyDrawerScrollWrapper),
+      matching: find.byType(Transform),
+    );
+    final transform = tester.widget<Transform>(transformFinder.first);
+    expect(transform.transform.getTranslation().y, greaterThan(0.0));
+    expect(transform.transform.getTranslation().y, lessThanOrEqualTo(10.0));
 
-    await gesture.up();
     await tester.pumpAndSettle();
-
-    expect(scrollableState.position.pixels, 0.0);
+    final settled = tester.widget<Transform>(transformFinder.first);
+    expect(settled.transform.getTranslation().y, 0.0);
   });
 
   testWidgets(
-      'swiping horizontally past outermost drawer triggers edge bounce recoil',
+      'swiping horizontally past outermost drawer triggers tight edge bounce recoil',
       (tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -231,11 +241,10 @@ void main() {
     await tester.tap(find.text('Backlog'));
     await tester.pumpAndSettle();
 
-    // Swipe right (primaryVelocity > 200) attempting to go before Backlog
+    // Swipe right attempting to go before Backlog
     await tester.fling(find.text('Backlog').last, const Offset(300, 0), 800);
     await tester.pump();
 
-    // Find the horizontal nudge transform on the active sheet
     final layeredDeckFinder = find.byType(LayeredDeckView);
     expect(layeredDeckFinder, findsOneWidget);
 

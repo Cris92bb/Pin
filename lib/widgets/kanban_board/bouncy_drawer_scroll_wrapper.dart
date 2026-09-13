@@ -1,17 +1,21 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-/// Wraps scrollable drawer content to provide an Apple-style tactile spring bounce
+/// Wraps scrollable drawer content to provide a tight, crisp tactile spring bounce
 /// when scrolling reaches the end (both top and bottom boundaries) across mouse wheel,
-/// trackpad, and touch/mouse drag gestures.
+/// trackpad, and touch/mouse drag gestures, avoiding long empty spaces.
 class BouncyDrawerScrollWrapper extends StatefulWidget {
   final Widget child;
   final ScrollController controller;
+  final double maxOverscroll;
+  final Duration duration;
 
   const BouncyDrawerScrollWrapper({
     super.key,
     required this.child,
     required this.controller,
+    this.maxOverscroll = 10.0,
+    this.duration = const Duration(milliseconds: 160),
   });
 
   @override
@@ -30,7 +34,7 @@ class _BouncyDrawerScrollWrapperState extends State<BouncyDrawerScrollWrapper>
     super.initState();
     _bounceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 340),
+      duration: widget.duration,
     )..addListener(() {
         if (_bounceAnimation != null) {
           setState(() {
@@ -46,6 +50,20 @@ class _BouncyDrawerScrollWrapperState extends State<BouncyDrawerScrollWrapper>
     super.dispose();
   }
 
+  void _animateBack() {
+    _bounceController.stop();
+    _bounceAnimation = Tween<double>(
+      begin: _overscroll,
+      end: 0.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _bounceController,
+        curve: const Cubic(0.2, 0.9, 0.3, 1.15),
+      ),
+    );
+    _bounceController.forward(from: 0.0);
+  }
+
   void _onPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
     if (!widget.controller.hasClients) return;
@@ -58,43 +76,34 @@ class _BouncyDrawerScrollWrapperState extends State<BouncyDrawerScrollWrapper>
     final atBottom = position.pixels >= position.maxScrollExtent && delta > 0;
 
     if (atTop || atBottom) {
-      // Apply rubber-band damping resistance
-      const resistance = 0.28;
-      final newOverscroll =
-          (_overscroll - delta * resistance).clamp(-36.0, 36.0);
+      // Stiff damping resistance for a tight, crisp tactile bumper
+      const resistance = 0.08;
+      final newOverscroll = (_overscroll - delta * resistance)
+          .clamp(-widget.maxOverscroll, widget.maxOverscroll);
 
-      _bounceController.stop();
       setState(() {
         _overscroll = newOverscroll;
       });
-
-      // Spring overshoot rebound settling to 0
-      _bounceAnimation = Tween<double>(
-        begin: _overscroll,
-        end: 0.0,
-      ).animate(
-        CurvedAnimation(
-          parent: _bounceController,
-          curve: const Cubic(0.175, 0.885, 0.32, 1.275),
-        ),
-      );
-      _bounceController.forward(from: 0.0);
+      _animateBack();
     }
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
-    if (notification is ScrollEndNotification) {
-      if (_overscroll != 0.0 && !_bounceController.isAnimating) {
-        _bounceAnimation = Tween<double>(
-          begin: _overscroll,
-          end: 0.0,
-        ).animate(
-          CurvedAnimation(
-            parent: _bounceController,
-            curve: const Cubic(0.175, 0.885, 0.32, 1.275),
-          ),
-        );
-        _bounceController.forward(from: 0.0);
+    if (notification is OverscrollNotification) {
+      // Dragging past boundary: subtle damped overscroll without long gap
+      if (notification.dragDetails != null) {
+        final delta = notification.overscroll;
+        const resistance = 0.12;
+        final newOverscroll = (_overscroll - delta * resistance)
+            .clamp(-widget.maxOverscroll, widget.maxOverscroll);
+        _bounceController.stop();
+        setState(() {
+          _overscroll = newOverscroll;
+        });
+      }
+    } else if (notification is ScrollEndNotification) {
+      if (_overscroll != 0.0) {
+        _animateBack();
       }
     }
     return false;

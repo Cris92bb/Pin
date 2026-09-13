@@ -30,7 +30,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     super.initState();
     _horizontalEdgeNudgeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 280),
+      duration: const Duration(milliseconds: 160),
     )..addListener(() {
         if (_horizontalNudgeAnimation != null) {
           setState(() {
@@ -60,7 +60,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
   void _triggerHorizontalEdgeNudge(int delta) {
     // delta < 0: attempted swipe right past Backlog
     // delta > 0: attempted swipe left past Done
-    final offset = delta < 0 ? 14.0 : -14.0;
+    final offset = delta < 0 ? 8.0 : -8.0;
     _horizontalEdgeNudgeController.stop();
     setState(() {
       _horizontalNudge = offset;
@@ -551,7 +551,7 @@ class _DrawerTaskListState extends State<_DrawerTaskList> {
           builder: (context, constraints) {
             return SingleChildScrollView(
               controller: _scrollController,
-              physics: const BouncingScrollPhysics(
+              physics: const ClampingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
               child: ConstrainedBox(
@@ -616,10 +616,10 @@ class _DrawerTaskListState extends State<_DrawerTaskList> {
       controller: _scrollController,
       child: ListView.builder(
         controller: _scrollController,
-        physics: const BouncingScrollPhysics(
+        physics: const ClampingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 80),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 60),
         itemCount: widget.tasks.length,
         itemBuilder: (context, index) {
           final task = widget.tasks[index];
