@@ -139,6 +139,8 @@ class FirebaseAuthService {
             displayName: displayName?.trim().isNotEmpty == true
                 ? displayName!.trim()
                 : (data['displayName'] as String? ?? targetName),
+            photoURL: (data['photoUrl'] as String?) ??
+                'https://lh3.googleusercontent.com/a/default-user',
             idToken: data['idToken'] as String?,
             refreshToken: data['refreshToken'] as String?,
             tokenExpiresAt: DateTime.now()
@@ -175,6 +177,8 @@ class FirebaseAuthService {
                 deterministicUid, // <-- Override random Firebase UID with email-derived UID
             email: targetEmail,
             displayName: targetName,
+            photoURL: (data['photoUrl'] as String?) ??
+                'https://lh3.googleusercontent.com/a/default-user',
             idToken: data['idToken'] as String?,
             refreshToken: data['refreshToken'] as String?,
             tokenExpiresAt: DateTime.now()
@@ -194,8 +198,8 @@ class FirebaseAuthService {
         if (err.contains('OPERATION_NOT_ALLOWED') ||
             err.contains('ADMIN_ONLY_OPERATION')) {
           throw Exception(
-            'Email/Password auth is not enabled in your Firebase project. '
-            'Go to Firebase Console → Authentication → Sign-in method and enable "Email/Password".',
+            'Firebase Anonymous sign-in is disabled or Email/Password auth is not enabled in your Firebase project. '
+            'Please go to Firebase Console > Authentication > Sign-in method and enable "Email/Password" or "Anonymous".',
           );
         }
         rethrow;
@@ -447,8 +451,9 @@ class FirebaseAuthService {
         'https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/$dbId/documents/users/${user.uid}',
       );
       final headers = <String, String>{};
-      if (user.idToken != null)
+      if (user.idToken != null) {
         headers['Authorization'] = 'Bearer ${user.idToken}';
+      }
       await _client.delete(docUrl, headers: headers);
     } catch (_) {}
 

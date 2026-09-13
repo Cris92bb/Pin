@@ -373,5 +373,206 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.containsKey('firebase_cached_user'), isFalse);
     });
+
+    test('cross-device synchronization merges tasks seamlessly with the same Google account', () async {
+      // Setup Device 1 cloud state: cloud already has a task from Device 1
+      final now = DateTime.now();
+      final cloudTask1 = PinTask(
+        id: 'task-device-1',
+        title: 'Task created on Device 1',
+        status: TaskStatus.today,
+        isPinned: true,
+        createdAt: now.subtract(const Duration(hours: 2)),
+        updatedAt: now.subtract(const Duration(hours: 2)),
+      );
+
+      // Cloud document payload encoded as Firestore fields
+      final cloudDocFields = {
+        'fields': {
+          'tasks': {
+            'arrayValue': {
+              'values': [
+                FirestoreRestCodec.encodeValue(cloudTask1.toJson()),
+              ]
+            }
+          },
+          'lastSyncedAt': {'integerValue': now.millisecondsSinceEpoch.toString()},
+        }
+      };
+      mockHttp.getResponseBody = cloudDocFields;
+
+      // Setup Device 2 local state: has task-device-2
+      final device2LocalTask = PinTask(
+        id: 'task-device-2',
+        title: 'Task created on Device 2',
+        status: TaskStatus.backlog,
+        createdAt: now.subtract(const Duration(minutes: 30)),
+        updatedAt: now.subtract(const Duration(minutes: 30)),
+      );
+
+      final device2Storage = MemoryStorageAdapter();
+      await device2Storage.saveTasks([device2LocalTask.toJson()]);
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(device2Storage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: device2Storage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      // Device 2 signs in with the same Google account
+      final syncController = container.read(syncControllerProvider.notifier);
+      final success = await syncController.signInWithGoogle(
+        email: 'shared.developer@gmail.com',
+        displayName: 'Shared Developer',
+      );
+
+      expect(success, isTrue);
+
+      // Verify deterministic UID is identical across devices
+      final user = container.read(syncControllerProvider).user;
+      expect(user?.uid, equals('google_shared_developer_gmail_com'));
+
+      // Verify both tasks are present after 3-way merge
+      final currentTasks = container.read(taskStateProvider).tasks;
+      expect(currentTasks.length, equals(2));
+      expect(currentTasks.any((t) => t.id == 'task-device-1'), isTrue);
+      expect(currentTasks.any((t) => t.id == 'task-device-2'), isTrue);
+
+      // Verify merged tasks were synced back to Firestore
+      expect(mockHttp.patchCallCount, greaterThanOrEqualTo(1));
+      expect(mockHttp.lastPatchedBody, isNotNull);
+    });
+
+    test('cross-device conflict resolution prefers task with newer updatedAt timestamp', () async {
+      final now = DateTime.now();
+      // Cloud has an older version of task-x
+      final cloudTask = PinTask(
+        id: 'task-conflict-id',
+        title: 'Older Cloud Version',
+        status: TaskStatus.backlog,
+        createdAt: now.subtract(const Duration(hours: 5)),
+        updatedAt: now.subtract(const Duration(hours: 3)),
+      );
+
+      mockHttp.getResponseBody = {
+        'fields': {
+          'tasks': {
+            'arrayValue': {
+              'values': [
+                FirestoreRestCodec.encodeValue(cloudTask.toJson()),
+              ]
+            }
+          },
+          'lastSyncedAt': {'integerValue': now.millisecondsSinceEpoch.toString()},
+        }
+      };
+
+      // Local has a newer version of the same task-x
+      final newerLocalTask = PinTask(
+        id: 'task-conflict-id',
+        title: 'Newer Local Version (Edited on Device 2)',
+        status: TaskStatus.today,
+        isPinned: true,
+        createdAt: now.subtract(const Duration(hours: 5)),
+        updatedAt: now.subtract(const Duration(minutes: 10)),
+      );
+
+      final deviceStorage = MemoryStorageAdapter();
+      await deviceStorage.saveTasks([newerLocalTask.toJson()]);
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(deviceStorage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: deviceStorage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      await syncController.signInWithGoogle(
+        email: 'developer@example.com',
+      );
+
+      final currentTasks = container.read(taskStateProvider).tasks;
+      expect(currentTasks.length, equals(1));
+      // Local version was newer, so it should win
+      expect(currentTasks.first.title, equals('Newer Local Version (Edited on Device 2)'));
+      expect(currentTasks.first.status, equals(TaskStatus.today));
+    });
+
+    test('auto token refresh refreshes expired ID token during cloud sync without disrupting session', () async {
+      // User with expired ID token but valid refresh token
+      final expiredUser = AppUser(
+        uid: 'google_test_user',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        idToken: 'expired-jwt-token',
+        refreshToken: 'valid-refresh-token-123',
+        tokenExpiresAt: DateTime.now().subtract(const Duration(minutes: 10)).millisecondsSinceEpoch,
+        isAnonymous: false,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(memoryStorage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: memoryStorage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+              initialUser: expiredUser,
+            );
+          }),
+        ],
+      );
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      final taskNotifier = container.read(taskStateProvider.notifier);
+
+      // Create a task — this triggers persistence -> debounce -> _executeCloudSync
+      final now = DateTime.now();
+      await taskNotifier.createTask(PinTask(
+        id: 'new-pin',
+        title: 'Trigger Sync',
+        status: TaskStatus.backlog,
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      // Fast forward past debounce
+      await syncController.syncNow();
+
+      // State should be synced, not error
+      final syncState = container.read(syncControllerProvider);
+      expect(syncState.status, equals(SyncStatus.synced));
+      expect(syncState.isSignedIn, isTrue);
+    });
   });
 }

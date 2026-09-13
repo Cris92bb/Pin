@@ -87,6 +87,7 @@ class SyncController extends StateNotifier<SyncState> {
           config: initialConfig,
           user: initialUser,
           status: initialUser != null ? SyncStatus.synced : SyncStatus.guest,
+          configLoaded: initialConfig.isConfigured,
         )) {
     _init();
   }
@@ -117,13 +118,13 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// Returns true if config is loaded; otherwise sets an error and returns false.
   bool _guardConfigLoaded() {
-    if (!state.configLoaded) {
-      state = state.copyWith(
-        errorMessage: 'Connecting to Firebase… please try again in a moment.',
-      );
-      return false;
+    if (state.configLoaded || state.config.isConfigured) {
+      return true;
     }
-    return true;
+    state = state.copyWith(
+      errorMessage: 'Connecting to Firebase… please try again in a moment.',
+    );
+    return false;
   }
 
   @override
@@ -163,22 +164,27 @@ class SyncController extends StateNotifier<SyncState> {
     );
 
     // Refresh the ID token if it has expired (Firebase tokens last 1 hour).
-    try {
-      final freshUser = await authService.freshIdToken(user);
-      if (freshUser != user) {
-        // Token was refreshed — persist the updated user in state and cache.
-        user = freshUser;
-        state = state.copyWith(user: freshUser);
+    if (state.config.isConfigured &&
+        user.refreshToken != null &&
+        user.refreshToken!.isNotEmpty &&
+        user.isTokenExpired) {
+      try {
+        final freshUser = await authService.freshIdToken(user);
+        if (freshUser != user) {
+          // Token was refreshed — persist the updated user in state and cache.
+          user = freshUser;
+          state = state.copyWith(user: freshUser);
+        }
+      } catch (e) {
+        // Refresh failed (e.g. revoked refresh token) — sign the user out so
+        // they get a clean prompt to re-authenticate rather than a silent loop.
+        await signOut();
+        state = state.copyWith(
+          status: SyncStatus.error,
+          errorMessage: 'Session expired. Please sign in again.',
+        );
+        return;
       }
-    } catch (e) {
-      // Refresh failed (e.g. revoked refresh token) — sign the user out so
-      // they get a clean prompt to re-authenticate rather than a silent loop.
-      await signOut();
-      state = state.copyWith(
-        status: SyncStatus.error,
-        errorMessage: 'Session expired. Please sign in again.',
-      );
-      return;
     }
 
     final taskMaps = tasks.map((t) => t.toJson()).toList();
