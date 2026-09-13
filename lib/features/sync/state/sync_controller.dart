@@ -249,12 +249,6 @@ class SyncController extends StateNotifier<SyncState> {
       if (cloudBoard == null || cloudBoard.tasks.isEmpty) {
         // New account or empty cloud — seed cloud with local tasks.
         await _executeCloudSync(localTasks);
-        state = state.copyWith(
-          user: user,
-          status: SyncStatus.synced,
-          lastSyncedAt: DateTime.now().millisecondsSinceEpoch,
-          syncedTaskCount: localTasks.length,
-        );
         return;
       }
 

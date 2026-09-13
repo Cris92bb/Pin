@@ -9,6 +9,8 @@ class FirebaseConfig {
   static const String _keyProjectId = 'firebase_project_id';
   static const String _keyAuthDomain = 'firebase_auth_domain';
   static const String _keyDatabaseId = 'firebase_database_id';
+  static const String _keyStorageBucket = 'firebase_storage_bucket';
+  static const String _keyOAuthClientId = 'firebase_oauth_client_id';
 
   final String apiKey;
   final String projectId;
@@ -95,17 +97,26 @@ class FirebaseConfig {
     } catch (_) {}
 
     // 3. Persisted SharedPreferences credentials (user-entered via settings).
+    return loadFromPreferences();
+  }
+
+  /// Loads credentials persisted in SharedPreferences.
+  static Future<FirebaseConfig> loadFromPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final apiKey = prefs.getString(_keyApiKey) ?? '';
       final projectId = prefs.getString(_keyProjectId) ?? '';
       final authDomain = prefs.getString(_keyAuthDomain) ?? '';
       final dbId = prefs.getString(_keyDatabaseId) ?? '(default)';
+      final storageBucket = prefs.getString(_keyStorageBucket) ?? '';
+      final oAuthClientId = prefs.getString(_keyOAuthClientId) ?? '';
       return FirebaseConfig(
         apiKey: apiKey,
         projectId: projectId,
         authDomain: authDomain,
         firestoreDatabaseId: dbId,
+        storageBucket: storageBucket,
+        oAuthClientId: oAuthClientId,
       );
     } catch (_) {
       return const FirebaseConfig();
@@ -119,6 +130,8 @@ class FirebaseConfig {
       await prefs.setString(_keyProjectId, projectId.trim());
       await prefs.setString(_keyAuthDomain, authDomain.trim());
       await prefs.setString(_keyDatabaseId, firestoreDatabaseId.trim().isEmpty ? '(default)' : firestoreDatabaseId.trim());
+      await prefs.setString(_keyStorageBucket, storageBucket.trim());
+      await prefs.setString(_keyOAuthClientId, oAuthClientId.trim());
     } catch (_) {}
   }
 
@@ -129,6 +142,8 @@ class FirebaseConfig {
       await prefs.remove(_keyProjectId);
       await prefs.remove(_keyAuthDomain);
       await prefs.remove(_keyDatabaseId);
+      await prefs.remove(_keyStorageBucket);
+      await prefs.remove(_keyOAuthClientId);
     } catch (_) {}
   }
 }

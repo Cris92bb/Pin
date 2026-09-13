@@ -107,9 +107,11 @@ class FirebaseAuthService {
 
   /// 1-Click Google Sign-In without passwords or registration.
   ///
-  /// Uses a deterministic, email-derived UID (`google_$sanitizedEmail`) across
-  /// all environments and devices so desktop and mobile always read and write
-  /// to the exact same Firestore document path (`/users/{uid}/...`).
+  /// Uses an authentic Firebase Auth UID (`localId` or decoded JWT token) across
+  /// all environments and devices to satisfy Firestore security rules
+  /// (`request.auth.uid == userId`). Uses a deterministic derived credential
+  /// for passwordless sign-in so multiple devices signing in with the same email
+  /// automatically connect to the same Firebase account and data path.
   Future<AppUser> signInWithGoogle({
     String? googleEmail,
     String? displayName,
@@ -128,7 +130,7 @@ class FirebaseAuthService {
         ? displayName!.trim()
         : targetEmail.split('@').first;
 
-    // Deterministic UID based strictly on the email
+    // Fallback deterministic UID based strictly on the email (offline mode)
     final sanitizedEmail = targetEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final deterministicUid = 'google_$sanitizedEmail';
 
@@ -155,15 +157,20 @@ class FirebaseAuthService {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
           final expiresIn =
               int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
+          final token = data['idToken'] as String?;
+          final resolvedUid = (data['localId'] as String?) ??
+              _extractUidFromJwt(token) ??
+              deterministicUid;
+
           final user = AppUser(
-            uid: (data['localId'] as String?) ?? deterministicUid,
+            uid: resolvedUid,
             email: targetEmail,
             displayName: displayName?.trim().isNotEmpty == true
                 ? displayName!.trim()
                 : (data['displayName'] as String? ?? targetName),
             photoURL: (data['photoUrl'] as String?) ??
                 'https://lh3.googleusercontent.com/a/default-user',
-            idToken: data['idToken'] as String?,
+            idToken: token,
             refreshToken: data['refreshToken'] as String?,
             tokenExpiresAt: DateTime.now()
                 .add(Duration(seconds: expiresIn))
@@ -194,13 +201,18 @@ class FirebaseAuthService {
           final data = jsonDecode(signUpResponse.body) as Map<String, dynamic>;
           final expiresIn =
               int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
+          final token = data['idToken'] as String?;
+          final resolvedUid = (data['localId'] as String?) ??
+              _extractUidFromJwt(token) ??
+              deterministicUid;
+
           final user = AppUser(
-            uid: (data['localId'] as String?) ?? deterministicUid,
+            uid: resolvedUid,
             email: targetEmail,
             displayName: targetName,
             photoURL: (data['photoUrl'] as String?) ??
                 'https://lh3.googleusercontent.com/a/default-user',
-            idToken: data['idToken'] as String?,
+            idToken: token,
             refreshToken: data['refreshToken'] as String?,
             tokenExpiresAt: DateTime.now()
                 .add(Duration(seconds: expiresIn))
@@ -387,16 +399,21 @@ class FirebaseAuthService {
     final response = await _client.post(
       url,
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: 'grant_type=refresh_token&refresh_token=$refreshToken',
+      body: {
+        'grant_type': 'refresh_token',
+        'refresh_token': refreshToken,
+      },
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final expiresIn =
-          int.tryParse(data['expires_in']?.toString() ?? '3600') ?? 3600;
+      final expiresIn = int.tryParse(
+              (data['expires_in'] ?? data['expiresIn'])?.toString() ?? '3600') ??
+          3600;
       final refreshed = user.copyWith(
-        idToken: data['id_token'] as String?,
-        refreshToken: data['refresh_token'] as String? ?? refreshToken,
+        idToken: (data['id_token'] ?? data['idToken']) as String?,
+        refreshToken: (data['refresh_token'] ?? data['refreshToken']) as String? ??
+            refreshToken,
         tokenExpiresAt: DateTime.now()
             .add(Duration(seconds: expiresIn))
             .millisecondsSinceEpoch,
@@ -459,26 +476,39 @@ class FirebaseAuthService {
     await _saveCachedUser(user);
   }
 
-  /// Deletes user document from Firestore and deletes account in Firebase Auth (GDPR right-to-erasure).
+  /// Deletes user board, user document from Firestore, and deletes account in Firebase Auth (GDPR right-to-erasure).
   Future<void> deleteUserAccount(AppUser user) async {
     _ensureConfigured();
 
-    // 1. Delete user profile doc
+    final dbId = config.firestoreDatabaseId.isEmpty
+        ? '(default)'
+        : config.firestoreDatabaseId;
+
+    // 1. Delete user board snapshot doc
     try {
-      final dbId = config.firestoreDatabaseId.isEmpty
-          ? '(default)'
-          : config.firestoreDatabaseId;
+      final boardUrl = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/$dbId/documents/users/${user.uid}/meta/board',
+      );
+      final headers = <String, String>{};
+      if (user.idToken != null && user.idToken!.isNotEmpty) {
+        headers['Authorization'] = 'Bearer ${user.idToken}';
+      }
+      await _client.delete(boardUrl, headers: headers);
+    } catch (_) {}
+
+    // 2. Delete user profile doc
+    try {
       final docUrl = Uri.parse(
         'https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/$dbId/documents/users/${user.uid}',
       );
       final headers = <String, String>{};
-      if (user.idToken != null) {
+      if (user.idToken != null && user.idToken!.isNotEmpty) {
         headers['Authorization'] = 'Bearer ${user.idToken}';
       }
       await _client.delete(docUrl, headers: headers);
     } catch (_) {}
 
-    // 2. Delete Auth account
+    // 3. Delete Auth account
     if (user.idToken != null && user.idToken!.isNotEmpty) {
       final authUrl = Uri.parse(
         'https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${config.apiKey}',

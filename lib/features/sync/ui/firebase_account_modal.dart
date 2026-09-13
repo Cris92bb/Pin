@@ -167,29 +167,32 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
         return 'Cristian';
       }
       if (name.contains('.') || name.contains('_')) {
-        return name
+        final formatted = name
             .split(RegExp(r'[._]'))
             .where((s) => s.isNotEmpty)
             .map((s) => s[0].toUpperCase() + s.substring(1))
             .join(' ');
+        if (formatted.isNotEmpty) return formatted;
       }
       return name;
     }
     if (user.email != null && user.email!.contains('@')) {
-      final prefix = user.email!.split('@').first;
+      final prefix = user.email!.split('@').first.trim();
+      if (prefix.isEmpty) return 'User';
       if (prefix.toLowerCase() == 'cristun92xd') {
         return 'Cristian';
       }
       if (prefix.contains('.') || prefix.contains('_')) {
-        return prefix
+        final formatted = prefix
             .split(RegExp(r'[._]'))
             .where((s) => s.isNotEmpty)
             .map((s) => s[0].toUpperCase() + s.substring(1))
             .join(' ');
+        if (formatted.isNotEmpty) return formatted;
       }
       return prefix[0].toUpperCase() + prefix.substring(1);
     }
-    return 'Cristian';
+    return 'User';
   }
 
   Future<void> _handleEditDisplayName(String currentName) async {

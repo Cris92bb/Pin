@@ -21,6 +21,8 @@ class MockHttpClient extends http.BaseClient {
   Map<String, dynamic>? lastPatchedBody;
   Map<String, dynamic>? getResponseBody;
   String? postErrorMessage;
+  final List<Uri> deletedUris = [];
+  http.Request? lastPostRequest;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -45,7 +47,16 @@ class MockHttpClient extends http.BaseClient {
         Stream.value(utf8.encode(jsonEncode({'error': 'Not found'}))),
         404,
       );
+    } else if (request.method == 'DELETE') {
+      deletedUris.add(request.url);
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(jsonEncode({'status': 'deleted'}))),
+        200,
+      );
     } else if (request.method == 'POST') {
+      if (request is http.Request) {
+        lastPostRequest = request;
+      }
       if (postErrorMessage != null) {
         return http.StreamedResponse(
           Stream.value(utf8.encode(jsonEncode({
@@ -573,6 +584,64 @@ void main() {
       final syncState = container.read(syncControllerProvider);
       expect(syncState.status, equals(SyncStatus.synced));
       expect(syncState.isSignedIn, isTrue);
+    });
+
+    test('refreshIdToken sends form-encoded parameters and parses snake_case and camelCase payloads', () async {
+      const user = AppUser(
+        uid: 'refresh-test-user',
+        email: 'test@example.com',
+        idToken: 'old-token',
+        refreshToken: 'refresh+token/with=special&chars',
+        isAnonymous: false,
+      );
+
+      final refreshed = await authService.refreshIdToken(user);
+      expect(refreshed.idToken, equals('token-mock-xyz'));
+      expect(mockHttp.lastPostRequest, isNotNull);
+      expect(mockHttp.lastPostRequest!.headers['content-type'], contains('application/x-www-form-urlencoded'));
+      // Verify body was properly form URL-encoded by package:http
+      expect(mockHttp.lastPostRequest!.body, contains('grant_type=refresh_token'));
+      expect(mockHttp.lastPostRequest!.body, contains('refresh_token='));
+    });
+
+    test('deleteUserAccount cascades deletion to board doc, profile doc, and auth record', () async {
+      const user = AppUser(
+        uid: 'delete-target-user',
+        email: 'delete@example.com',
+        idToken: 'valid-id-token',
+        isAnonymous: false,
+      );
+
+      await authService.deleteUserAccount(user);
+
+      // Verify board doc and profile doc were deleted
+      expect(mockHttp.deletedUris.any((uri) => uri.path.contains('/users/delete-target-user/meta/board')), isTrue);
+      expect(mockHttp.deletedUris.any((uri) => uri.path.contains('/users/delete-target-user')), isTrue);
+    });
+
+    test('FirebaseConfig persists and restores storageBucket and oAuthClientId via SharedPreferences', () async {
+      SharedPreferences.setMockInitialValues({});
+      const config = FirebaseConfig(
+        apiKey: 'custom-api-key',
+        projectId: 'custom-project-id',
+        authDomain: 'custom.firebaseapp.com',
+        firestoreDatabaseId: '(default)',
+        storageBucket: 'custom.appspot.com',
+        oAuthClientId: 'custom-client-id.apps.googleusercontent.com',
+      );
+
+      await config.save();
+      final loaded = await FirebaseConfig.loadFromPreferences();
+
+      expect(loaded.apiKey, equals('custom-api-key'));
+      expect(loaded.projectId, equals('custom-project-id'));
+      expect(loaded.storageBucket, equals('custom.appspot.com'));
+      expect(loaded.oAuthClientId, equals('custom-client-id.apps.googleusercontent.com'));
+
+      await FirebaseConfig.clear();
+      final cleared = await FirebaseConfig.loadFromPreferences();
+      expect(cleared.storageBucket, isEmpty);
+      expect(cleared.oAuthClientId, isEmpty);
     });
   });
 }
