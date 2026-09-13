@@ -86,8 +86,12 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
     _subtaskController = TextEditingController();
     _tagController = TextEditingController();
 
-    _selectedStatus =
-        task?.status ?? widget.defaultStatus ?? TaskStatus.today;
+    final taskState = ref.read(taskStateProvider);
+    final fallbackStatus = taskState.isTodayWipFull ? TaskStatus.backlog : TaskStatus.today;
+    _selectedStatus = task?.status ?? widget.defaultStatus ?? fallbackStatus;
+    if (task == null && _selectedStatus == TaskStatus.today && taskState.isTodayWipFull && widget.defaultStatus == null) {
+      _selectedStatus = TaskStatus.backlog;
+    }
     _selectedEnergyTag = task?.energyTag ?? 'low-friction';
     _selectedEstimateMinutes = task?.estimatedMinutes ?? 15;
     _tags = task?.tags != null ? List.from(task!.tags) : ['#dev'];
@@ -211,7 +215,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      setState(() => _inlineError = 'Pin title cannot be empty.');
+      setState(() => _inlineError = 'Please enter a Pin title.');
       return;
     }
 
@@ -237,6 +241,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
       final success = await notifier.createTask(newTask);
       if (mounted) {
         if (success) {
+          ref.read(activeDeckProvider.notifier).state = _selectedStatus;
           Navigator.of(context).pop();
         } else {
           final state = ref.read(taskStateProvider);
@@ -261,6 +266,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
       final success = await notifier.updateTask(updated);
       if (mounted) {
         if (success) {
+          ref.read(activeDeckProvider.notifier).state = _selectedStatus;
           Navigator.of(context).pop();
         } else {
           final state = ref.read(taskStateProvider);
@@ -393,6 +399,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                           hintStyle: TextStyle(
                             color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
                             fontSize: 14,
+                            fontWeight: FontWeight.w400,
                           ),
                           filled: true,
                           fillColor: inputBg,

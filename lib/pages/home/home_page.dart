@@ -34,7 +34,12 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _openCreateTaskModal([TaskStatus? defaultStatus]) {
     final activeDeck = ref.read(activeDeckProvider);
-    TaskCrudModal.show(context, defaultStatus: defaultStatus ?? activeDeck);
+    final isTodayFull = ref.read(taskStateProvider).isTodayWipFull;
+    final initialDeck = defaultStatus ??
+        (activeDeck == TaskStatus.today && isTodayFull
+            ? TaskStatus.backlog
+            : activeDeck);
+    TaskCrudModal.show(context, defaultStatus: initialDeck);
   }
 
   void _openFocusModeFirstToday() {

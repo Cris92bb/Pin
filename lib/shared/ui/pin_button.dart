@@ -133,6 +133,7 @@ class _PinButtonState extends State<PinButton> {
           ? SystemMouseCursors.click
           : SystemMouseCursors.basic,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: widget.onPressed,
         child: AnimatedContainer(
           duration: PinTokens.animFast,

@@ -8,28 +8,42 @@ class PinTokens {
   const PinTokens._();
 
   // Light Mode Palette (Faded Sage Green Design Palette)
-  static const Color lightCanvasBg = Color(0xFFF3F5EE); // Main page backdrop behind the card stack
-  static const Color lightPhoneFrameBg = Color(0xFFF3F5EE); // Companion container background
-  static const Color lightSheetBg = Color(0xFFE7ECE1); // Active bottom sheet / sliding sheet body surface
-  static const Color lightStackedTabBg = Color(0xFFDEE3D7); // Stacked card tabs (Backlog & Done)
-  static const Color lightCardBg = Color(0xFFEFF3EA); // Foreground inner task item cards
-  static const Color lightBorder = Color(0xFFD4DCCE); // Subtle leafy gray card borders & dividers
+  static const Color lightCanvasBg =
+      Color(0xFFF3F5EE); // Main page backdrop behind the card stack
+  static const Color lightPhoneFrameBg =
+      Color(0xFFF3F5EE); // Companion container background
+  static const Color lightSheetBg =
+      Color(0xFFE7ECE1); // Active bottom sheet / sliding sheet body surface
+  static const Color lightStackedTabBg =
+      Color(0xFFDEE3D7); // Stacked card tabs (Backlog & Done)
+  static const Color lightCardBg =
+      Color(0xFFEFF3EA); // Foreground inner task item cards
+  static const Color lightBorder =
+      Color(0xFFD4DCCE); // Subtle leafy gray card borders & dividers
   static const Color lightBorderSubtle = Color(0xFFD4DCCE);
-  static const Color lightTextPrimary = Color(0xFF1A241E); // Deep forest near-black
+  static const Color lightTextPrimary =
+      Color(0xFF1A241E); // Deep forest near-black
   static const Color lightTextSecondary = Color(0xFF5F6D64); // Muted sage slate
-  static const Color lightTextTertiary = Color(0xFF8E9C92); // Soft olive-slate for unpin, trash, radio ring, grab handle
+  static const Color lightTextTertiary = Color(
+      0xFF8E9C92); // Soft olive-slate for unpin, trash, radio ring, grab handle
   static const Color lightTextMuted = Color(0xFF8E9C92);
-  static const Color lightFabBg = Color(0xFF2B3B32); // Dark spruce evergreen action accent
-  static const Color lightActiveFocus = Color(0xFF2B3B32); // Dark spruce evergreen for active focus & completed progress
-  static const Color lightMaxFocusBg = Color(0xFFDEE3D7); // Muted desaturated olive-gray
+  static const Color lightFabBg =
+      Color(0xFF2B3B32); // Dark spruce evergreen action accent
+  static const Color lightActiveFocus = Color(
+      0xFF2B3B32); // Dark spruce evergreen for active focus & completed progress
+  static const Color lightMaxFocusBg =
+      Color(0xFFDEE3D7); // Muted desaturated olive-gray
   static const Color lightMaxFocusText = Color(0xFF1A241E);
-  static const Color lightTagBg = Color(0xFFE2E9DC); // Ultra-light desaturated fill
+  static const Color lightTagBg =
+      Color(0xFFE2E9DC); // Ultra-light desaturated fill
   static const Color lightTagText = Color(0xFF5F6D64);
   static const Color primary = lightFabBg;
 
   // Header Utility Accent Tokens (Light Mode)
-  static const Color headerSyncBgLight = Color(0xFFDEE3D7); // Muted desaturated olive-gray base
-  static const Color headerSyncBorderLight = Color(0xFFD4DCCE); // Leafy gray border
+  static const Color headerSyncBgLight =
+      Color(0xFFDEE3D7); // Muted desaturated olive-gray base
+  static const Color headerSyncBorderLight =
+      Color(0xFFD4DCCE); // Leafy gray border
   static const Color headerSyncFgLight = Color(0xFF1A241E); // Deep forest icon
   static const Color headerThemeBgLight = Color(0xFFDEE3D7);
   static const Color headerThemeBorderLight = Color(0xFFD4DCCE);
@@ -67,7 +81,7 @@ class PinTokens {
   static const Color textPrimary = Color(0xFFF8FAFC);
   static const Color textSecondary = Color(0xFF94A3B8);
   static const Color textMuted = Color(0xFF64748B);
-  static const Color textInverse = Color(0xFF0F172A);
+  static const Color textInverse = Color(0xFFFFFFFF);
 
   static const Color accentSky = Color(0xFF0EA5E9);
   static const Color accentEmerald = Color(0xFF10B981);
@@ -86,9 +100,11 @@ class PinTokens {
   // Energy Badges (Balanced desaturated pastels)
   static const Color energyLowBg = Color(0xFFE7F4ED); // Soft sage / eucalyptus
   static const Color energyLowText = Color(0xFF166534); // Deep forest
-  static const Color energyMediumBg = Color(0xFFFBE9DD); // Muted terra-cotta / apricot
+  static const Color energyMediumBg =
+      Color(0xFFFBE9DD); // Muted terra-cotta / apricot
   static const Color energyMediumText = Color(0xFF9A3412); // Warm mahogany
-  static const Color energyDeepBg = Color(0xFFEEF0FB); // Soft periwinkle / lavender
+  static const Color energyDeepBg =
+      Color(0xFFEEF0FB); // Soft periwinkle / lavender
   static const Color energyDeepText = Color(0xFF4338CA); // Indigo
   static const Color energyTimerBg = Color(0xFFEEF0FB); // Soft periwinkle
   static const Color energyTimerText = Color(0xFF4338CA);
