@@ -76,6 +76,16 @@ class FirestoreSyncService {
     }
 
     final syncedAt = DateTime.now().millisecondsSinceEpoch;
+
+    if (idToken == null || idToken.isEmpty) {
+      return SyncResult(
+        success: false,
+        syncedAt: syncedAt,
+        count: tasks.length,
+        errorMessage: 'Cannot sync with Cloud Firestore: Missing authentication token. Please sign in to Firebase to sync.',
+      );
+    }
+
     final boardDocUri = _buildBoardDocUri(userId);
 
     final fields = FirestoreRestCodec.encodeFields({

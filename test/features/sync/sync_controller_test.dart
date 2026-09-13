@@ -19,6 +19,7 @@ class MockHttpClient extends http.BaseClient {
   int getCallCount = 0;
   Map<String, dynamic>? lastPatchedBody;
   Map<String, dynamic>? getResponseBody;
+  String? postErrorMessage;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -44,6 +45,14 @@ class MockHttpClient extends http.BaseClient {
         404,
       );
     } else if (request.method == 'POST') {
+      if (postErrorMessage != null) {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode(jsonEncode({
+            'error': {'message': postErrorMessage, 'code': 400}
+          }))),
+          400,
+        );
+      }
       return http.StreamedResponse(
         Stream.value(utf8.encode(jsonEncode({
           'localId': 'user-mock-123',
@@ -277,6 +286,46 @@ void main() {
       expect(syncState.user?.email, equals('testuser@gmail.com'));
       expect(syncState.user?.displayName, equals('Test User'));
       expect(syncState.user?.photoURL, contains('googleusercontent.com'));
+    });
+
+    test('handles disabled anonymous authentication gracefully with actionable message', () async {
+      final errorClient = MockHttpClient();
+      // Mock error response for signUp
+      final failingAuthService = FirebaseAuthService(
+        client: errorClient,
+        config: testConfig,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(memoryStorage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: memoryStorage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: failingAuthService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      // Force mockHttp to return ADMIN_ONLY_OPERATION
+      errorClient.postErrorMessage = 'ADMIN_ONLY_OPERATION';
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      final success = await syncController.signInWithGoogle(
+        email: 'testuser@gmail.com',
+      );
+
+      expect(success, isFalse);
+      final syncState = container.read(syncControllerProvider);
+      expect(syncState.isSignedIn, isFalse);
+      expect(syncState.errorMessage, contains('Firebase Anonymous sign-in is disabled'));
     });
   });
 }

@@ -100,12 +100,24 @@ class FirebaseAuthService {
         await _syncUserProfile(googleUser);
         await _saveCachedUser(googleUser);
         return googleUser;
-      } catch (_) {
-        // Fall through to deterministic UID
+      } catch (e) {
+        final err = e.toString();
+        if (err.contains('ADMIN_ONLY_OPERATION')) {
+          throw Exception(
+            'Firebase Anonymous sign-in is disabled in your Firebase project. '
+            'Please go to Firebase Console > Authentication > Sign-in method and enable "Anonymous".',
+          );
+        } else if (err.contains('OPERATION_NOT_ALLOWED')) {
+          throw Exception(
+            'Authentication is not enabled in your Firebase Console. '
+            'Please go to Firebase Console > Authentication > Sign-in method to enable sign-in providers.',
+          );
+        }
+        rethrow;
       }
     }
 
-    // 3. Direct Google User session
+    // 3. Direct Google User session (offline/guest mode without cloud sync)
     final sanitizedEmail = targetEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final user = AppUser(
       uid: 'google_$sanitizedEmail',
@@ -114,7 +126,6 @@ class FirebaseAuthService {
       photoURL: 'https://lh3.googleusercontent.com/a/default-user',
       isAnonymous: false,
     );
-    await _syncUserProfile(user);
     await _saveCachedUser(user);
     return user;
   }
