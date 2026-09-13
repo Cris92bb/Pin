@@ -1,0 +1,8 @@
+{
+  "name": "Pin",
+  "description": "A lightweight, local-first Kanban and focus companion with AI breakdown and WIP limits.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

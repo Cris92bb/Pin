@@ -1,46 +1,201 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
+    Base href placeholder replaced by the value of `--base-href` in `flutter build`.
   -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="A lightweight, local-first Kanban and focus companion with AI breakdown and WIP limits.">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Open Graph & Social Cards -->
+  <meta property="og:title" content="Pin">
+  <meta property="og:description" content="A lightweight, local-first Kanban and focus companion with AI breakdown and WIP limits.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Pin">
+  <meta name="twitter:description" content="A lightweight, local-first Kanban and focus companion with AI breakdown and WIP limits.">
+
+  <!-- iOS & PWA meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="pin">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pin">
+  <meta name="theme-color" content="#0B0F17" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F8FAFC" media="(prefers-color-scheme: light)">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Performance preconnects -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>pin</title>
+  <title>Pin</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --fg: #0F172A;
+      --sub: #64748B;
+      --accent-start: #4F46E5;
+      --accent-end: #38BDF8;
+      --bar-bg: rgba(0, 0, 0, 0.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0B0F17;
+        --fg: #F1F5F9;
+        --sub: #94A3B8;
+        --accent-start: #38BDF8;
+        --accent-end: #818CF8;
+        --bar-bg: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    #pin-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--bg);
+      z-index: 99999;
+      transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .pin-splash-fade-out {
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .pin-splash-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .pin-splash-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.35);
+      animation: pin-pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pin-pulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.35);
+      }
+      50% {
+        transform: scale(1.04);
+        box-shadow: 0 14px 32px -4px rgba(99, 102, 241, 0.45);
+      }
+    }
+
+    .pin-splash-title {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--fg);
+    }
+
+    .pin-splash-subtitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--sub);
+      margin: 0;
+      letter-spacing: 0.02em;
+    }
+
+    .pin-splash-progress {
+      width: 140px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--bar-bg);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .pin-splash-bar {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-start), var(--accent-end));
+      border-radius: 999px;
+      animation: pin-indeterminate 1.4s infinite ease-in-out;
+    }
+
+    @keyframes pin-indeterminate {
+      0% {
+        left: -100%;
+        width: 30%;
+      }
+      50% {
+        left: 20%;
+        width: 70%;
+      }
+      100% {
+        left: 100%;
+        width: 30%;
+      }
+    }
+
+    #pin-splash-error {
+      display: none;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #EF4444;
+      font-weight: 500;
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="pin-splash" role="status" aria-live="polite">
+    <div class="pin-splash-brand">
+      <div class="pin-splash-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="17" x2="12" y2="22"></line>
+          <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.89A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+        </svg>
+      </div>
+      <h1 class="pin-splash-title">Pin</h1>
+      <p class="pin-splash-subtitle">Local-first Kanban &amp; Focus Board</p>
+    </div>
+    <div class="pin-splash-progress">
+      <div class="pin-splash-bar"></div>
+    </div>
+    <div id="pin-splash-error"></div>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
