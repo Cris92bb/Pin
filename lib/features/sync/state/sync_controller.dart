@@ -213,7 +213,16 @@ class SyncController extends StateNotifier<SyncState> {
     await _executeCloudSync(tasks);
   }
 
-  /// Called when a user successfully authenticates. Coordinates cloud hydration.
+  /// Called when a user successfully authenticates. Coordinates cloud hydration
+  /// using a **three-way merge** so neither device silently loses its tasks.
+  ///
+  /// Merge rules (per task ID):
+  ///   1. Task exists on both sides → keep the version with the later [updatedAt].
+  ///   2. Task only in cloud       → add it (created on another device).
+  ///   3. Task only in local       → keep it (not yet synced to cloud).
+  ///
+  /// After merging the unified list is immediately pushed to Firestore so every
+  /// device that signs in next will see the correct merged state.
   Future<void> _onUserAuthenticated(AppUser user) async {
     state = state.copyWith(
       user: user,
@@ -222,41 +231,80 @@ class SyncController extends StateNotifier<SyncState> {
     );
 
     try {
-      // 1. Load board from Cloud Firestore
+      // 1. Fetch cloud snapshot.
       final cloudBoard = await firestoreService.loadBoardFromFirestore(
         userId: user.uid,
         idToken: user.idToken,
       );
 
       final taskNotifier = _ref.read(taskStateProvider.notifier);
+      final localTasks = _ref.read(taskStateProvider).tasks;
 
-      if (cloudBoard != null && cloudBoard.tasks.isNotEmpty) {
-        // Cloud has tasks: hydrate board from cloud
-        final cloudTasks = cloudBoard.tasks.map((m) => PinTask.fromJson(m)).toList();
-        await taskNotifier.hydrateFromCloud(cloudTasks);
-
-        DailyCheckin? checkin;
-        if (cloudBoard.dailyCheckin != null && cloudBoard.dailyCheckin!.isNotEmpty) {
-          checkin = DailyCheckin.fromJson(cloudBoard.dailyCheckin!);
-        }
-
+      if (cloudBoard == null || cloudBoard.tasks.isEmpty) {
+        // New account or empty cloud — seed cloud with local tasks.
+        await _executeCloudSync(localTasks);
         state = state.copyWith(
           user: user,
           status: SyncStatus.synced,
-          lastSyncedAt: cloudBoard.lastSyncedAt,
-          dailyCheckin: checkin,
-          syncedTaskCount: cloudTasks.length,
+          lastSyncedAt: DateTime.now().millisecondsSinceEpoch,
+          syncedTaskCount: localTasks.length,
         );
-      } else {
-        // New account or empty cloud board: seed cloud with existing local tasks
-        final currentLocalTasks = _ref.read(taskStateProvider).tasks;
-        await _executeCloudSync(currentLocalTasks);
+        return;
       }
+
+      // 2. Parse cloud tasks.
+      final cloudTasks = cloudBoard.tasks
+          .map((m) => PinTask.fromJson(m))
+          .toList();
+
+      // 3. Merge: build a map keyed by task ID, starting from local.
+      final Map<String, PinTask> merged = {
+        for (final t in localTasks) t.id: t,
+      };
+
+      // For each cloud task: if the same ID already exists locally, keep
+      // whichever was updated more recently; otherwise add the cloud task.
+      for (final cloudTask in cloudTasks) {
+        final local = merged[cloudTask.id];
+        if (local == null) {
+          // Task exists only in cloud (created on another device) → add it.
+          merged[cloudTask.id] = cloudTask;
+        } else if (cloudTask.updatedAt.isAfter(local.updatedAt)) {
+          // Cloud version is newer → prefer cloud.
+          merged[cloudTask.id] = cloudTask;
+        }
+        // else: local version is newer or equal → keep local (already in map).
+      }
+
+      final mergedList = merged.values.toList();
+
+      // 4. Apply merged list to local storage.
+      await taskNotifier.hydrateFromCloud(mergedList);
+
+      // 5. Restore daily check-in from cloud if available.
+      DailyCheckin? checkin;
+      if (cloudBoard.dailyCheckin != null &&
+          cloudBoard.dailyCheckin!.isNotEmpty) {
+        checkin = DailyCheckin.fromJson(cloudBoard.dailyCheckin!);
+      }
+
+      state = state.copyWith(
+        user: user,
+        status: SyncStatus.synced,
+        lastSyncedAt: cloudBoard.lastSyncedAt,
+        dailyCheckin: checkin,
+        syncedTaskCount: mergedList.length,
+      );
+
+      // 6. Push the merged result back to Firestore immediately so the next
+      //    device that signs in gets the unified set.
+      await _executeCloudSync(mergedList);
+
     } catch (e) {
       state = state.copyWith(
         user: user,
         status: SyncStatus.error,
-        errorMessage: 'Failed to hydrate from cloud: ${e.toString()}',
+        errorMessage: 'Sync merge failed: ${e.toString()}',
       );
     }
   }
