@@ -7,6 +7,8 @@ import 'package:pin/entities/task/model/pin_task.dart';
 import 'package:pin/entities/task/state/task_state_notifier.dart';
 import 'package:pin/features/focus_mode/ui/focus_mode_view.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
+import 'package:pin/shared/ui/pin_button.dart';
+import 'package:pin/shared/ui/pin_tokens.dart';
 
 void main() {
   testWidgets('FocusModeView initializes timer, toggles steps, and completes task',
@@ -65,6 +67,20 @@ void main() {
     await tester.tap(find.text('Pause'));
     await tester.pump();
     expect(find.text('Resume'), findsOneWidget);
+    expect(find.text('Reset'), findsOneWidget);
+
+    // Verify both Resume and Reset buttons are identical in size
+    final resumeSize =
+        tester.getSize(find.widgetWithText(PinButton, 'Resume'));
+    final resetSize =
+        tester.getSize(find.widgetWithText(PinButton, 'Reset'));
+    expect(resumeSize.width, equals(resetSize.width));
+    expect(resumeSize.height, equals(resetSize.height));
+
+    // Tap Reset and verify timer resets
+    await tester.tap(find.text('Reset'));
+    await tester.pump();
+    expect(find.text('00:00'), findsOneWidget);
 
     // Toggle subtask checkbox
     final firstCheckbox = find.byType(InkWell).first;
@@ -83,5 +99,63 @@ void main() {
     // Wait for celebration delay
     await tester.pump(const Duration(seconds: 1));
     expect(hasExited, isTrue);
+  });
+
+  testWidgets('FocusModeView renders cleanly with Light Mode theme',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final now = DateTime.now();
+    final task = PinTask(
+      id: 'task_light_focus',
+      title: 'Light Mode Focus Task',
+      description: 'Verifying light mode background and text colors',
+      status: TaskStatus.today,
+      energyTag: 'deep-focus',
+      estimatedMinutes: 25,
+      trackedSeconds: 60,
+      subtasks: const [
+        AtomicStep(id: 's1', title: 'Light Subtask 1', isCompleted: false),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final fakeStorage = MemoryStorageAdapter([task.toJson()]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.lightTheme,
+          home: FocusModeView(
+            task: task,
+            onExit: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // Verify Focus Mode UI in light mode
+    expect(find.text('SINGLE-TASK IMMERSION'), findsOneWidget);
+    expect(find.text('Light Mode Focus Task'), findsOneWidget);
+    expect(find.text('01:00'), findsOneWidget);
+
+    // Verify scaffold uses lightPhoneFrameBg in light mode
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    expect(scaffold.backgroundColor, equals(PinTokens.lightPhoneFrameBg));
+
+    // Verify Pause and Reset buttons
+    expect(find.text('Pause'), findsOneWidget);
+    expect(find.text('Reset'), findsOneWidget);
+    final pauseSize = tester.getSize(find.widgetWithText(PinButton, 'Pause'));
+    final resetSize = tester.getSize(find.widgetWithText(PinButton, 'Reset'));
+    expect(pauseSize.width, equals(resetSize.width));
+    expect(pauseSize.height, equals(resetSize.height));
   });
 }

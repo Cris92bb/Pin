@@ -176,6 +176,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     final totalSteps = _currentTask.totalSubtasksCount;
     final completedSteps = _currentTask.completedSubtasksCount;
     final progress = _currentTask.subtaskProgress;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Focus(
       focusNode: _keyboardFocusNode,
@@ -195,12 +196,13 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
         return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: PinTokens.canvasBg,
+        backgroundColor:
+            isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightPhoneFrameBg,
         body: SafeArea(
           child: AnimatedSwitcher(
             duration: PinTokens.animNormal,
             child: _isCompletedState
-                ? _buildCelebrationView()
+                ? _buildCelebrationView(isDark)
                 : _buildImmersiveView(
                     totalElapsedSeconds,
                     totalSteps,
@@ -213,7 +215,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     );
   }
 
-  Widget _buildCelebrationView() {
+  Widget _buildCelebrationView(bool isDark) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -232,20 +234,24 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Task Completed!',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w700,
-              color: PinTokens.textPrimary,
+              color: isDark
+                  ? PinTokens.darkTextPrimary
+                  : PinTokens.lightTextPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Great execution momentum. Returning to board...',
             style: TextStyle(
               fontSize: 14,
-              color: PinTokens.textSecondary,
+              color: isDark
+                  ? PinTokens.darkTextSecondary
+                  : PinTokens.lightTextSecondary,
             ),
           ),
         ],
@@ -263,6 +269,25 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 480;
         final isVeryNarrow = constraints.maxWidth < 360;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        final textPrimary =
+            isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+        final textSecondary =
+            isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+        final textMuted =
+            isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted;
+        final borderSubtle =
+            isDark ? PinTokens.darkBorderSubtle : PinTokens.lightBorderSubtle;
+        final borderDefault =
+            isDark ? PinTokens.borderDefault : PinTokens.lightBorderSubtle;
+
+        final timerCardBg =
+            isDark ? PinTokens.surfaceColumn : const Color(0xFFF8FAFC);
+        final checklistCardBg = isDark
+            ? PinTokens.surfaceColumn.withValues(alpha: 0.6)
+            : const Color(0xFFF8FAFC);
+        final inputBg = isDark ? PinTokens.surfaceCard : Colors.white;
 
         return Column(
           children: [
@@ -272,8 +297,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                 horizontal: isNarrow ? PinTokens.space12 : PinTokens.space24,
                 vertical: PinTokens.space12,
               ),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: PinTokens.borderSubtle)),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: borderSubtle)),
               ),
               child: Row(
                 children: [
@@ -288,10 +313,10 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: PinTokens.accentViolet.withValues(alpha: 0.15),
+                      color: PinTokens.accentViolet.withValues(alpha: isDark ? 0.15 : 0.10),
                       borderRadius: PinTokens.radiusFull,
                       border: Border.all(
-                        color: PinTokens.accentViolet.withValues(alpha: 0.6),
+                        color: PinTokens.accentViolet.withValues(alpha: isDark ? 0.6 : 0.4),
                         width: 1,
                       ),
                     ),
@@ -309,10 +334,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                         const SizedBox(width: 6),
                         Text(
                           isNarrow ? 'FOCUS' : 'SINGLE-TASK IMMERSION',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: PinTokens.accentViolet,
+                            color: isDark
+                                ? PinTokens.accentViolet
+                                : const Color(0xFF6D28D9),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -383,10 +410,10 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                         Text(
                           _currentTask.title,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
-                            color: PinTokens.textPrimary,
+                            color: textPrimary,
                             letterSpacing: -0.5,
                             height: 1.25,
                           ),
@@ -396,9 +423,9 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                           Text(
                             _currentTask.description,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
-                              color: PinTokens.textSecondary,
+                              color: textSecondary,
                             ),
                           ),
                         ],
@@ -411,12 +438,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                             vertical: 20,
                           ),
                           decoration: BoxDecoration(
-                            color: PinTokens.surfaceColumn,
+                            color: timerCardBg,
                             borderRadius: PinTokens.radiusLg,
                             border: Border.all(
                               color: _isRunning
-                                  ? PinTokens.accentViolet.withValues(alpha: 0.5)
-                                  : PinTokens.borderDefault,
+                                  ? PinTokens.accentViolet.withValues(alpha: isDark ? 0.5 : 0.7)
+                                  : borderDefault,
                               width: 1.5,
                             ),
                           ),
@@ -424,11 +451,11 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                             children: [
                               Text(
                                 DateHelpers.formatSeconds(totalElapsedSeconds),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 52,
                                   fontWeight: FontWeight.w700,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                  color: PinTokens.textPrimary,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                  color: textPrimary,
                                   letterSpacing: 2.0,
                                 ),
                               ),
@@ -441,8 +468,10 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                   color: _isRunning
-                                      ? PinTokens.accentViolet
-                                      : PinTokens.textMuted,
+                                      ? (isDark
+                                          ? PinTokens.accentViolet
+                                          : const Color(0xFF6D28D9))
+                                      : textMuted,
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -459,13 +488,14 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                     variant: _isRunning
                                         ? PinButtonVariant.secondary
                                         : PinButtonVariant.primary,
+                                    width: 120,
                                     onPressed: _toggleTimer,
                                   ),
                                   PinButton(
                                     icon: Icons.refresh_rounded,
-                                    text: 'Reset Session',
-                                    variant: PinButtonVariant.ghost,
-                                    isCompact: true,
+                                    text: 'Reset',
+                                    variant: PinButtonVariant.secondary,
+                                    width: 120,
                                     onPressed: () {
                                       setState(() => _sessionSeconds = 0);
                                     },
@@ -482,10 +512,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(PinTokens.space16),
                           decoration: BoxDecoration(
-                            color: PinTokens.surfaceColumn.withValues(alpha: 0.6),
+                            color: checklistCardBg,
                             borderRadius: PinTokens.radiusMd,
                             border: Border.all(
-                              color: PinTokens.borderDefault.withValues(alpha: 0.7),
+                              color: isDark
+                                  ? PinTokens.borderDefault.withValues(alpha: 0.7)
+                                  : borderSubtle,
                               width: 1,
                             ),
                           ),
@@ -496,12 +528,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Atomic Subtasks',
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: PinTokens.textSecondary,
+                                      color: textSecondary,
                                     ),
                                   ),
                                   if (totalSteps > 0)
@@ -512,7 +544,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                         fontWeight: FontWeight.w600,
                                         color: completedSteps == totalSteps
                                             ? PinTokens.accentEmerald
-                                            : PinTokens.textMuted,
+                                            : textMuted,
                                       ),
                                     ),
                                 ],
@@ -524,7 +556,9 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                   child: LinearProgressIndicator(
                                     value: progress,
                                     minHeight: 4,
-                                    backgroundColor: PinTokens.canvasBg,
+                                    backgroundColor: isDark
+                                        ? PinTokens.canvasBg
+                                        : const Color(0xFFE5E7EB),
                                     valueColor: const AlwaysStoppedAnimation<Color>(
                                       PinTokens.accentEmerald,
                                     ),
@@ -535,14 +569,14 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
 
                               // Steps list
                               if (_currentTask.subtasks.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
                                   child: Center(
                                     child: Text(
                                       'No subtasks yet. Break this task into bite-sized steps below.',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: PinTokens.textMuted,
+                                        color: textMuted,
                                       ),
                                     ),
                                   ),
@@ -572,27 +606,40 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                   Expanded(
                                     child: TextField(
                                       controller: _stepController,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: PinTokens.textPrimary,
+                                        color: textPrimary,
                                       ),
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                         hintText: 'Add micro-step (<= 15m)...',
                                         hintStyle: TextStyle(
-                                          color: PinTokens.textMuted,
+                                          color: textMuted,
                                           fontSize: 12,
                                         ),
                                         filled: true,
-                                        fillColor: PinTokens.surfaceCard,
+                                        fillColor: inputBg,
                                         isDense: true,
-                                        contentPadding: EdgeInsets.symmetric(
+                                        contentPadding: const EdgeInsets.symmetric(
                                           horizontal: 10,
                                           vertical: 8,
                                         ),
                                         border: OutlineInputBorder(
                                           borderRadius: PinTokens.radiusMd,
                                           borderSide: BorderSide(
-                                            color: PinTokens.borderDefault,
+                                            color: borderDefault,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: PinTokens.radiusMd,
+                                          borderSide: BorderSide(
+                                            color: borderDefault,
+                                          ),
+                                        ),
+                                        focusedBorder: const OutlineInputBorder(
+                                          borderRadius: PinTokens.radiusMd,
+                                          borderSide: BorderSide(
+                                            color: PinTokens.accentViolet,
+                                            width: 1.5,
                                           ),
                                         ),
                                       ),

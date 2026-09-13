@@ -19,18 +19,42 @@ class AtomicStepTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final tileBg = step.isCompleted
+        ? (isDark
+            ? PinTokens.canvasBg.withValues(alpha: 0.3)
+            : const Color(0xFFF3F4F6).withValues(alpha: 0.6))
+        : (isDark
+            ? PinTokens.surfaceCard.withValues(alpha: 0.5)
+            : Colors.white);
+
+    final borderColor = step.isCompleted
+        ? (isDark ? PinTokens.borderSubtle : PinTokens.lightBorderSubtle)
+        : (isDark
+            ? PinTokens.borderDefault.withValues(alpha: 0.5)
+            : PinTokens.lightBorderSubtle);
+
+    final textPrimary =
+        isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+    final textSecondary =
+        isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+    final textMuted =
+        isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted;
+
+    final badgeBg = isDark ? PinTokens.canvasBg : const Color(0xFFF3F4F6);
+    final badgeBorder =
+        isDark ? PinTokens.borderSubtle : PinTokens.lightBorderSubtle;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: step.isCompleted
-            ? PinTokens.canvasBg.withValues(alpha: 0.3)
-            : PinTokens.surfaceCard.withValues(alpha: 0.5),
+        color: tileBg,
         borderRadius: PinTokens.radiusMd,
         border: Border.all(
-          color: step.isCompleted
-              ? PinTokens.borderSubtle
-              : PinTokens.borderDefault.withValues(alpha: 0.5),
+          color: borderColor,
           width: 1,
         ),
       ),
@@ -54,7 +78,7 @@ class AtomicStepTile extends StatelessWidget {
                 border: Border.all(
                   color: step.isCompleted
                       ? PinTokens.accentEmerald
-                      : PinTokens.textMuted,
+                      : textMuted,
                   width: 1.5,
                 ),
               ),
@@ -77,11 +101,11 @@ class AtomicStepTile extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: step.isCompleted
-                    ? PinTokens.textMuted
-                    : PinTokens.textPrimary,
+                    ? textMuted
+                    : textPrimary,
                 decoration:
                     step.isCompleted ? TextDecoration.lineThrough : null,
-                decorationColor: PinTokens.textMuted,
+                decorationColor: textMuted,
               ),
             ),
           ),
@@ -90,16 +114,16 @@ class AtomicStepTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: PinTokens.canvasBg,
+              color: badgeBg,
               borderRadius: PinTokens.radiusFull,
-              border: Border.all(color: PinTokens.borderSubtle, width: 1),
+              border: Border.all(color: badgeBorder, width: 1),
             ),
             child: Text(
               '${step.estimatedMinutes}m',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: PinTokens.textSecondary,
+                color: textSecondary,
               ),
             ),
           ),
@@ -110,12 +134,12 @@ class AtomicStepTile extends StatelessWidget {
             InkWell(
               onTap: onDelete,
               borderRadius: PinTokens.radiusSm,
-              child: const Padding(
-                padding: EdgeInsets.all(2.0),
+              child: Padding(
+                padding: const EdgeInsets.all(2.0),
                 child: Icon(
                   Icons.close_rounded,
                   size: 16,
-                  color: PinTokens.textMuted,
+                  color: textMuted,
                 ),
               ),
             ),

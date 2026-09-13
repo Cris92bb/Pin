@@ -12,6 +12,8 @@ class PinButton extends StatefulWidget {
   final bool isCompact;
   final String? tooltip;
 
+  final double? width;
+
   const PinButton({
     super.key,
     this.text,
@@ -20,6 +22,7 @@ class PinButton extends StatefulWidget {
     this.variant = PinButtonVariant.secondary,
     this.isCompact = false,
     this.tooltip,
+    this.width,
   });
 
   const PinButton.primary({
@@ -29,6 +32,7 @@ class PinButton extends StatefulWidget {
     required this.onPressed,
     this.isCompact = false,
     this.tooltip,
+    this.width,
   })  : variant = PinButtonVariant.primary;
 
   const PinButton.icon({
@@ -38,6 +42,7 @@ class PinButton extends StatefulWidget {
     this.variant = PinButtonVariant.ghost,
     this.isCompact = true,
     this.tooltip,
+    this.width,
   })  : text = null;
 
   @override
@@ -49,6 +54,9 @@ class _PinButtonState extends State<PinButton> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     Color bg;
     Color fg;
     Color border;
@@ -62,29 +70,54 @@ class _PinButtonState extends State<PinButton> {
         border = Colors.transparent;
         break;
       case PinButtonVariant.secondary:
-        bg = _isHovered ? PinTokens.surfaceCardHover : PinTokens.surfaceCard;
-        fg = PinTokens.textPrimary;
-        border = _isHovered ? PinTokens.borderFocus : PinTokens.borderDefault;
+        if (isDark) {
+          bg = _isHovered ? PinTokens.surfaceCardHover : PinTokens.surfaceCard;
+          fg = PinTokens.darkTextPrimary;
+          border = _isHovered ? PinTokens.borderFocus : PinTokens.borderDefault;
+        } else {
+          bg = _isHovered ? const Color(0xFFE5E7EB) : const Color(0xFFF3F4F6);
+          fg = PinTokens.lightTextPrimary;
+          border = _isHovered ? PinTokens.lightBorder : PinTokens.lightBorderSubtle;
+        }
         break;
       case PinButtonVariant.ghost:
-        bg = _isHovered
-            ? PinTokens.surfaceCardHover.withValues(alpha: 0.6)
-            : Colors.transparent;
-        fg = _isHovered ? PinTokens.textPrimary : PinTokens.textSecondary;
-        border = Colors.transparent;
+        if (isDark) {
+          bg = _isHovered
+              ? PinTokens.surfaceCardHover.withValues(alpha: 0.6)
+              : Colors.transparent;
+          fg = _isHovered ? PinTokens.darkTextPrimary : PinTokens.darkTextSecondary;
+          border = Colors.transparent;
+        } else {
+          bg = _isHovered
+              ? const Color(0xFFE5E7EB).withValues(alpha: 0.6)
+              : Colors.transparent;
+          fg = _isHovered ? PinTokens.lightTextPrimary : PinTokens.lightTextSecondary;
+          border = Colors.transparent;
+        }
         break;
       case PinButtonVariant.danger:
-        bg = _isHovered
-            ? PinTokens.accentRose.withValues(alpha: 0.25)
-            : PinTokens.accentRose.withValues(alpha: 0.12);
-        fg = PinTokens.accentRose;
-        border = PinTokens.accentRose.withValues(alpha: 0.4);
+        if (isDark) {
+          bg = _isHovered
+              ? PinTokens.accentRose.withValues(alpha: 0.25)
+              : PinTokens.accentRose.withValues(alpha: 0.12);
+          fg = PinTokens.accentRose;
+          border = PinTokens.accentRose.withValues(alpha: 0.4);
+        } else {
+          bg = _isHovered
+              ? const Color(0xFFFEE2E2)
+              : const Color(0xFFFEF2F2);
+          fg = PinTokens.accentRose;
+          border = PinTokens.accentRose.withValues(alpha: 0.3);
+        }
         break;
     }
 
     final verticalPadding = widget.isCompact ? 6.0 : 9.0;
-    final horizontalPadding =
-        widget.text == null ? verticalPadding : (widget.isCompact ? 10.0 : 14.0);
+    final horizontalPadding = widget.width != null
+        ? 6.0
+        : (widget.text == null
+            ? verticalPadding
+            : (widget.isCompact ? 10.0 : 14.0));
 
     Widget button = MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -96,6 +129,8 @@ class _PinButtonState extends State<PinButton> {
         onTap: widget.onPressed,
         child: AnimatedContainer(
           duration: PinTokens.animFast,
+          width: widget.width,
+          alignment: widget.width != null ? Alignment.center : null,
           padding: EdgeInsets.symmetric(
             vertical: verticalPadding,
             horizontal: horizontalPadding,
