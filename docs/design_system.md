@@ -144,3 +144,33 @@ Pin uses a clean, modern sans-serif system typeface (`fontFamily: 'sans-serif'`)
 | Secondary Typography| `lightTextSecondary`| `#5F6D64` | `darkTextSecondary`| `#94A3B8` |
 | Tertiary / Icons | `lightTextTertiary` | `#8E9C92` | `darkTextMuted` | `#64748B` |
 | Action Accent (FAB) | `lightFabBg` | `#2B3B32` | `accentEmerald` | `#10B981` |
+
+---
+
+## 7. Smartwatch & Wear OS Design Specification
+
+When running on Wear OS devices (e.g. Pixel Watch, Galaxy Watch), Pin shifts to an ultra-compact, tactile wrist companion interface (`WearableHomePage`):
+
+### 7.1 OLED Dark-First Palette
+- **Canvas Backdrop**: Pure `#000000` (true OLED black) to maximize battery longevity and blend seamlessly into circular smartwatch bezels.
+- **Card Surfaces**: Deep charcoal `#1B1D1C` and container `#141916` with low-opacity sage borders (`PinTokens.accentSage.withValues(alpha: 0.25)`).
+- **Accents**: 
+  - `PinTokens.accentEmerald` (`#10B981`) for completed pins and verified sync status.
+  - `PinTokens.accentSage` (`#A3B899`) for primary interactive controls, hero focus triggers, and Google authentication.
+
+### 7.2 Multi-Line Compact Typography
+To optimize the limited screen real estate on circular displays ($\sim 1.2" - 1.4"$), typography uses tight line heights and multi-line wrapping:
+- **Task Titles**: `11px` (compact) to `12px` (hero), `FontWeight.w700`, `maxLines: 2`, `height: 1.15`.
+- **Task Descriptions**: `9.5px`, `FontWeight.w400`, `maxLines: 3`, `height: 1.18` in `Colors.white70`.
+- **Badges & Metadata**: `8.5px` to `9.5px` uppercase tracking for energy tags and subtask counts.
+
+### 7.3 Edge-to-Edge Spatial Geometry
+- **Horizontal Width**: Full-bleed edge layout with minimal `6.0px` side margin, ensuring cards utilize maximum screen width.
+- **Vertical Safe Insets**: Preserves system top/bottom chin margins (`safePadding.top`, `safePadding.bottom + 8.0`) to avoid cut-off content on round displays.
+- **Corner Radii**: Rounded `10px` to `16px` corners matching the circular geometry of the chassis.
+
+### 7.4 Gesture & Navigation Constraints
+- **`LeftOnlyPageScrollPhysics`**: Restricts carousel swiping to leftward forward motion only (`offset <= 0`), preventing conflicts with the Wear OS system-level left-edge swipe-to-dismiss gesture.
+- **Infinite Carousel Loop**: 4-page sequence (`Today -> Backlog -> Completed -> Account -> Today...`).
+- **Input Sanitization**: Virtual keyboard inputs for email explicitly enforce `textCapitalization: TextCapitalization.none` and `autocorrect: false` to guarantee credential parity across devices.
+
