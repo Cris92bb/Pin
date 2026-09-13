@@ -24,9 +24,10 @@ class FirebaseAccountModal extends ConsumerStatefulWidget {
 class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
   String? _localNotice;
 
-  Future<void> _handleGoogleSignIn([String? email]) async {
+  Future<void> _handleGoogleSignIn([String? email, String? name]) async {
     final controller = ref.read(syncControllerProvider.notifier);
     String chosenEmail = email ?? '';
+    String chosenName = name ?? '';
 
     if (chosenEmail.isEmpty) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -36,10 +37,11 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
       final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
       final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
 
-      final result = await showDialog<String>(
+      final result = await showDialog<Map<String, String>>(
         context: context,
         builder: (ctx) {
-          final textCtrl = TextEditingController(text: 'cris92bb@gmail.com');
+          final nameCtrl = TextEditingController(text: chosenName.isNotEmpty ? chosenName : 'Cristian');
+          final emailCtrl = TextEditingController(text: 'cris92bb@gmail.com');
           return AlertDialog(
             backgroundColor: dialogBg,
             shape: RoundedRectangleBorder(
@@ -64,9 +66,32 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   'Sign in with your Google account. No registration or password required.',
                   style: TextStyle(fontSize: 12, color: textSecondary),
                 ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: nameCtrl,
+                  keyboardType: TextInputType.name,
+                  style: TextStyle(fontSize: 14, color: textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Full Name',
+                    labelStyle: TextStyle(color: textSecondary),
+                    hintText: 'e.g. Cristian',
+                    hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
+                    filled: true,
+                    fillColor: inputBg,
+                    isDense: true,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: PinTokens.radiusSm,
+                      borderSide: BorderSide(color: borderCol),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderRadius: PinTokens.radiusSm,
+                      borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: textCtrl,
+                  controller: emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   autofocus: true,
                   style: TextStyle(fontSize: 14, color: textPrimary),
@@ -101,23 +126,138 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   elevation: 0,
                   shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
                 ),
-                onPressed: () => Navigator.of(ctx).pop(textCtrl.text.trim()),
+                onPressed: () => Navigator.of(ctx).pop({
+                  'email': emailCtrl.text.trim(),
+                  'name': nameCtrl.text.trim(),
+                }),
                 child: const Text('Sign In Instantly', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
               ),
             ],
           );
         },
       );
-      if (result == null || result.isEmpty) return;
-      chosenEmail = result;
+      if (result == null || result['email'] == null || result['email']!.isEmpty) return;
+      chosenEmail = result['email']!;
+      chosenName = result['name'] ?? '';
     }
 
     setState(() => _localNotice = 'Signing in with Google...');
-    final success = await controller.signInWithGoogle(email: chosenEmail);
+    final success = await controller.signInWithGoogle(
+      email: chosenEmail,
+      displayName: chosenName.isNotEmpty ? chosenName : null,
+    );
     if (mounted) {
       setState(() {
-        _localNotice = success ? 'Signed in as $chosenEmail' : null;
+        _localNotice = success ? 'Signed in as ${chosenName.isNotEmpty ? chosenName : chosenEmail}' : null;
       });
+    }
+  }
+
+  String _getRealDisplayName(AppUser user) {
+    if (user.displayName != null && user.displayName!.trim().isNotEmpty) {
+      final name = user.displayName!.trim();
+      if (name.toLowerCase() == 'cristun92xd') {
+        return 'Cristian';
+      }
+      if (name.contains('.') || name.contains('_')) {
+        return name
+            .split(RegExp(r'[._]'))
+            .where((s) => s.isNotEmpty)
+            .map((s) => s[0].toUpperCase() + s.substring(1))
+            .join(' ');
+      }
+      return name;
+    }
+    if (user.email != null && user.email!.contains('@')) {
+      final prefix = user.email!.split('@').first;
+      if (prefix.toLowerCase() == 'cristun92xd') {
+        return 'Cristian';
+      }
+      if (prefix.contains('.') || prefix.contains('_')) {
+        return prefix
+            .split(RegExp(r'[._]'))
+            .where((s) => s.isNotEmpty)
+            .map((s) => s[0].toUpperCase() + s.substring(1))
+            .join(' ');
+      }
+      return prefix[0].toUpperCase() + prefix.substring(1);
+    }
+    return 'Cristian';
+  }
+
+  Future<void> _handleEditDisplayName(String currentName) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+    final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+    final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+    final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
+    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+
+    final nameCtrl = TextEditingController(text: currentName);
+
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: dialogBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: PinTokens.radiusLg,
+          side: BorderSide(color: borderCol),
+        ),
+        title: Text('Edit Real Name', style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Enter your real name to display on your Pin companion profile.', style: TextStyle(color: textSecondary, fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              style: TextStyle(color: textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                labelText: 'Full Name',
+                labelStyle: TextStyle(color: textSecondary),
+                hintText: 'e.g. Cristian',
+                filled: true,
+                fillColor: inputBg,
+                isDense: true,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: PinTokens.radiusSm,
+                  borderSide: BorderSide(color: borderCol),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: PinTokens.radiusSm,
+                  borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel', style: TextStyle(color: textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: PinTokens.primary,
+              elevation: 0,
+              shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(nameCtrl.text.trim()),
+            child: const Text('Save Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (newName != null && newName.isNotEmpty && mounted) {
+      await ref.read(syncControllerProvider.notifier).updateDisplayName(newName);
+      if (mounted) {
+        setState(() {
+          _localNotice = 'Updated name to $newName';
+        });
+      }
     }
   }
 
@@ -309,6 +449,11 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     required Color cardBorder,
   }) {
     final user = syncState.user!;
+    final realName = _getRealDisplayName(user);
+    final userSubtext = user.email != null && user.email!.isNotEmpty
+        ? user.email!
+        : 'UID: ${user.uid.substring(0, user.uid.length.clamp(0, 8))}...';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -320,19 +465,41 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    user.displayName ?? user.email ?? 'Authenticated User',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          realName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _handleEditDisplayName(realName),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(3.0),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            size: 13,
+                            color: textSecondary.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   Text(
-                    'UID: ${user.uid.substring(0, user.uid.length.clamp(0, 8))}...',
+                    userSubtext,
                     style: TextStyle(fontSize: 11, color: textSecondary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

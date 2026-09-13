@@ -304,6 +304,17 @@ class SyncController extends StateNotifier<SyncState> {
     );
   }
 
+  /// Updates the user's real / display name across local session and Cloud Firestore.
+  Future<void> updateDisplayName(String newName) async {
+    final user = state.user;
+    if (user == null) return;
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty) return;
+    final updated = user.copyWith(displayName: trimmed);
+    await authService.updateUserProfile(updated);
+    state = state.copyWith(user: updated);
+  }
+
   /// Deletes user board from Firestore, user profile doc, and auth account.
   Future<bool> deleteAccountAndCloudData() async {
     final user = state.user;

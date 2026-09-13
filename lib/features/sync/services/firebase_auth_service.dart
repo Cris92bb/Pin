@@ -282,6 +282,12 @@ class FirebaseAuthService {
     }
   }
 
+  /// Updates user profile details (such as displayName) and syncs to Firestore & local cache.
+  Future<void> updateUserProfile(AppUser user) async {
+    await _syncUserProfile(user);
+    await _saveCachedUser(user);
+  }
+
   /// Deletes user document from Firestore and deletes account in Firebase Auth (GDPR right-to-erasure).
   Future<void> deleteUserAccount(AppUser user) async {
     _ensureConfigured();
