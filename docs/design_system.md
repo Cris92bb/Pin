@@ -93,11 +93,16 @@ Pin uses a clean, modern sans-serif system typeface (`fontFamily: 'sans-serif'`)
 ### 5.2 Task Cards
 1. **Card Container**:
    - Background: `PinTokens.lightCardBg` (`#EFF3EA`).
-   - Outline: `PinTokens.lightBorder` (`#D4DCCE`), `width: 1.0`.
+   - Border: No border in light mode (`border: null`), keeping the card seamless. (Dark mode uses `PinTokens.darkBorder`, width: 1.6).
+   - Elevation Shadow: Multi-layered soft ambient shadow (`PinTokens.lightCardShadow`):
+     - Layer 1: `BoxShadow(color: Color(0xFF1A241E).withValues(alpha: 0.04), blurRadius: 4, offset: Offset(0, 1))`
+     - Layer 2: `BoxShadow(color: Color(0xFF1A241E).withValues(alpha: 0.07), blurRadius: 16, spreadRadius: -2, offset: Offset(0, 4))`
 2. **Checkbox Radio**:
    - Unchecked: `border: 1.5px PinTokens.lightTextTertiary` (`#8E9C92`), background: transparent.
    - Checked: `color: PinTokens.lightFabBg` (`#2B3B32`), icon: white check (`size: 14`).
-3. **Icon Actions**:
+3. **Category Tags**:
+   - Split whitespace/newlines cleanly into individual rounded mini-pills (`#E2E9DC` fill, `#5F6D64` text, radius: 6).
+4. **Icon Actions**:
    - Unpin and delete icons: `PinTokens.lightTextTertiary` (`#8E9C92`).
 
 ### 5.3 Focus Mode View

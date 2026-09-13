@@ -56,10 +56,21 @@ class AtomicStepTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: tileBg,
         borderRadius: PinTokens.radiusMd,
-        border: Border.all(
-          color: borderColor,
-          width: 1,
-        ),
+        border: isDark
+            ? Border.all(
+                color: borderColor,
+                width: 1,
+              )
+            : null,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF1A241E).withValues(alpha: 0.04),
+                  blurRadius: 5,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       child: Row(
         children: [

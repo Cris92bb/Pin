@@ -31,8 +31,9 @@ When creating or modifying light mode UI components, never use generic cold gray
 - **Grab Handle**: Center pill (36x4px) tinted with `#8E9C92` (`PinTokens.lightTextTertiary`).
 
 ### Task & Step Cards
-- **Card Surfaces**: Always use `#EFF3EA` (`PinTokens.lightCardBg`) with 1.0px `#D4DCCE` border and soft elevation (`BoxShadow(color: Color(0xFF0F172A).withValues(alpha: 0.03), blurRadius: 10, offset: Offset(0, 2))`).
+- **Card Surfaces**: In light mode, use `#EFF3EA` (`PinTokens.lightCardBg`) with **no border** (`border: null`) and elevated with soft multi-layer ambient shadow (`PinTokens.lightCardShadow` - `blurRadius: 4` + `blurRadius: 16`). In dark mode, use 1.6px border with `PinTokens.darkBorder`.
 - **Checkboxes**: Unchecked state must use a 1.5px ring border in `#8E9C92` (`PinTokens.lightTextTertiary`) with transparent center. Completed state must use solid `#2B3B32` (`PinTokens.lightFabBg`) fill with white check icon.
+- **Category Tags**: Split whitespace/newlines into distinct rounded badges (`#E2E9DC` fill, `#5F6D64` text, radius: 6).
 - **Micro-actions**: Delete and pin/unpin buttons must use `#8E9C92` (`PinTokens.lightTextTertiary`), not harsh black or generic gray.
 
 ### Focus Mode & Immersive Views

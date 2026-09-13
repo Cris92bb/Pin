@@ -42,18 +42,15 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: PinTokens.radiusCard,
-        border: Border.all(
-          color: borderColor,
-          width: isDark ? 1.6 : 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: (isDark ? Colors.black : const Color(0xFF0F172A))
-                .withValues(alpha: isDark ? 0.25 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: isDark
+            ? Border.all(
+                color: borderColor,
+                width: 1.6,
+              )
+            : null,
+        boxShadow: isDark
+            ? PinTokens.darkCardShadow
+            : PinTokens.lightCardShadow,
       ),
       child: InkWell(
         borderRadius: PinTokens.radiusCard,
@@ -357,12 +354,28 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   }
 
   Widget _buildTagChip(String tag, bool isDark) {
+    final clean = tag.trim();
+    if (clean.contains('\n') || clean.contains(' ')) {
+      final subTags = clean
+          .split(RegExp(r'[\n\s]+'))
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty);
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: subTags.map((t) => _buildSingleTag(t, isDark)).toList(),
+      );
+    }
+    return _buildSingleTag(clean, isDark);
+  }
+
+  Widget _buildSingleTag(String tag, bool isDark) {
     final clean = tag.startsWith('#') ? tag : '#$tag';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E2330) : PinTokens.lightTagBg,
-        borderRadius: PinTokens.radiusFull,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         clean,

@@ -105,6 +105,29 @@ class PinTokens {
   static const BorderRadius radiusDeck = BorderRadius.all(Radius.circular(28));
   static const BorderRadius radiusFull = BorderRadius.all(Radius.circular(999));
 
+  // Pin Card Elevation Shadows
+  static List<BoxShadow> get lightCardShadow => [
+        BoxShadow(
+          color: const Color(0xFF1A241E).withValues(alpha: 0.04),
+          blurRadius: 4,
+          offset: const Offset(0, 1),
+        ),
+        BoxShadow(
+          color: const Color(0xFF1A241E).withValues(alpha: 0.07),
+          blurRadius: 16,
+          spreadRadius: -2,
+          offset: const Offset(0, 4),
+        ),
+      ];
+
+  static List<BoxShadow> get darkCardShadow => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.25),
+          blurRadius: 10,
+          offset: const Offset(0, 2),
+        ),
+      ];
+
   // Spacing scales
   static const double space2 = 2.0;
   static const double space4 = 4.0;
