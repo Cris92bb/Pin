@@ -1,13 +1,17 @@
 {
-    "name": "pin",
-    "short_name": "pin",
+    "name": "Pin - Local-First Kanban",
+    "short_name": "Pin",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#0B0F17",
+    "theme_color": "#0B0F17",
+    "description": "A lightweight, local-first Kanban and focus companion with AI breakdown and WIP limits.",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "categories": [
+        "productivity",
+        "utilities"
+    ],
     "icons": [
         {
             "src": "icons/Icon-192.png",

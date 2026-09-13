@@ -1,4 +1,3 @@
-import 'dart:io' show exit;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -69,11 +68,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         const MethodChannel('pin/window').invokeMethod('close');
       }
     } catch (_) {}
-    if (!kIsWeb) {
-      exit(0);
-    } else {
-      SystemNavigator.pop();
-    }
+    SystemNavigator.pop();
   }
 
   @override

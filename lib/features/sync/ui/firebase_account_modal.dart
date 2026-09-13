@@ -37,11 +37,18 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
       final inputBg = isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg;
       final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
 
+      // Pre-populate from any existing cached session, otherwise leave empty.
+      final existingUser = ref.read(syncControllerProvider).user;
+      final prefillName = chosenName.isNotEmpty
+          ? chosenName
+          : (existingUser?.displayName ?? '');
+      final prefillEmail = existingUser?.email ?? '';
+
       final result = await showDialog<Map<String, String>>(
         context: context,
         builder: (ctx) {
-          final nameCtrl = TextEditingController(text: chosenName.isNotEmpty ? chosenName : 'Cristian');
-          final emailCtrl = TextEditingController(text: 'cris92bb@gmail.com');
+          final nameCtrl = TextEditingController(text: prefillName);
+          final emailCtrl = TextEditingController(text: prefillEmail);
           return AlertDialog(
             backgroundColor: dialogBg,
             shape: RoundedRectangleBorder(
@@ -78,7 +85,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   decoration: InputDecoration(
                     labelText: 'Full Name',
                     labelStyle: TextStyle(color: textSecondary),
-                    hintText: 'e.g. Cristian',
+                    hintText: 'e.g. Jane Smith',
                     hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
                     filled: true,
                     fillColor: inputBg,
@@ -176,29 +183,32 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
         return 'Cristian';
       }
       if (name.contains('.') || name.contains('_')) {
-        return name
+        final formatted = name
             .split(RegExp(r'[._]'))
             .where((s) => s.isNotEmpty)
             .map((s) => s[0].toUpperCase() + s.substring(1))
             .join(' ');
+        if (formatted.isNotEmpty) return formatted;
       }
       return name;
     }
     if (user.email != null && user.email!.contains('@')) {
-      final prefix = user.email!.split('@').first;
+      final prefix = user.email!.split('@').first.trim();
+      if (prefix.isEmpty) return 'User';
       if (prefix.toLowerCase() == 'cristun92xd') {
         return 'Cristian';
       }
       if (prefix.contains('.') || prefix.contains('_')) {
-        return prefix
+        final formatted = prefix
             .split(RegExp(r'[._]'))
             .where((s) => s.isNotEmpty)
             .map((s) => s[0].toUpperCase() + s.substring(1))
             .join(' ');
+        if (formatted.isNotEmpty) return formatted;
       }
       return prefix[0].toUpperCase() + prefix.substring(1);
     }
-    return 'Cristian';
+    return 'User';
   }
 
   Future<void> _handleEditDisplayName(String currentName) async {

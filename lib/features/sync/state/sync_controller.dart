@@ -20,6 +20,11 @@ class SyncState {
   final int syncedTaskCount;
   final bool isDebouncing;
 
+  /// Whether the persisted FirebaseConfig has been loaded from SharedPreferences.
+  /// Auth actions are blocked until this is true to prevent the "Firebase is
+  /// not configured" race condition on real devices where storage I/O is slow.
+  final bool configLoaded;
+
   const SyncState({
     this.user,
     this.status = SyncStatus.guest,
@@ -29,6 +34,7 @@ class SyncState {
     required this.config,
     this.syncedTaskCount = 0,
     this.isDebouncing = false,
+    this.configLoaded = false,
   });
 
   bool get isSignedIn => user != null;
@@ -44,6 +50,7 @@ class SyncState {
     FirebaseConfig? config,
     int? syncedTaskCount,
     bool? isDebouncing,
+    bool? configLoaded,
   }) {
     return SyncState(
       user: clearUser ? null : (user ?? this.user),
@@ -54,6 +61,7 @@ class SyncState {
       config: config ?? this.config,
       syncedTaskCount: syncedTaskCount ?? this.syncedTaskCount,
       isDebouncing: isDebouncing ?? this.isDebouncing,
+      configLoaded: configLoaded ?? this.configLoaded,
     );
   }
 }
@@ -79,20 +87,44 @@ class SyncController extends StateNotifier<SyncState> {
           config: initialConfig,
           user: initialUser,
           status: initialUser != null ? SyncStatus.synced : SyncStatus.guest,
+          configLoaded: initialConfig.isConfigured,
         )) {
     _init();
   }
 
   Future<void> _init() async {
-    // 1. Hook into TaskStateNotifier persistence callback
+    // 1. Load persisted Firebase config FIRST — before any auth action is
+    //    possible — to eliminate the race condition on real devices where
+    //    SharedPreferences I/O completes after the first frame is rendered.
+    final loadedConfig = await FirebaseConfig.load();
+    if (loadedConfig.isConfigured) {
+      authService.config = loadedConfig;
+      firestoreService.config = loadedConfig;
+      state = state.copyWith(config: loadedConfig, configLoaded: true);
+    } else {
+      state = state.copyWith(configLoaded: true);
+    }
+
+    // 2. Hook into TaskStateNotifier persistence callback
     final taskNotifier = _ref.read(taskStateProvider.notifier);
     taskNotifier.onTasksPersisted = _handleLocalTasksChanged;
 
-    // 2. Hydrate cached session if exists
+    // 3. Hydrate cached session if exists
     final cachedUser = await FirebaseAuthService.loadCachedUser();
     if (cachedUser != null && state.user == null) {
       await _onUserAuthenticated(cachedUser);
     }
+  }
+
+  /// Returns true if config is loaded; otherwise sets an error and returns false.
+  bool _guardConfigLoaded() {
+    if (state.configLoaded || state.config.isConfigured) {
+      return true;
+    }
+    state = state.copyWith(
+      errorMessage: 'Connecting to Firebase… please try again in a moment.',
+    );
+    return false;
   }
 
   @override
@@ -122,7 +154,7 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// Executes the actual write to Cloud Firestore at `/users/{userId}/meta/board`.
   Future<void> _executeCloudSync(List<PinTask> tasks) async {
-    final user = state.user;
+    var user = state.user;
     if (user == null) return;
 
     state = state.copyWith(
@@ -130,6 +162,30 @@ class SyncController extends StateNotifier<SyncState> {
       isDebouncing: false,
       clearError: true,
     );
+
+    // Refresh the ID token if it has expired (Firebase tokens last 1 hour).
+    if (state.config.isConfigured &&
+        user.refreshToken != null &&
+        user.refreshToken!.isNotEmpty &&
+        user.isTokenExpired) {
+      try {
+        final freshUser = await authService.freshIdToken(user);
+        if (freshUser != user) {
+          // Token was refreshed — persist the updated user in state and cache.
+          user = freshUser;
+          state = state.copyWith(user: freshUser);
+        }
+      } catch (e) {
+        // Refresh failed (e.g. revoked refresh token) — sign the user out so
+        // they get a clean prompt to re-authenticate rather than a silent loop.
+        await signOut();
+        state = state.copyWith(
+          status: SyncStatus.error,
+          errorMessage: 'Session expired. Please sign in again.',
+        );
+        return;
+      }
+    }
 
     final taskMaps = tasks.map((t) => t.toJson()).toList();
     final checkinMap = state.dailyCheckin?.toJson();
@@ -163,7 +219,16 @@ class SyncController extends StateNotifier<SyncState> {
     await _executeCloudSync(tasks);
   }
 
-  /// Called when a user successfully authenticates. Coordinates cloud hydration.
+  /// Called when a user successfully authenticates. Coordinates cloud hydration
+  /// using a **three-way merge** so neither device silently loses its tasks.
+  ///
+  /// Merge rules (per task ID):
+  ///   1. Task exists on both sides → keep the version with the later [updatedAt].
+  ///   2. Task only in cloud       → add it (created on another device).
+  ///   3. Task only in local       → keep it (not yet synced to cloud).
+  ///
+  /// After merging the unified list is immediately pushed to Firestore so every
+  /// device that signs in next will see the correct merged state.
   Future<void> _onUserAuthenticated(AppUser user) async {
     state = state.copyWith(
       user: user,
@@ -172,47 +237,81 @@ class SyncController extends StateNotifier<SyncState> {
     );
 
     try {
-      // 1. Load board from Cloud Firestore
+      // 1. Fetch cloud snapshot.
       final cloudBoard = await firestoreService.loadBoardFromFirestore(
         userId: user.uid,
         idToken: user.idToken,
       );
 
       final taskNotifier = _ref.read(taskStateProvider.notifier);
+      final localTasks = _ref.read(taskStateProvider).tasks;
 
-      if (cloudBoard != null && cloudBoard.tasks.isNotEmpty) {
-        // Cloud has tasks: hydrate board from cloud
-        final cloudTasks = cloudBoard.tasks.map((m) => PinTask.fromJson(m)).toList();
-        await taskNotifier.hydrateFromCloud(cloudTasks);
-
-        DailyCheckin? checkin;
-        if (cloudBoard.dailyCheckin != null && cloudBoard.dailyCheckin!.isNotEmpty) {
-          checkin = DailyCheckin.fromJson(cloudBoard.dailyCheckin!);
-        }
-
-        state = state.copyWith(
-          user: user,
-          status: SyncStatus.synced,
-          lastSyncedAt: cloudBoard.lastSyncedAt,
-          dailyCheckin: checkin,
-          syncedTaskCount: cloudTasks.length,
-        );
-      } else {
-        // New account or empty cloud board: seed cloud with existing local tasks
-        final currentLocalTasks = _ref.read(taskStateProvider).tasks;
-        await _executeCloudSync(currentLocalTasks);
+      if (cloudBoard == null || cloudBoard.tasks.isEmpty) {
+        // New account or empty cloud — seed cloud with local tasks.
+        await _executeCloudSync(localTasks);
+        return;
       }
+
+      // 2. Parse cloud tasks.
+      final cloudTasks = cloudBoard.tasks
+          .map((m) => PinTask.fromJson(m))
+          .toList();
+
+      // 3. Merge: build a map keyed by task ID, starting from local.
+      final Map<String, PinTask> merged = {
+        for (final t in localTasks) t.id: t,
+      };
+
+      // For each cloud task: if the same ID already exists locally, keep
+      // whichever was updated more recently; otherwise add the cloud task.
+      for (final cloudTask in cloudTasks) {
+        final local = merged[cloudTask.id];
+        if (local == null) {
+          // Task exists only in cloud (created on another device) → add it.
+          merged[cloudTask.id] = cloudTask;
+        } else if (cloudTask.updatedAt.isAfter(local.updatedAt)) {
+          // Cloud version is newer → prefer cloud.
+          merged[cloudTask.id] = cloudTask;
+        }
+        // else: local version is newer or equal → keep local (already in map).
+      }
+
+      final mergedList = merged.values.toList();
+
+      // 4. Apply merged list to local storage.
+      await taskNotifier.hydrateFromCloud(mergedList);
+
+      // 5. Restore daily check-in from cloud if available.
+      DailyCheckin? checkin;
+      if (cloudBoard.dailyCheckin != null &&
+          cloudBoard.dailyCheckin!.isNotEmpty) {
+        checkin = DailyCheckin.fromJson(cloudBoard.dailyCheckin!);
+      }
+
+      state = state.copyWith(
+        user: user,
+        status: SyncStatus.synced,
+        lastSyncedAt: cloudBoard.lastSyncedAt,
+        dailyCheckin: checkin,
+        syncedTaskCount: mergedList.length,
+      );
+
+      // 6. Push the merged result back to Firestore immediately so the next
+      //    device that signs in gets the unified set.
+      await _executeCloudSync(mergedList);
+
     } catch (e) {
       state = state.copyWith(
         user: user,
         status: SyncStatus.error,
-        errorMessage: 'Failed to hydrate from cloud: ${e.toString()}',
+        errorMessage: 'Sync merge failed: ${e.toString()}',
       );
     }
   }
 
   /// Sign in with email and password.
   Future<bool> signInWithEmail(String email, String password) async {
+    if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signInWithEmail(email, password);
@@ -229,6 +328,7 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// Sign up with email and password.
   Future<bool> signUpWithEmail(String email, String password, {String? displayName}) async {
+    if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signUpWithEmail(email, password, displayName: displayName);
@@ -245,6 +345,7 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// 1-Click Google Sign-In without passwords or registration.
   Future<bool> signInWithGoogle({String? email, String? displayName}) async {
+    if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signInWithGoogle(
@@ -376,24 +477,19 @@ final firestoreSyncServiceProvider = Provider<FirestoreSyncService>((ref) {
 
 final syncControllerProvider =
     StateNotifierProvider<SyncController, SyncState>((ref) {
-  // Synchronous initial config; loaded in background if not ready
+  // Start with an empty config (isConfigured = false, configLoaded = false).
+  // The real persisted credentials are loaded inside SyncController._init()
+  // via await, which runs before any user interaction is possible. This
+  // eliminates the race condition that caused "Firebase is not configured"
+  // errors on real devices with slow SharedPreferences I/O.
   const initialConfig = FirebaseConfig();
   final authService = FirebaseAuthService(config: initialConfig);
   final firestoreService = FirestoreSyncService(config: initialConfig);
 
-  final controller = SyncController(
+  return SyncController(
     ref: ref,
     authService: authService,
     firestoreService: firestoreService,
     initialConfig: initialConfig,
   );
-
-  // Asynchronously hydrate saved config
-  FirebaseConfig.load().then((loadedConfig) {
-    if (loadedConfig.isConfigured) {
-      controller.updateConfig(loadedConfig);
-    }
-  });
-
-  return controller;
 });
