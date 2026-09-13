@@ -21,15 +21,10 @@ class FirebaseAccountModal extends ConsumerStatefulWidget {
 }
 
 class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
-
   late TextEditingController _apiKeyController;
   late TextEditingController _projectIdController;
   late TextEditingController _databaseIdController;
 
-  bool _isSignUpMode = false;
   bool _showConfigSection = false;
   String? _localNotice;
 
@@ -44,49 +39,15 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
     _apiKeyController.dispose();
     _projectIdController.dispose();
     _databaseIdController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleAuthSubmit() async {
-    final controller = ref.read(syncControllerProvider.notifier);
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _localNotice = 'Please enter both email and password.');
-      return;
-    }
-
-    setState(() => _localNotice = null);
-
-    final bool success;
-    if (_isSignUpMode) {
-      final name = _nameController.text.trim();
-      success = await controller.signUpWithEmail(
-        email,
-        password,
-        displayName: name.isNotEmpty ? name : null,
-      );
-    } else {
-      success = await controller.signInWithEmail(email, password);
-    }
-
-    if (success && mounted) {
-      setState(() {
-        _localNotice = 'Successfully authenticated!';
-      });
-    }
-  }
-
   Future<void> _handleGoogleSignIn([String? email]) async {
     final controller = ref.read(syncControllerProvider.notifier);
-    String chosenEmail = email ?? _emailController.text.trim();
+    String chosenEmail = email ?? '';
 
     if (chosenEmail.isEmpty) {
       final result = await showDialog<String>(
@@ -585,136 +546,6 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               ),
             ],
           ),
-        ),
-
-        const SizedBox(height: 12),
-
-        Row(
-          children: [
-            Expanded(child: Divider(color: borderColor)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                'OR WITH EMAIL',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textSecondary),
-              ),
-            ),
-            Expanded(child: Divider(color: borderColor)),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        // Auth mode switch
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _isSignUpMode = false),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: !_isSignUpMode ? PinTokens.primary : Colors.transparent,
-                        width: 2.0,
-                      ),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Sign In',
-                      style: TextStyle(
-                        fontWeight: !_isSignUpMode ? FontWeight.bold : FontWeight.normal,
-                        color: !_isSignUpMode ? PinTokens.primary : textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _isSignUpMode = true),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: _isSignUpMode ? PinTokens.primary : Colors.transparent,
-                        width: 2.0,
-                      ),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Create Account',
-                      style: TextStyle(
-                        fontWeight: _isSignUpMode ? FontWeight.bold : FontWeight.normal,
-                        color: _isSignUpMode ? PinTokens.primary : textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        if (_isSignUpMode) ...[
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Display Name (optional)',
-              isDense: true,
-              border: OutlineInputBorder(borderRadius: PinTokens.radiusSm),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-
-        TextField(
-          controller: _emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email',
-            isDense: true,
-            border: OutlineInputBorder(borderRadius: PinTokens.radiusSm),
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        TextField(
-          controller: _passwordController,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Password',
-            isDense: true,
-            border: OutlineInputBorder(borderRadius: PinTokens.radiusSm),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: PinTokens.primary,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-          onPressed: _handleAuthSubmit,
-          child: Text(
-            _isSignUpMode ? 'Create Cloud Account' : 'Sign In to Cloud Sync',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        OutlinedButton(
-          onPressed: () => ref.read(syncControllerProvider.notifier).signInAnonymously(),
-          child: const Text('One-Click Demo Sign-In'),
         ),
       ],
     );
