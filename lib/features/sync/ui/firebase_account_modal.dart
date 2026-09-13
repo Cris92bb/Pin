@@ -192,7 +192,6 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
     final bgColor = isDark ? PinTokens.darkCardBg : Colors.white;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
-    final cardBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
     final cardBorder = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
@@ -283,7 +282,6 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   textPrimary: textPrimary,
                   textSecondary: textSecondary,
                   isDark: isDark,
-                  cardBg: cardBg,
                   cardBorder: cardBorder,
                 ),
               ] else ...[
@@ -307,14 +305,12 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     required Color textPrimary,
     required Color textSecondary,
     required bool isDark,
-    required Color cardBg,
     required Color cardBorder,
   }) {
     final user = syncState.user!;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cardBg,
         borderRadius: PinTokens.radiusMd,
         border: Border.all(color: cardBorder),
       ),
