@@ -25,13 +25,13 @@ class AtomicStepTile extends StatelessWidget {
     final tileBg = step.isCompleted
         ? (isDark
             ? PinTokens.canvasBg.withValues(alpha: 0.3)
-            : const Color(0x0A0F172A))
+            : PinTokens.lightTagBg.withValues(alpha: 0.6))
         : (isDark
             ? PinTokens.surfaceCard.withValues(alpha: 0.5)
             : PinTokens.lightCardBg);
 
     final borderColor = step.isCompleted
-        ? (isDark ? PinTokens.borderSubtle : PinTokens.lightBorderSubtle)
+        ? (isDark ? PinTokens.borderSubtle : PinTokens.lightBorder)
         : (isDark
             ? PinTokens.borderDefault.withValues(alpha: 0.5)
             : PinTokens.lightBorder);
@@ -41,11 +41,14 @@ class AtomicStepTile extends StatelessWidget {
     final textSecondary =
         isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
     final textMuted =
-        isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted;
+        isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary;
 
-    final badgeBg = isDark ? PinTokens.canvasBg : const Color(0xFFF3F4F6);
+    final badgeBg = isDark ? PinTokens.canvasBg : PinTokens.lightTagBg;
     final badgeBorder =
-        isDark ? PinTokens.borderSubtle : PinTokens.lightBorderSubtle;
+        isDark ? PinTokens.borderSubtle : PinTokens.lightBorder;
+
+    final checkColor = isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg;
+    final checkBorder = isDark ? textMuted : PinTokens.lightTextTertiary;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
@@ -72,13 +75,13 @@ class AtomicStepTile extends StatelessWidget {
               height: 20,
               decoration: BoxDecoration(
                 color: step.isCompleted
-                    ? PinTokens.accentEmerald
+                    ? checkColor
                     : Colors.transparent,
                 borderRadius: PinTokens.radiusSm,
                 border: Border.all(
                   color: step.isCompleted
-                      ? PinTokens.accentEmerald
-                      : textMuted,
+                      ? checkColor
+                      : checkBorder,
                   width: 1.5,
                 ),
               ),

@@ -79,7 +79,7 @@ class PillChip extends StatelessWidget {
       key: key,
       label: durationText,
       icon: Icons.timer_outlined,
-      color: const Color(0xFF2563EB),
+      color: PinTokens.lightTextSecondary,
       isSelected: isSelected,
       onTap: onTap,
       isCompact: isCompact,
@@ -87,6 +87,9 @@ class PillChip extends StatelessWidget {
   }
 
   static Color _getLightText(Color accent) {
+    if (accent == PinTokens.lightFabBg || accent == PinTokens.lightTextSecondary) {
+      return PinTokens.lightFabBg;
+    }
     if (accent == const Color(0xFF10B981)) return const Color(0xFF047857);
     if (accent == const Color(0xFFF59E0B)) return const Color(0xFFB45309);
     if (accent == const Color(0xFF8B5CF6)) return const Color(0xFF6D28D9);
@@ -131,9 +134,9 @@ class PillChip extends StatelessWidget {
         textColor = PinTokens.darkTextSecondary;
         iconColor = baseAccent.withValues(alpha: 0.7);
       } else {
-        bgColor = const Color(0xFFF3F4F6);
-        borderColor = const Color(0xFFE5E7EB);
-        textColor = const Color(0xFF374151);
+        bgColor = PinTokens.lightTagBg;
+        borderColor = PinTokens.lightBorder;
+        textColor = PinTokens.lightTextSecondary;
         iconColor = baseAccent.withValues(alpha: 0.85);
       }
     }

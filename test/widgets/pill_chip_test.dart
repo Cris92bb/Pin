@@ -24,12 +24,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final textWidget = tester.widget<Text>(find.text('~15m'));
-      expect(textWidget.style?.color, const Color(0xFF374151));
+      expect(textWidget.style?.color, PinTokens.lightTextSecondary);
 
       final container = tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
       final decoration = container.decoration as BoxDecoration;
-      expect(decoration.color, const Color(0xFFF3F4F6));
-      expect(decoration.border?.top.color, const Color(0xFFE5E7EB));
+      expect(decoration.color, PinTokens.lightTagBg);
+      expect(decoration.border?.top.color, PinTokens.lightBorder);
     });
 
     testWidgets('renders light theme selected energy pill with vibrant accent and tint',

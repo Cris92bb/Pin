@@ -219,7 +219,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
       },
       child: Scaffold(
         backgroundColor:
-            isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightPhoneFrameBg,
+            isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
         body: SafeArea(
           child: AnimatedSwitcher(
             duration: PinTokens.animNormal,
@@ -289,7 +289,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     Color textMuted,
     Color borderSubtle,
   ) {
-    final bannerBg = isDark ? PinTokens.surfaceColumn : PinTokens.lightCardBg;
+    final bannerBg = isDark ? PinTokens.surfaceColumn : PinTokens.lightSheetBg;
 
     return Container(
       key: const ValueKey('sticky_timer_banner'),
@@ -318,7 +318,9 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
             height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _isRunning ? PinTokens.accentEmerald : textMuted,
+              color: _isRunning
+                  ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
+                  : textMuted,
             ),
           ),
           const SizedBox(width: 8),
@@ -343,7 +345,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: _isRunning
-                  ? (isDark ? PinTokens.accentViolet : const Color(0xFF6D28D9))
+                  ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
                   : textMuted,
             ),
           ),
@@ -396,14 +398,14 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
         final textMuted =
             isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted;
         final borderSubtle =
-            isDark ? PinTokens.darkBorderSubtle : PinTokens.lightBorderSubtle;
+            isDark ? PinTokens.darkBorderSubtle : PinTokens.lightBorder;
         final borderDefault =
-            isDark ? PinTokens.borderDefault : PinTokens.lightBorderSubtle;
+            isDark ? PinTokens.borderDefault : PinTokens.lightBorder;
 
-        // Subtasks background has a slightly different background color from the timer
+        // Subtasks background matches the sliding sheet surface in light mode
         final subtasksBg = isDark
             ? const Color(0xFF161A26)
-            : const Color(0xFFEDE8DF);
+            : PinTokens.lightSheetBg;
 
         final inputBg = isDark ? PinTokens.surfaceCard : PinTokens.lightCardBg;
 
@@ -431,10 +433,14 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: PinTokens.accentViolet.withValues(alpha: isDark ? 0.15 : 0.10),
+                      color: isDark
+                          ? PinTokens.accentEmerald.withValues(alpha: 0.15)
+                          : PinTokens.lightTagBg,
                       borderRadius: PinTokens.radiusFull,
                       border: Border.all(
-                        color: PinTokens.accentViolet.withValues(alpha: isDark ? 0.6 : 0.4),
+                        color: isDark
+                            ? PinTokens.accentEmerald.withValues(alpha: 0.5)
+                            : PinTokens.lightBorder,
                         width: 1,
                       ),
                     ),
@@ -444,9 +450,11 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: PinTokens.accentViolet,
+                            color: isDark
+                                ? PinTokens.accentEmerald
+                                : PinTokens.lightFabBg,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -456,8 +464,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: isDark
-                                ? PinTokens.accentViolet
-                                : const Color(0xFF6D28D9),
+                                ? PinTokens.accentEmerald
+                                : PinTokens.lightTextPrimary,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -595,8 +603,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                     fontWeight: FontWeight.w500,
                                     color: _isRunning
                                         ? (isDark
-                                            ? PinTokens.accentViolet
-                                            : const Color(0xFF6D28D9))
+                                            ? PinTokens.accentEmerald
+                                            : PinTokens.lightFabBg)
                                         : textMuted,
                                   ),
                                 ),
@@ -681,7 +689,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                           color: completedSteps == totalSteps
-                                              ? PinTokens.accentEmerald
+                                              ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
                                               : textMuted,
                                         ),
                                       ),
@@ -696,10 +704,10 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                       minHeight: 4,
                                       backgroundColor: isDark
                                           ? PinTokens.canvasBg
-                                          : const Color(0xFFE5E7EB),
+                                          : PinTokens.lightBorder,
                                       valueColor:
-                                          const AlwaysStoppedAnimation<Color>(
-                                        PinTokens.accentEmerald,
+                                          AlwaysStoppedAnimation<Color>(
+                                        isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                                       ),
                                     ),
                                   ),
@@ -781,10 +789,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                             ),
                                           ),
                                           focusedBorder:
-                                              const OutlineInputBorder(
+                                              OutlineInputBorder(
                                             borderRadius: PinTokens.radiusMd,
                                             borderSide: BorderSide(
-                                              color: PinTokens.accentViolet,
+                                              color: isDark
+                                                  ? PinTokens.accentEmerald
+                                                  : PinTokens.lightFabBg,
                                               width: 1.5,
                                             ),
                                           ),
