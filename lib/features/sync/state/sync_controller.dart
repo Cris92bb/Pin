@@ -20,6 +20,11 @@ class SyncState {
   final int syncedTaskCount;
   final bool isDebouncing;
 
+  /// Whether the persisted FirebaseConfig has been loaded from SharedPreferences.
+  /// Auth actions are blocked until this is true to prevent the "Firebase is
+  /// not configured" race condition on real devices where storage I/O is slow.
+  final bool configLoaded;
+
   const SyncState({
     this.user,
     this.status = SyncStatus.guest,
@@ -29,6 +34,7 @@ class SyncState {
     required this.config,
     this.syncedTaskCount = 0,
     this.isDebouncing = false,
+    this.configLoaded = false,
   });
 
   bool get isSignedIn => user != null;
@@ -44,6 +50,7 @@ class SyncState {
     FirebaseConfig? config,
     int? syncedTaskCount,
     bool? isDebouncing,
+    bool? configLoaded,
   }) {
     return SyncState(
       user: clearUser ? null : (user ?? this.user),
@@ -54,6 +61,7 @@ class SyncState {
       config: config ?? this.config,
       syncedTaskCount: syncedTaskCount ?? this.syncedTaskCount,
       isDebouncing: isDebouncing ?? this.isDebouncing,
+      configLoaded: configLoaded ?? this.configLoaded,
     );
   }
 }
@@ -84,15 +92,38 @@ class SyncController extends StateNotifier<SyncState> {
   }
 
   Future<void> _init() async {
-    // 1. Hook into TaskStateNotifier persistence callback
+    // 1. Load persisted Firebase config FIRST — before any auth action is
+    //    possible — to eliminate the race condition on real devices where
+    //    SharedPreferences I/O completes after the first frame is rendered.
+    final loadedConfig = await FirebaseConfig.load();
+    if (loadedConfig.isConfigured) {
+      authService.config = loadedConfig;
+      firestoreService.config = loadedConfig;
+      state = state.copyWith(config: loadedConfig, configLoaded: true);
+    } else {
+      state = state.copyWith(configLoaded: true);
+    }
+
+    // 2. Hook into TaskStateNotifier persistence callback
     final taskNotifier = _ref.read(taskStateProvider.notifier);
     taskNotifier.onTasksPersisted = _handleLocalTasksChanged;
 
-    // 2. Hydrate cached session if exists
+    // 3. Hydrate cached session if exists
     final cachedUser = await FirebaseAuthService.loadCachedUser();
     if (cachedUser != null && state.user == null) {
       await _onUserAuthenticated(cachedUser);
     }
+  }
+
+  /// Returns true if config is loaded; otherwise sets an error and returns false.
+  bool _guardConfigLoaded() {
+    if (!state.configLoaded) {
+      state = state.copyWith(
+        errorMessage: 'Connecting to Firebase… please try again in a moment.',
+      );
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -213,6 +244,7 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// Sign in with email and password.
   Future<bool> signInWithEmail(String email, String password) async {
+    if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signInWithEmail(email, password);
@@ -229,6 +261,7 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// Sign up with email and password.
   Future<bool> signUpWithEmail(String email, String password, {String? displayName}) async {
+    if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signUpWithEmail(email, password, displayName: displayName);
@@ -245,6 +278,7 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// 1-Click Google Sign-In without passwords or registration.
   Future<bool> signInWithGoogle({String? email, String? displayName}) async {
+    if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signInWithGoogle(
@@ -376,24 +410,19 @@ final firestoreSyncServiceProvider = Provider<FirestoreSyncService>((ref) {
 
 final syncControllerProvider =
     StateNotifierProvider<SyncController, SyncState>((ref) {
-  // Synchronous initial config; loaded in background if not ready
+  // Start with an empty config (isConfigured = false, configLoaded = false).
+  // The real persisted credentials are loaded inside SyncController._init()
+  // via await, which runs before any user interaction is possible. This
+  // eliminates the race condition that caused "Firebase is not configured"
+  // errors on real devices with slow SharedPreferences I/O.
   const initialConfig = FirebaseConfig();
   final authService = FirebaseAuthService(config: initialConfig);
   final firestoreService = FirestoreSyncService(config: initialConfig);
 
-  final controller = SyncController(
+  return SyncController(
     ref: ref,
     authService: authService,
     firestoreService: firestoreService,
     initialConfig: initialConfig,
   );
-
-  // Asynchronously hydrate saved config
-  FirebaseConfig.load().then((loadedConfig) {
-    if (loadedConfig.isConfigured) {
-      controller.updateConfig(loadedConfig);
-    }
-  });
-
-  return controller;
 });

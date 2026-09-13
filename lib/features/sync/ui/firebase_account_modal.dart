@@ -37,11 +37,18 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
       final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
       final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
 
+      // Pre-populate from any existing cached session, otherwise leave empty.
+      final existingUser = ref.read(syncControllerProvider).user;
+      final prefillName = chosenName.isNotEmpty
+          ? chosenName
+          : (existingUser?.displayName ?? '');
+      final prefillEmail = existingUser?.email ?? '';
+
       final result = await showDialog<Map<String, String>>(
         context: context,
         builder: (ctx) {
-          final nameCtrl = TextEditingController(text: chosenName.isNotEmpty ? chosenName : 'Cristian');
-          final emailCtrl = TextEditingController(text: 'cris92bb@gmail.com');
+          final nameCtrl = TextEditingController(text: prefillName);
+          final emailCtrl = TextEditingController(text: prefillEmail);
           return AlertDialog(
             backgroundColor: dialogBg,
             shape: RoundedRectangleBorder(
@@ -74,7 +81,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   decoration: InputDecoration(
                     labelText: 'Full Name',
                     labelStyle: TextStyle(color: textSecondary),
-                    hintText: 'e.g. Cristian',
+                    hintText: 'e.g. Jane Smith',
                     hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
                     filled: true,
                     fillColor: inputBg,
