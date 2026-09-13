@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../entities/task/state/task_state_notifier.dart';
 import '../pages/home/home_page.dart';
+import 'theme/pin_scroll_behavior.dart';
 import 'theme/pin_theme.dart';
 
 import 'package:pin/shared/lib/platform_theme_service.dart';
@@ -74,6 +75,7 @@ class _PinAppContentState extends ConsumerState<_PinAppContent>
     return MaterialApp(
       title: 'Pin',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const PinScrollBehavior(),
       theme: PinTheme.lightTheme,
       darkTheme: PinTheme.darkTheme,
       themeMode: themeMode,

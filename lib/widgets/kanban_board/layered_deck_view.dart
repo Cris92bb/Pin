@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../entities/task/model/pin_task.dart';
 import '../../entities/task/state/task_state_notifier.dart';
 import '../../shared/ui/pin_tokens.dart';
+import 'bouncy_drawer_scroll_wrapper.dart';
 import 'task_card.dart';
 
 /// Layered Card Deck Kanban View matching the companion app screenshot.
@@ -17,8 +18,33 @@ class LayeredDeckView extends ConsumerStatefulWidget {
   ConsumerState<LayeredDeckView> createState() => _LayeredDeckViewState();
 }
 
-class _LayeredDeckViewState extends ConsumerState<LayeredDeckView> {
+class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
+    with SingleTickerProviderStateMixin {
   TaskStatus _previousDeck = TaskStatus.today;
+  late final AnimationController _horizontalEdgeNudgeController;
+  Animation<double>? _horizontalNudgeAnimation;
+  double _horizontalNudge = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _horizontalEdgeNudgeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    )..addListener(() {
+        if (_horizontalNudgeAnimation != null) {
+          setState(() {
+            _horizontalNudge = _horizontalNudgeAnimation!.value;
+          });
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _horizontalEdgeNudgeController.dispose();
+    super.dispose();
+  }
 
   int _deckIndex(TaskStatus status) {
     switch (status) {
@@ -31,12 +57,34 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView> {
     }
   }
 
+  void _triggerHorizontalEdgeNudge(int delta) {
+    // delta < 0: attempted swipe right past Backlog
+    // delta > 0: attempted swipe left past Done
+    final offset = delta < 0 ? 14.0 : -14.0;
+    _horizontalEdgeNudgeController.stop();
+    setState(() {
+      _horizontalNudge = offset;
+    });
+    _horizontalNudgeAnimation = Tween<double>(
+      begin: _horizontalNudge,
+      end: 0.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _horizontalEdgeNudgeController,
+        curve: const Cubic(0.175, 0.885, 0.32, 1.275),
+      ),
+    );
+    _horizontalEdgeNudgeController.forward(from: 0.0);
+  }
+
   void _navigateDrawer(int delta) {
     const order = [TaskStatus.backlog, TaskStatus.today, TaskStatus.done];
     final currentIdx = order.indexOf(ref.read(activeDeckProvider));
-    final targetIdx = (currentIdx + delta).clamp(0, order.length - 1);
-    if (targetIdx != currentIdx) {
+    final targetIdx = currentIdx + delta;
+    if (targetIdx >= 0 && targetIdx < order.length) {
       ref.read(activeDeckProvider.notifier).state = order[targetIdx];
+    } else {
+      _triggerHorizontalEdgeNudge(delta);
     }
   }
 
@@ -113,10 +161,12 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView> {
           left: 0,
           right: 0,
           bottom: 0,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 360),
-            switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
-            switchOutCurve: Curves.easeInCubic,
+          child: Transform.translate(
+            offset: Offset(_horizontalNudge, 0),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 360),
+              switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
+              switchOutCurve: Curves.easeInCubic,
             layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
               return Stack(
                 fit: StackFit.expand,
@@ -197,8 +247,9 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView> {
             ),
           ),
         ),
-      ],
-    );
+      ),
+    ],
+  );
   }
 
   Widget _buildActiveSheet(
@@ -447,63 +498,138 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView> {
     required bool isDark,
     required Color textSecondary,
   }) {
-    if (tasks.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                activeDeck == TaskStatus.today
-                    ? Icons.bolt_rounded
-                    : (activeDeck == TaskStatus.done
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.inventory_2_outlined),
-                size: 38,
-                color: isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF),
+    return _DrawerTaskList(
+      key: ValueKey('drawer_tasks_${activeDeck.name}'),
+      tasks: tasks,
+      activeDeck: activeDeck,
+      isDark: isDark,
+      textSecondary: textSecondary,
+    );
+  }
+}
+
+/// Tactile scrollable list for the active drawer with bouncy physics and overscroll animation.
+class _DrawerTaskList extends StatefulWidget {
+  final List<PinTask> tasks;
+  final TaskStatus activeDeck;
+  final bool isDark;
+  final Color textSecondary;
+
+  const _DrawerTaskList({
+    super.key,
+    required this.tasks,
+    required this.activeDeck,
+    required this.isDark,
+    required this.textSecondary,
+  });
+
+  @override
+  State<_DrawerTaskList> createState() => _DrawerTaskListState();
+}
+
+class _DrawerTaskListState extends State<_DrawerTaskList> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.tasks.isEmpty) {
+      return BouncyDrawerScrollWrapper(
+        controller: _scrollController,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
-              const SizedBox(height: 10),
-              Text(
-                activeDeck == TaskStatus.today
-                    ? 'No active Pins today.'
-                    : (activeDeck == TaskStatus.done
-                        ? 'No completed Pins yet.'
-                        : 'Backlog is empty.'),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: textSecondary,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.activeDeck == TaskStatus.today
+                              ? Icons.bolt_rounded
+                              : (widget.activeDeck == TaskStatus.done
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.inventory_2_outlined),
+                          size: 38,
+                          color: widget.isDark
+                              ? PinTokens.darkTextMuted
+                              : const Color(0xFF9CA3AF),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          widget.activeDeck == TaskStatus.today
+                              ? 'No active Pins today.'
+                              : (widget.activeDeck == TaskStatus.done
+                                  ? 'No completed Pins yet.'
+                                  : 'Backlog is empty.'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: widget.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.activeDeck == TaskStatus.today
+                              ? 'Pin up to 5 tasks from Backlog or tap + below.'
+                              : 'Tap + to capture a new Pin.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: widget.isDark
+                                ? PinTokens.darkTextMuted
+                                : const Color(0xFF9CA3AF),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                activeDeck == TaskStatus.today
-                    ? 'Pin up to 5 tasks from Backlog or tap + below.'
-                    : 'Tap + to capture a new Pin.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? PinTokens.darkTextMuted : const Color(0xFF9CA3AF),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            );
+          },
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 80),
-      itemCount: tasks.length,
-      itemBuilder: (context, index) {
-        final task = tasks[index];
-        return _StaggeredTaskCard(
-          key: ValueKey(task.id),
-          index: index,
-          task: task,
-        );
-      },
+    return BouncyDrawerScrollWrapper(
+      controller: _scrollController,
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 80),
+        itemCount: widget.tasks.length,
+        itemBuilder: (context, index) {
+          final task = widget.tasks[index];
+          return _StaggeredTaskCard(
+            key: ValueKey(task.id),
+            index: index,
+            task: task,
+          );
+        },
+      ),
     );
   }
 }
