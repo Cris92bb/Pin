@@ -153,7 +153,7 @@ class SyncController extends StateNotifier<SyncState> {
 
   /// Executes the actual write to Cloud Firestore at `/users/{userId}/meta/board`.
   Future<void> _executeCloudSync(List<PinTask> tasks) async {
-    final user = state.user;
+    var user = state.user;
     if (user == null) return;
 
     state = state.copyWith(
@@ -161,6 +161,25 @@ class SyncController extends StateNotifier<SyncState> {
       isDebouncing: false,
       clearError: true,
     );
+
+    // Refresh the ID token if it has expired (Firebase tokens last 1 hour).
+    try {
+      final freshUser = await authService.freshIdToken(user);
+      if (freshUser != user) {
+        // Token was refreshed — persist the updated user in state and cache.
+        user = freshUser;
+        state = state.copyWith(user: freshUser);
+      }
+    } catch (e) {
+      // Refresh failed (e.g. revoked refresh token) — sign the user out so
+      // they get a clean prompt to re-authenticate rather than a silent loop.
+      await signOut();
+      state = state.copyWith(
+        status: SyncStatus.error,
+        errorMessage: 'Session expired. Please sign in again.',
+      );
+      return;
+    }
 
     final taskMaps = tasks.map((t) => t.toJson()).toList();
     final checkinMap = state.dailyCheckin?.toJson();

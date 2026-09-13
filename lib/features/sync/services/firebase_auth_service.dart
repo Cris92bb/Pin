@@ -62,9 +62,12 @@ class FirebaseAuthService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final expiresIn = int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
         idToken: data['idToken'] as String?,
+        refreshToken: data['refreshToken'] as String?,
+        tokenExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)).millisecondsSinceEpoch,
         isAnonymous: true,
       );
       await _syncUserProfile(user);
@@ -155,11 +158,14 @@ class FirebaseAuthService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final expiresIn = int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
         email: data['email'] as String?,
         displayName: data['displayName'] as String?,
         idToken: data['idToken'] as String?,
+        refreshToken: data['refreshToken'] as String?,
+        tokenExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)).millisecondsSinceEpoch,
         isAnonymous: false,
       );
       await _syncUserProfile(user);
@@ -194,11 +200,14 @@ class FirebaseAuthService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final expiresIn = int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
         email: data['email'] as String?,
         displayName: displayName ?? (data['displayName'] as String?),
         idToken: data['idToken'] as String?,
+        refreshToken: data['refreshToken'] as String?,
+        tokenExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)).millisecondsSinceEpoch,
         isAnonymous: false,
       );
       await _syncUserProfile(user);
@@ -232,12 +241,15 @@ class FirebaseAuthService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final expiresIn = int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
         email: data['email'] as String?,
         displayName: data['displayName'] as String?,
         photoURL: data['photoUrl'] as String?,
         idToken: data['idToken'] as String?,
+        refreshToken: data['refreshToken'] as String?,
+        tokenExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)).millisecondsSinceEpoch,
         isAnonymous: false,
       );
       await _syncUserProfile(user);
@@ -247,6 +259,51 @@ class FirebaseAuthService {
       final error = _parseError(response.body);
       throw Exception('OAuth Sign-In failed: $error');
     }
+  }
+
+  /// Refreshes the Firebase ID token using the stored refresh token.
+  ///
+  /// Returns an updated [AppUser] with a new [idToken] and [tokenExpiresAt],
+  /// or throws if the refresh token is missing or the request fails.
+  Future<AppUser> refreshIdToken(AppUser user) async {
+    _ensureConfigured();
+    final refreshToken = user.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      throw Exception('No refresh token available — please sign in again.');
+    }
+
+    final url = Uri.parse(
+      'https://securetoken.googleapis.com/v1/token?key=${config.apiKey}',
+    );
+    final response = await _client.post(
+      url,
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'grant_type=refresh_token&refresh_token=$refreshToken',
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final expiresIn = int.tryParse(data['expires_in']?.toString() ?? '3600') ?? 3600;
+      final refreshed = user.copyWith(
+        idToken: data['id_token'] as String?,
+        refreshToken: data['refresh_token'] as String? ?? refreshToken,
+        tokenExpiresAt: DateTime.now().add(Duration(seconds: expiresIn)).millisecondsSinceEpoch,
+      );
+      await _saveCachedUser(refreshed);
+      return refreshed;
+    } else {
+      final error = _parseError(response.body);
+      throw Exception('Token refresh failed: $error');
+    }
+  }
+
+  /// Returns a fresh ID token for [user], automatically refreshing if expired.
+  ///
+  /// Callers should update their stored user with the returned [AppUser] since
+  /// the token and its expiry may have changed.
+  Future<AppUser> freshIdToken(AppUser user) async {
+    if (!user.isTokenExpired) return user;
+    return refreshIdToken(user);
   }
 
   /// Synchronizes user profile to `/users/{userId}` in Cloud Firestore.
