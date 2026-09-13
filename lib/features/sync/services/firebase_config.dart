@@ -13,12 +13,16 @@ class FirebaseConfig {
   final String projectId;
   final String authDomain;
   final String firestoreDatabaseId;
+  final String storageBucket;
+  final String oAuthClientId;
 
   const FirebaseConfig({
     this.apiKey = '',
     this.projectId = '',
     this.authDomain = '',
     this.firestoreDatabaseId = '(default)',
+    this.storageBucket = '',
+    this.oAuthClientId = '',
   });
 
   bool get isConfigured => apiKey.trim().isNotEmpty && projectId.trim().isNotEmpty;
@@ -28,12 +32,16 @@ class FirebaseConfig {
     String? projectId,
     String? authDomain,
     String? firestoreDatabaseId,
+    String? storageBucket,
+    String? oAuthClientId,
   }) {
     return FirebaseConfig(
       apiKey: apiKey ?? this.apiKey,
       projectId: projectId ?? this.projectId,
       authDomain: authDomain ?? this.authDomain,
       firestoreDatabaseId: firestoreDatabaseId ?? this.firestoreDatabaseId,
+      storageBucket: storageBucket ?? this.storageBucket,
+      oAuthClientId: oAuthClientId ?? this.oAuthClientId,
     );
   }
 
@@ -42,6 +50,8 @@ class FirebaseConfig {
         'projectId': projectId,
         'authDomain': authDomain,
         'firestoreDatabaseId': firestoreDatabaseId,
+        'storageBucket': storageBucket,
+        'oAuthClientId': oAuthClientId,
       };
 
   factory FirebaseConfig.fromJson(Map<String, dynamic> json) => FirebaseConfig(
@@ -49,6 +59,8 @@ class FirebaseConfig {
         projectId: json['projectId'] as String? ?? '',
         authDomain: json['authDomain'] as String? ?? '',
         firestoreDatabaseId: json['firestoreDatabaseId'] as String? ?? '(default)',
+        storageBucket: json['storageBucket'] as String? ?? '',
+        oAuthClientId: json['oAuthClientId'] as String? ?? '',
       );
 
   static Future<FirebaseConfig> load() async {

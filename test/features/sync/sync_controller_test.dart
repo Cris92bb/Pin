@@ -13,6 +13,7 @@ import 'package:pin/features/sync/services/firestore_rest_codec.dart';
 import 'package:pin/features/sync/services/firestore_sync_service.dart';
 import 'package:pin/features/sync/state/sync_controller.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MockHttpClient extends http.BaseClient {
   int patchCallCount = 0;
@@ -326,6 +327,51 @@ void main() {
       final syncState = container.read(syncControllerProvider);
       expect(syncState.isSignedIn, isFalse);
       expect(syncState.errorMessage, contains('Firebase Anonymous sign-in is disabled'));
+    });
+
+    test('persists idToken in AppUser serialization and restores valid session', () async {
+      SharedPreferences.setMockInitialValues({});
+      const originalUser = AppUser(
+        uid: 'user-persistence-123',
+        email: 'persist@example.com',
+        displayName: 'Persist User',
+        idToken: 'valid-jwt-token-456',
+        photoURL: 'https://example.com/photo.png',
+        isAnonymous: false,
+      );
+
+      // Verify toJson contains idToken
+      final userJson = originalUser.toJson();
+      expect(userJson['idToken'], equals('valid-jwt-token-456'));
+
+      // Verify fromJson restores idToken
+      final restoredUser = AppUser.fromJson(userJson);
+      expect(restoredUser.idToken, equals('valid-jwt-token-456'));
+      expect(restoredUser.uid, equals('user-persistence-123'));
+
+      // Save via SharedPreferences and reload
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('firebase_cached_user', jsonEncode(userJson));
+
+      final loadedUser = await FirebaseAuthService.loadCachedUser();
+      expect(loadedUser, isNotNull);
+      expect(loadedUser?.idToken, equals('valid-jwt-token-456'));
+    });
+
+    test('purges legacy or corrupted session without idToken upon loadCachedUser', () async {
+      SharedPreferences.setMockInitialValues({
+        'firebase_cached_user': jsonEncode({
+          'uid': 'legacy-user-no-token',
+          'email': 'legacy@example.com',
+          'displayName': 'Legacy User',
+        }),
+      });
+
+      final loadedUser = await FirebaseAuthService.loadCachedUser();
+      expect(loadedUser, isNull);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('firebase_cached_user'), isFalse);
     });
   });
 }

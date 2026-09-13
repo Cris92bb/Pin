@@ -21,6 +21,7 @@ class AppUser {
         'email': email,
         'displayName': displayName,
         'photoURL': photoURL,
+        'idToken': idToken,
         'isAnonymous': isAnonymous,
       };
 
@@ -29,6 +30,7 @@ class AppUser {
         email: json['email'] as String?,
         displayName: json['displayName'] as String?,
         photoURL: json['photoURL'] as String?,
+        idToken: json['idToken'] as String?,
         isAnonymous: json['isAnonymous'] as bool? ?? false,
       );
 

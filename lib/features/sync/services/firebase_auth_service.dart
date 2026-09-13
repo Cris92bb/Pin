@@ -23,7 +23,13 @@ class FirebaseAuthService {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_keyStoredUser);
       if (raw != null && raw.isNotEmpty) {
-        return AppUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+        final user = AppUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+        // Purge legacy/broken sessions without an ID token
+        if (user.idToken == null || user.idToken!.isEmpty) {
+          await prefs.remove(_keyStoredUser);
+          return null;
+        }
+        return user;
       }
     } catch (_) {}
     return null;
