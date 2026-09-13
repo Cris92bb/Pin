@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/ui/pin_tokens.dart';
+import '../model/app_user.dart';
 import '../state/sync_controller.dart';
 
 /// Modal dialog providing user authentication, Cloud Firestore dual-layer sync controls,
@@ -313,22 +314,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: PinTokens.primary.withValues(alpha: isDark ? 0.2 : 0.12),
-              child: Text(
-                (user.displayName?.isNotEmpty == true
-                        ? user.displayName![0]
-                        : user.email?.isNotEmpty == true
-                            ? user.email![0]
-                            : 'U')
-                    .toUpperCase(),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: PinTokens.primary,
-                ),
-              ),
-            ),
+            _buildUserAvatar(user),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -559,5 +545,49 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
         ),
       ],
     );
+  }
+
+  Widget _buildUserAvatar(AppUser user) {
+    final photoURL = user.photoURL;
+    final hasPhoto = photoURL != null && photoURL.trim().isNotEmpty;
+
+    Widget googleGBadge() {
+      return Container(
+        width: 40,
+        height: 40,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFF4285F4),
+        ),
+        child: const Center(
+          child: Text(
+            'G',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (hasPhoto) {
+      return ClipOval(
+        child: Image.network(
+          photoURL,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => googleGBadge(),
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return googleGBadge();
+          },
+        ),
+      );
+    }
+
+    return googleGBadge();
   }
 }
