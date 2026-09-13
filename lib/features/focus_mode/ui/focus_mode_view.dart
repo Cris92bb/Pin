@@ -519,9 +519,9 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                     Padding(
                       padding: EdgeInsets.fromLTRB(
                         isNarrow ? PinTokens.space16 : PinTokens.space24,
-                        PinTokens.space20,
+                        PinTokens.space16,
                         isNarrow ? PinTokens.space16 : PinTokens.space24,
-                        PinTokens.space24,
+                        PinTokens.space16,
                       ),
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 680),
@@ -568,7 +568,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 24),
 
                             // Big Stopwatch Display (Clean: No outline card effect)
                             Column(
@@ -647,7 +647,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                         padding: EdgeInsets.symmetric(
                           horizontal:
                               isNarrow ? PinTokens.space16 : PinTokens.space24,
-                          vertical: PinTokens.space24,
+                          vertical: PinTokens.space20,
                         ),
                         decoration: BoxDecoration(
                           color: subtasksBg,
@@ -655,7 +655,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                             top: Radius.circular(24),
                           ),
                         ),
-                        child: Center(
+                        child: Align(
+                          alignment: Alignment.topCenter,
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 680),
                             child: Column(

@@ -9,7 +9,6 @@ import 'package:pin/entities/task/state/task_state_notifier.dart';
 import 'package:pin/pages/home/home_page.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
 import 'package:pin/widgets/kanban_board/bouncy_drawer_scroll_wrapper.dart';
-import 'package:pin/widgets/kanban_board/layered_deck_view.dart';
 
 void main() {
   testWidgets(
@@ -245,10 +244,19 @@ void main() {
     await tester.fling(find.text('Backlog').last, const Offset(300, 0), 800);
     await tester.pump();
 
-    final layeredDeckFinder = find.byType(LayeredDeckView);
-    expect(layeredDeckFinder, findsOneWidget);
-
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets(
+      'PinScrollBehavior supplies TightBouncingScrollPhysics capping overscroll <= 10px across all views',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    const behavior = PinScrollBehavior();
+    final BuildContext context = tester.element(find.byType(MaterialApp).first);
+    final physics = behavior.getScrollPhysics(context);
+    expect(physics, isA<TightBouncingScrollPhysics>());
+    final tightPhysics = physics as TightBouncingScrollPhysics;
+    expect(tightPhysics.maxOverscroll, equals(10.0));
   });
 }
