@@ -109,11 +109,31 @@ class FirestoreSyncService {
           count: tasks.length,
         );
       } else {
+        String errorDetail = response.body;
+        try {
+          final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
+          final msg = errorJson['error']?['message'] as String?;
+          if (msg != null && msg.isNotEmpty) {
+            errorDetail = msg;
+          }
+        } catch (_) {}
+
+        String friendlyMessage = 'Sync failed (HTTP ${response.statusCode}): $errorDetail';
+        if (response.statusCode == 403 ||
+            errorDetail.toLowerCase().contains('permission')) {
+          friendlyMessage =
+              'Cloud Sync permission denied. The Firestore security rules have been deployed. Please re-authenticate if this persists.';
+        } else if (response.statusCode == 401 ||
+            errorDetail.toLowerCase().contains('unauthenticated')) {
+          friendlyMessage =
+              'Authentication token expired or invalid. Please sign out and sign in again.';
+        }
+
         return SyncResult(
           success: false,
           syncedAt: syncedAt,
           count: tasks.length,
-          errorMessage: 'Sync failed (HTTP ${response.statusCode}): ${response.body}',
+          errorMessage: friendlyMessage,
         );
       }
     } catch (e) {

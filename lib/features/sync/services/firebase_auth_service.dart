@@ -17,17 +17,40 @@ class FirebaseAuthService {
     required this.config,
   }) : _client = client ?? http.Client();
 
+  static String? _extractUidFromJwt(String? token) {
+    if (token == null) return null;
+    final parts = token.split('.');
+    if (parts.length < 2) return null;
+    try {
+      var normalized = base64Url.normalize(parts[1]);
+      final payload = jsonDecode(utf8.decode(base64Url.decode(normalized)))
+          as Map<String, dynamic>;
+      return (payload['user_id'] ?? payload['sub']) as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Loads cached session from local storage.
   static Future<AppUser?> loadCachedUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_keyStoredUser);
       if (raw != null && raw.isNotEmpty) {
-        final user = AppUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+        var user = AppUser.fromJson(jsonDecode(raw) as Map<String, dynamic>);
         // Purge legacy/broken sessions without an ID token
         if (user.idToken == null || user.idToken!.isEmpty) {
           await prefs.remove(_keyStoredUser);
           return null;
+        }
+        // If cached user has an outdated synthetic UID (starts with 'google_'),
+        // recover the true Firebase Auth UID from the JWT token to satisfy Firestore security rules.
+        if (user.uid.startsWith('google_')) {
+          final realUid = _extractUidFromJwt(user.idToken);
+          if (realUid != null && realUid.isNotEmpty) {
+            user = user.copyWith(uid: realUid);
+            await prefs.setString(_keyStoredUser, jsonEncode(user.toJson()));
+          }
         }
         return user;
       }
@@ -133,8 +156,7 @@ class FirebaseAuthService {
           final expiresIn =
               int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
           final user = AppUser(
-            uid:
-                deterministicUid, // <-- Override random Firebase UID with email-derived UID
+            uid: (data['localId'] as String?) ?? deterministicUid,
             email: targetEmail,
             displayName: displayName?.trim().isNotEmpty == true
                 ? displayName!.trim()
@@ -173,8 +195,7 @@ class FirebaseAuthService {
           final expiresIn =
               int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
           final user = AppUser(
-            uid:
-                deterministicUid, // <-- Override random Firebase UID with email-derived UID
+            uid: (data['localId'] as String?) ?? deterministicUid,
             email: targetEmail,
             displayName: targetName,
             photoURL: (data['photoUrl'] as String?) ??

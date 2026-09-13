@@ -440,9 +440,9 @@ void main() {
 
       expect(success, isTrue);
 
-      // Verify deterministic UID is identical across devices
+      // Verify authentic Firebase Auth UID is preserved across devices
       final user = container.read(syncControllerProvider).user;
-      expect(user?.uid, equals('google_shared_developer_gmail_com'));
+      expect(user?.uid, equals('user-mock-123'));
 
       // Verify both tasks are present after 3-way merge
       final currentTasks = container.read(taskStateProvider).tasks;
