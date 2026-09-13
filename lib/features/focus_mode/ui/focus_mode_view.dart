@@ -10,6 +10,8 @@ import 'package:pin/shared/lib/date_helpers.dart';
 import '../../../shared/ui/pill_chip.dart';
 import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
+import '../../ai/ui/ai_task_breakdown_modal.dart';
+import '../../task_crud/ui/task_crud_modal.dart';
 
 /// Immersive, distraction-free execution engine for a single task.
 class FocusModeView extends ConsumerStatefulWidget {
@@ -102,6 +104,33 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     await Future.delayed(const Duration(milliseconds: 900));
     if (mounted) {
       await _exitFocus();
+    }
+  }
+
+  Future<void> _editTask() async {
+    await _persistLoggedTime();
+    if (!mounted) return;
+    await TaskCrudModal.show(context, task: _currentTask);
+    if (!mounted) return;
+    final state = ref.read(taskStateProvider);
+    final match = state.tasks.where((t) => t.id == _currentTask.id);
+    if (match.isNotEmpty) {
+      setState(() => _currentTask = match.first);
+    }
+  }
+
+  Future<void> _reanalyzeTaskWithAi() async {
+    await _persistLoggedTime();
+    if (!mounted) return;
+    final success =
+        await AiTaskBreakdownModal.show(context, task: _currentTask);
+    if (!mounted) return;
+    if (success == true) {
+      final state = ref.read(taskStateProvider);
+      final match = state.tasks.where((t) => t.id == _currentTask.id);
+      if (match.isNotEmpty) {
+        setState(() => _currentTask = match.first);
+      }
     }
   }
 
@@ -291,6 +320,24 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                     ),
                   ),
                   const Spacer(),
+                  if (!isNarrow) ...[
+                    PinButton(
+                      icon: Icons.auto_awesome_rounded,
+                      text: 'AI Breakdown',
+                      isCompact: true,
+                      tooltip: 'AI Breakdown & Re-analyze',
+                      onPressed: _reanalyzeTaskWithAi,
+                    ),
+                    const SizedBox(width: 8),
+                    PinButton(
+                      icon: Icons.edit_outlined,
+                      text: 'Edit',
+                      isCompact: true,
+                      tooltip: 'Edit Pin',
+                      onPressed: _editTask,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   PinButton.primary(
                     icon: Icons.check_circle_outline_rounded,
                     text: isNarrow ? (isVeryNarrow ? null : 'Done') : 'Done & Exit',

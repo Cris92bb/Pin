@@ -16,17 +16,20 @@ import '../../ai/ui/ai_settings_modal.dart';
 class TaskCrudModal extends ConsumerStatefulWidget {
   final PinTask? initialTask;
   final TaskStatus? defaultStatus;
+  final bool autoTriggerAi;
 
   const TaskCrudModal({
     super.key,
     this.initialTask,
     this.defaultStatus,
+    this.autoTriggerAi = false,
   });
 
   static Future<void> show(
     BuildContext context, {
     PinTask? task,
     TaskStatus? defaultStatus,
+    bool autoTriggerAi = false,
   }) {
     return showDialog(
       context: context,
@@ -34,6 +37,7 @@ class TaskCrudModal extends ConsumerStatefulWidget {
       builder: (ctx) => TaskCrudModal(
         initialTask: task,
         defaultStatus: defaultStatus,
+        autoTriggerAi: autoTriggerAi,
       ),
     );
   }
@@ -88,6 +92,14 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
     _selectedEstimateMinutes = task?.estimatedMinutes ?? 15;
     _tags = task?.tags != null ? List.from(task!.tags) : ['#dev'];
     _subtasks = task?.subtasks != null ? List.from(task!.subtasks) : [];
+
+    if (widget.autoTriggerAi) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _generateTaskWithAi();
+        }
+      });
+    }
   }
 
   @override
@@ -455,11 +467,13 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                                     color: Color(0xFF818CF8),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Flexible(
+                                  Flexible(
                                     child: Text(
-                                      'Break down & auto-fill with Gemini',
+                                      widget.initialTask != null
+                                          ? 'Re-analyze & break down with Gemini'
+                                          : 'Break down & auto-fill with Gemini',
                                       overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         color: Color(0xFF818CF8),

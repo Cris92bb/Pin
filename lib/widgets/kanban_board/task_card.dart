@@ -4,9 +4,10 @@ import '../../entities/task/model/pin_task.dart';
 import '../../entities/task/state/task_state_notifier.dart';
 import 'package:pin/shared/lib/date_helpers.dart';
 import '../../shared/ui/pin_tokens.dart';
+import 'task_action_bubble.dart';
 
 /// Tactile Pin card designed to match the companion app screenshot.
-class TaskCard extends ConsumerWidget {
+class TaskCard extends ConsumerStatefulWidget {
   final PinTask task;
 
   const TaskCard({
@@ -15,7 +16,15 @@ class TaskCard extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskCard> createState() => _TaskCardState();
+}
+
+class _TaskCardState extends ConsumerState<TaskCard> {
+  Offset? _lastTapDownPosition;
+
+  @override
+  Widget build(BuildContext context) {
+    final task = widget.task;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isDone = task.status == TaskStatus.done;
@@ -40,9 +49,26 @@ class TaskCard extends ConsumerWidget {
       ),
       child: InkWell(
         borderRadius: PinTokens.radiusCard,
+        onTapDown: (details) {
+          _lastTapDownPosition = details.globalPosition;
+        },
         onTap: () {
           // Tap card to enter immersive Focus Mode
           ref.read(activeFocusTaskProvider.notifier).state = task;
+        },
+        onLongPress: () {
+          TaskActionBubble.show(
+            context,
+            task: task,
+            targetPosition: _lastTapDownPosition,
+          );
+        },
+        onSecondaryTapUp: (details) {
+          TaskActionBubble.show(
+            context,
+            task: task,
+            targetPosition: details.globalPosition,
+          );
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -200,14 +226,14 @@ class TaskCard extends ConsumerWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   // Energy Pill
-                  _buildEnergyPill(isDark),
+                  _buildEnergyPill(task, isDark),
 
                   // Duration Pill
-                  _buildDurationPill(isDark),
+                  _buildDurationPill(task, isDark),
 
                   // Tracked time counter (if any)
                   if (task.trackedSeconds > 0)
-                    _buildTrackedPill(isDark),
+                    _buildTrackedPill(task, isDark),
 
                   // Hashtag chips
                   for (final tag in task.tags)
@@ -215,7 +241,7 @@ class TaskCard extends ConsumerWidget {
 
                   // Subtasks indicator
                   if (task.hasSubtasks)
-                    _buildSubtasksPill(isDark),
+                    _buildSubtasksPill(task, isDark),
                 ],
               ),
             ],
@@ -225,7 +251,7 @@ class TaskCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildEnergyPill(bool isDark) {
+  Widget _buildEnergyPill(PinTask task, bool isDark) {
     Color bg;
     Color textColor;
 
@@ -275,7 +301,7 @@ class TaskCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildDurationPill(bool isDark) {
+  Widget _buildDurationPill(PinTask task, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
@@ -293,7 +319,7 @@ class TaskCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildTrackedPill(bool isDark) {
+  Widget _buildTrackedPill(PinTask task, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
@@ -341,7 +367,7 @@ class TaskCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildSubtasksPill(bool isDark) {
+  Widget _buildSubtasksPill(PinTask task, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
