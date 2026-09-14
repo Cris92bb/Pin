@@ -147,8 +147,11 @@ class GoogleSsoService {
           await request.response.close();
 
           // 2. Exchange authorization code with retries (accommodating mobile background app network restrictions)
+          // When Chrome is foregrounded on Android, OS restrictions may temporarily block background WAN DNS lookup.
+          // We retry with 1s intervals for up to 30s to allow the user or intent to bring Pin back to the foreground.
           GoogleSsoResult? ssoResult;
-          for (int attempt = 0; attempt < 8; attempt++) {
+          const maxAttempts = 30;
+          for (int attempt = 0; attempt < maxAttempts; attempt++) {
             try {
               final tokenResponse = await _httpClient.post(
                 Uri.parse('https://oauth2.googleapis.com/token'),
@@ -199,8 +202,8 @@ class GoogleSsoService {
                 break;
               }
             } catch (e) {
-              if (attempt < 7) {
-                await Future.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+              if (attempt < maxAttempts - 1) {
+                await Future.delayed(const Duration(milliseconds: 1000));
                 continue;
               }
               ssoResult = GoogleSsoResult(
@@ -362,14 +365,17 @@ class GoogleSsoService {
     <div class="badge">✓</div>
     <h1>$welcome</h1>
     <p>$accountText<br>Return to Pin to finish connecting your board.</p>
-    <a href="intent://#Intent;package=com.example.pin;scheme=pin;end" style="display:inline-block;padding:12px 24px;background:#34D399;color:#0E1411;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:16px;font-size:14px;">Open Pin</a>
+    <a href="pin://auth" style="display:inline-block;padding:12px 24px;background:#34D399;color:#0E1411;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:16px;font-size:14px;">Open Pin</a>
     <div class="hint">This tab may be closed safely.</div>
   </div>
   <script>
     setTimeout(function() {
-      try { window.location.href = "intent://#Intent;package=com.example.pin;scheme=pin;end"; } catch(e) {}
+      try { window.location.href = "pin://auth"; } catch(e) {}
+      setTimeout(function() {
+        try { window.location.href = "intent://auth#Intent;scheme=pin;package=com.example.pin;end"; } catch(e) {}
+      }, 250);
       try { window.close(); } catch(e) {}
-    }, 500);
+    }, 400);
   </script>
 </body>
 </html>''';
