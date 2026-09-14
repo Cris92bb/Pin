@@ -1,5 +1,7 @@
 #include "my_application.h"
 
+#include <cstring>
+
 #include <flutter_linux/flutter_linux.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -10,6 +12,8 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  FlMethodChannel* theme_channel;
+  FlMethodChannel* window_channel;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -53,7 +57,16 @@ static void theme_method_call_cb(FlMethodChannel* channel,
 static void window_method_call_cb(FlMethodChannel* channel,
                                   FlMethodCall* method_call,
                                   gpointer user_data) {
-  GtkWindow* window = GTK_WINDOW(user_data);
+  // Look the window up on each call instead of keeping a raw pointer that
+  // would dangle once the window is destroyed.
+  GtkWindow* window =
+      gtk_application_get_active_window(GTK_APPLICATION(user_data));
+  if (window == nullptr) {
+    g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(
+        fl_method_error_response_new("no_window", "No active window", nullptr));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
   const gchar* method = fl_method_call_get_name(method_call);
   if (strcmp(method, "close") == 0) {
     gtk_window_close(window);
@@ -205,16 +218,17 @@ static void my_application_activate(GApplication* application) {
   FlEngine* engine = fl_view_get_engine(view);
   FlBinaryMessenger* messenger = fl_engine_get_binary_messenger(engine);
   g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
-  FlMethodChannel* theme_channel = fl_method_channel_new(
+  // Channels are owned by the application and released in dispose.
+  self->theme_channel = fl_method_channel_new(
       messenger, "pin/theme", FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(
-      theme_channel, theme_method_call_cb, nullptr, nullptr);
+      self->theme_channel, theme_method_call_cb, nullptr, nullptr);
 
   // Register pin/window MethodChannel to support window actions (drag, close)
-  FlMethodChannel* window_channel = fl_method_channel_new(
+  self->window_channel = fl_method_channel_new(
       messenger, "pin/window", FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(
-      window_channel, window_method_call_cb, window, nullptr);
+      self->window_channel, window_method_call_cb, application, nullptr);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
@@ -262,6 +276,8 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  g_clear_object(&self->theme_channel);
+  g_clear_object(&self->window_channel);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 
