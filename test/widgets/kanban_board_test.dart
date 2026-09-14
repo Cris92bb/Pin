@@ -13,7 +13,7 @@ import 'package:pin/widgets/kanban_board/task_card.dart';
 void main() {
   testWidgets('renders HomePage with companion layered deck and default state',
       (tester) async {
-    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
@@ -52,7 +52,7 @@ void main() {
 
   testWidgets('displays task cards with estimation and energy tags',
       (tester) async {
-    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
@@ -105,7 +105,7 @@ void main() {
 
   testWidgets('clicking card transitions to single-task Focus Mode',
       (tester) async {
-    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
@@ -160,7 +160,7 @@ void main() {
 
   testWidgets('smoothly transitions between drawers via tab tap and keyboard shortcuts',
       (tester) async {
-    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 

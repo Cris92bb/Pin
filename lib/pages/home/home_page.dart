@@ -6,9 +6,11 @@ import '../../entities/task/model/pin_task.dart';
 import '../../entities/task/state/task_state_notifier.dart';
 import '../../features/focus_mode/ui/focus_mode_view.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
+import '../../features/task_crud/state/task_editor_state.dart';
 import '../../features/task_export_import/ui/task_export_import_modal.dart';
 import '../../shared/ui/pin_tokens.dart';
 import '../../widgets/kanban_board/layered_deck_view.dart';
+import '../../widgets/kanban_board/wide_fold_kanban_view.dart';
 import '../../features/ai/ui/ai_settings_modal.dart';
 import '../../features/sync/ui/firebase_account_modal.dart';
 import '../../features/sync/ui/sync_status_badge.dart';
@@ -40,7 +42,14 @@ class _HomePageState extends ConsumerState<HomePage> {
         (activeDeck == TaskStatus.today && isTodayFull
             ? TaskStatus.backlog
             : activeDeck);
-    TaskCrudModal.show(context, defaultStatus: initialDeck);
+
+    final isWide = MediaQuery.of(context).size.width >= 600 || kIsWeb;
+    if (isWide) {
+      ref.read(activeTaskEditorProvider.notifier).state =
+          TaskEditorArgs(defaultStatus: initialDeck);
+    } else {
+      TaskCrudModal.show(context, defaultStatus: initialDeck);
+    }
   }
 
   void _openFocusModeFirstToday() {
@@ -88,13 +97,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isDesktopOrWeb = screenWidth > 540;
+    final isWide = screenWidth >= 600 || kIsWeb;
 
     final frameBg = isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightPhoneFrameBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
 
-    // If Focus Mode is active, render Focus Mode view inside companion shell
-    if (activeFocusTask != null) {
+    // If Focus Mode is active on a compact mobile screen, render full Focus Mode view
+    if (activeFocusTask != null && !isWide) {
       return Scaffold(
         backgroundColor: isDesktopOrWeb
             ? (isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg)
@@ -229,16 +239,24 @@ class _HomePageState extends ConsumerState<HomePage> {
             : frameBg,
         body: Center(
           child: Container(
-            width: isDesktopOrWeb ? 430 : double.infinity,
+            width: isWide
+                ? (screenWidth > 1240 ? 1240.0 : screenWidth - 32)
+                : (isDesktopOrWeb ? 430.0 : double.infinity),
             height: isDesktopOrWeb
                 ? (screenHeight > 540 ? screenHeight - 32 : screenHeight)
                 : double.infinity,
-            constraints: isDesktopOrWeb
+            constraints: isWide
                 ? BoxConstraints(
-                    maxHeight: screenHeight > 480 ? screenHeight - 20 : 480,
+                    maxWidth: 1240,
+                    maxHeight: screenHeight > 540 ? screenHeight - 20 : screenHeight,
                     minHeight: 480,
                   )
-                : null,
+                : (isDesktopOrWeb
+                    ? BoxConstraints(
+                        maxHeight: screenHeight > 480 ? screenHeight - 20 : 480,
+                        minHeight: 480,
+                      )
+                    : null),
             decoration: BoxDecoration(
               color: frameBg,
               borderRadius: isDesktopOrWeb ? BorderRadius.circular(36) : BorderRadius.zero,
@@ -275,9 +293,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                         const SizedBox(height: 8),
 
-                        // Layered Deck Kanban View
-                        const Expanded(
-                          child: LayeredDeckView(),
+                        // Kanban View (Wide 3-drawer on web & fold, layered deck on narrow phone)
+                        Expanded(
+                          child: isWide
+                              ? const WideFoldKanbanView()
+                              : const LayeredDeckView(),
                         ),
                       ],
                     ),

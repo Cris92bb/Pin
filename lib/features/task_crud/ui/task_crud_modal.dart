@@ -17,12 +17,16 @@ class TaskCrudModal extends ConsumerStatefulWidget {
   final PinTask? initialTask;
   final TaskStatus? defaultStatus;
   final bool autoTriggerAi;
+  final bool asDialog;
+  final VoidCallback? onClose;
 
   const TaskCrudModal({
     super.key,
     this.initialTask,
     this.defaultStatus,
     this.autoTriggerAi = false,
+    this.asDialog = true,
+    this.onClose,
   });
 
   static Future<void> show(
@@ -212,6 +216,14 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
     }
   }
 
+  void _dismiss() {
+    if (widget.onClose != null) {
+      widget.onClose!();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
@@ -242,7 +254,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
       if (mounted) {
         if (success) {
           ref.read(activeDeckProvider.notifier).state = _selectedStatus;
-          Navigator.of(context).pop();
+          _dismiss();
         } else {
           final state = ref.read(taskStateProvider);
           setState(() {
@@ -267,7 +279,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
       if (mounted) {
         if (success) {
           ref.read(activeDeckProvider.notifier).state = _selectedStatus;
-          Navigator.of(context).pop();
+          _dismiss();
         } else {
           final state = ref.read(taskStateProvider);
           setState(() {
@@ -290,57 +302,48 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
         isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final inputBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCanvasBg;
 
-    return Dialog(
-      backgroundColor: modalBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: PinTokens.radiusDeck,
-        side: BorderSide(color: borderColor, width: isDark ? 1.5 : 1.0),
-      ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440, maxHeight: 680),
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+    final body = Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Header
+              Text(
+                isEditing ? 'Edit Pin' : 'Capture New Pin',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: textPrimary,
+                  letterSpacing: -0.3,
+                ),
+              ),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    isEditing ? 'Edit Pin' : 'Capture New Pin',
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: textPrimary,
-                      letterSpacing: -0.3,
-                    ),
+                  IconButton(
+                    tooltip: 'Gemini AI Settings',
+                    icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                    color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
+                    splashRadius: 18,
+                    onPressed: () => AiSettingsModal.show(context),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Gemini AI Settings',
-                        icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                        color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
-                        splashRadius: 18,
-                        onPressed: () => AiSettingsModal.show(context),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.close_rounded,
-                          color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
-                          size: 20,
-                        ),
-                        splashRadius: 18,
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
+                      size: 20,
+                    ),
+                    splashRadius: 18,
+                    onPressed: _dismiss,
                   ),
                 ],
               ),
+            ],
+          ),
               const SizedBox(height: 12),
 
               // Inline Alert
@@ -849,7 +852,7 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                 children: [
                   PinButton(
                     text: 'Cancel',
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _dismiss,
                   ),
                   const SizedBox(width: 10),
                   PinButton.primary(
@@ -863,7 +866,29 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
               ),
             ],
           ),
+    );
+
+    if (!widget.asDialog) {
+      return Container(
+        decoration: BoxDecoration(
+          color: modalBg,
+          borderRadius: PinTokens.radiusDeck,
+          border: Border.all(color: borderColor, width: isDark ? 1.5 : 1.0),
         ),
+        child: body,
+      );
+    }
+
+    return Dialog(
+      backgroundColor: modalBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: PinTokens.radiusDeck,
+        side: BorderSide(color: borderColor, width: isDark ? 1.5 : 1.0),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440, maxHeight: 680),
+        child: body,
       ),
     );
   }

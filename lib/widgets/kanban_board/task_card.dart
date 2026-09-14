@@ -9,10 +9,12 @@ import 'task_action_bubble.dart';
 /// Tactile Pin card designed to match the companion app screenshot.
 class TaskCard extends ConsumerStatefulWidget {
   final PinTask task;
+  final VoidCallback? onEdit;
 
   const TaskCard({
     super.key,
     required this.task,
+    this.onEdit,
   });
 
   @override
@@ -66,6 +68,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             context,
             task: task,
             targetPosition: _lastTapDownPosition,
+            onEdit: widget.onEdit,
           );
         },
         onSecondaryTapUp: (details) {
@@ -73,6 +76,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             context,
             task: task,
             targetPosition: details.globalPosition,
+            onEdit: widget.onEdit,
           );
         },
         child: Padding(

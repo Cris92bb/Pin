@@ -399,7 +399,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 640;
+        final isNarrow = constraints.maxWidth < 680;
         final isVeryNarrow = constraints.maxWidth < 360;
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -436,7 +436,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                 children: [
                   PinButton(
                     icon: Icons.arrow_back_rounded,
-                    text: isNarrow ? (isVeryNarrow ? null : 'Back') : 'Kanban Board',
+                    text: isNarrow ? (isVeryNarrow ? null : 'Back') : 'Back',
                     isCompact: true,
                     tooltip: 'Return to Board (Esc)',
                     onPressed: _exitFocus,
