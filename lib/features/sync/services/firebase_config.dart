@@ -11,6 +11,7 @@ class FirebaseConfig {
   static const String _keyDatabaseId = 'firebase_database_id';
   static const String _keyStorageBucket = 'firebase_storage_bucket';
   static const String _keyOAuthClientId = 'firebase_oauth_client_id';
+  static const String _keyOAuthClientSecret = 'firebase_oauth_client_secret';
 
   final String apiKey;
   final String projectId;
@@ -18,6 +19,7 @@ class FirebaseConfig {
   final String firestoreDatabaseId;
   final String storageBucket;
   final String oAuthClientId;
+  final String oAuthClientSecret;
 
   const FirebaseConfig({
     this.apiKey = '',
@@ -26,6 +28,7 @@ class FirebaseConfig {
     this.firestoreDatabaseId = '(default)',
     this.storageBucket = '',
     this.oAuthClientId = '',
+    this.oAuthClientSecret = '',
   });
 
   bool get isConfigured => apiKey.trim().isNotEmpty && projectId.trim().isNotEmpty;
@@ -37,6 +40,7 @@ class FirebaseConfig {
     String? firestoreDatabaseId,
     String? storageBucket,
     String? oAuthClientId,
+    String? oAuthClientSecret,
   }) {
     return FirebaseConfig(
       apiKey: apiKey ?? this.apiKey,
@@ -45,6 +49,7 @@ class FirebaseConfig {
       firestoreDatabaseId: firestoreDatabaseId ?? this.firestoreDatabaseId,
       storageBucket: storageBucket ?? this.storageBucket,
       oAuthClientId: oAuthClientId ?? this.oAuthClientId,
+      oAuthClientSecret: oAuthClientSecret ?? this.oAuthClientSecret,
     );
   }
 
@@ -55,6 +60,7 @@ class FirebaseConfig {
         'firestoreDatabaseId': firestoreDatabaseId,
         'storageBucket': storageBucket,
         'oAuthClientId': oAuthClientId,
+        'oAuthClientSecret': oAuthClientSecret,
       };
 
   factory FirebaseConfig.fromJson(Map<String, dynamic> json) => FirebaseConfig(
@@ -64,6 +70,9 @@ class FirebaseConfig {
         firestoreDatabaseId: json['firestoreDatabaseId'] as String? ?? '(default)',
         storageBucket: json['storageBucket'] as String? ?? '',
         oAuthClientId: json['oAuthClientId'] as String? ?? '',
+        oAuthClientSecret: json['oAuthClientSecret'] as String? ??
+            json['clientSecret'] as String? ??
+            '',
       );
 
   /// Loads Firebase configuration.
@@ -110,6 +119,7 @@ class FirebaseConfig {
       final dbId = prefs.getString(_keyDatabaseId) ?? '(default)';
       final storageBucket = prefs.getString(_keyStorageBucket) ?? '';
       final oAuthClientId = prefs.getString(_keyOAuthClientId) ?? '';
+      final oAuthClientSecret = prefs.getString(_keyOAuthClientSecret) ?? '';
       return FirebaseConfig(
         apiKey: apiKey,
         projectId: projectId,
@@ -117,6 +127,7 @@ class FirebaseConfig {
         firestoreDatabaseId: dbId,
         storageBucket: storageBucket,
         oAuthClientId: oAuthClientId,
+        oAuthClientSecret: oAuthClientSecret,
       );
     } catch (_) {
       return const FirebaseConfig();
@@ -132,6 +143,7 @@ class FirebaseConfig {
       await prefs.setString(_keyDatabaseId, firestoreDatabaseId.trim().isEmpty ? '(default)' : firestoreDatabaseId.trim());
       await prefs.setString(_keyStorageBucket, storageBucket.trim());
       await prefs.setString(_keyOAuthClientId, oAuthClientId.trim());
+      await prefs.setString(_keyOAuthClientSecret, oAuthClientSecret.trim());
     } catch (_) {}
   }
 
@@ -144,6 +156,7 @@ class FirebaseConfig {
       await prefs.remove(_keyDatabaseId);
       await prefs.remove(_keyStorageBucket);
       await prefs.remove(_keyOAuthClientId);
+      await prefs.remove(_keyOAuthClientSecret);
     } catch (_) {}
   }
 }

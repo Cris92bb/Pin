@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
@@ -8,6 +9,8 @@ import '../model/sync_status.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_config.dart';
 import '../services/firestore_sync_service.dart';
+import '../services/google_sso_service.dart';
+import '../services/watch_auth_bridge.dart';
 
 /// Immutable state containing active user, sync status, and metadata.
 class SyncState {
@@ -70,11 +73,13 @@ class SyncState {
 /// 1. Instant local storage write (handled by TaskStateNotifier)
 /// 2. 1,000ms debounced Cloud Firestore synchronization
 /// 3. Bi-directional cloud hydration upon sign-in.
-class SyncController extends StateNotifier<SyncState> {
+class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserver {
   final Ref _ref;
   final FirebaseAuthService authService;
   final FirestoreSyncService firestoreService;
   Timer? _debounceTimer;
+  Timer? _pollingTimer;
+  bool _isSyncing = false;
 
   SyncController({
     required Ref ref,
@@ -109,11 +114,42 @@ class SyncController extends StateNotifier<SyncState> {
     final taskNotifier = _ref.read(taskStateProvider.notifier);
     taskNotifier.onTasksPersisted = _handleLocalTasksChanged;
 
-    // 3. Hydrate cached session if exists
+    // 3. Register lifecycle observer for auto-sync on app resume / window focus
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {}
+
+    // 4. Start periodic sync if already signed in
+    if (state.user != null) {
+      _startPeriodicSync();
+    }
+
+    // 5. Hydrate cached session if exists
     final cachedUser = await FirebaseAuthService.loadCachedUser();
     if (cachedUser != null && state.user == null) {
       await _onUserAuthenticated(cachedUser);
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && this.state.isSignedIn) {
+      syncNow();
+    }
+  }
+
+  void _startPeriodicSync() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (state.isSignedIn && !_isSyncing) {
+        _performTwoWaySync();
+      }
+    });
+  }
+
+  void _stopPeriodicSync() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
   }
 
   /// Returns true if config is loaded; otherwise sets an error and returns false.
@@ -130,6 +166,10 @@ class SyncController extends StateNotifier<SyncState> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _stopPeriodicSync();
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
     super.dispose();
   }
 
@@ -143,19 +183,33 @@ class SyncController extends StateNotifier<SyncState> {
       return;
     }
 
-    // Debounce the cloud write by exactly 1,000 milliseconds
+    // Debounce the cloud sync by exactly 1,000 milliseconds
     _debounceTimer?.cancel();
     state = state.copyWith(isDebouncing: true);
 
     _debounceTimer = Timer(const Duration(milliseconds: 1000), () async {
-      await _executeCloudSync(tasks);
+      await _performTwoWaySync();
     });
   }
 
-  /// Executes the actual write to Cloud Firestore at `/users/{userId}/meta/board`.
-  Future<void> _executeCloudSync(List<PinTask> tasks) async {
+  /// Forces an immediate bi-directional cloud sync, cancelling any pending debounce timer.
+  Future<void> syncNow() async {
+    _debounceTimer?.cancel();
+    await _performTwoWaySync();
+  }
+
+  /// Executes full bi-directional synchronization with Cloud Firestore:
+  /// 1. Fetches current cloud state (`loadBoardFromFirestore`).
+  /// 2. Merges deletion tombstones (`deletedTaskIds`) to prevent resurrected tasks across devices.
+  /// 3. Merges tasks via CRDT / Last-Write-Wins (LWW) based on `updatedAt`.
+  /// 4. Filters out unedited initial sample pins if real tasks exist, preventing dummy data pollution.
+  /// 5. Hydrates local storage if remote changes occurred.
+  /// 6. Pushes the unified board snapshot and tombstones to Firestore.
+  Future<void> _performTwoWaySync() async {
     var user = state.user;
     if (user == null) return;
+    if (_isSyncing) return;
+    _isSyncing = true;
 
     state = state.copyWith(
       status: SyncStatus.syncing,
@@ -176,188 +230,353 @@ class SyncController extends StateNotifier<SyncState> {
           state = state.copyWith(user: freshUser);
         }
       } catch (e) {
-        // Refresh failed (e.g. revoked refresh token) — sign the user out so
-        // they get a clean prompt to re-authenticate rather than a silent loop.
         await signOut();
         state = state.copyWith(
           status: SyncStatus.error,
           errorMessage: 'Session expired. Please sign in again.',
         );
+        _isSyncing = false;
         return;
       }
     }
 
-    final taskMaps = tasks.map((t) => t.toJson()).toList();
-    final checkinMap = state.dailyCheckin?.toJson();
+    try {
+      final taskNotifier = _ref.read(taskStateProvider.notifier);
+      await taskNotifier.loadFuture;
+      final localTasks = _ref.read(taskStateProvider).tasks;
+      final localDeletedMap = taskNotifier.deletedTaskIds;
 
-    final result = await firestoreService.syncBoardToFirestore(
-      userId: user.uid,
-      idToken: user.idToken,
-      tasks: taskMaps,
-      dailyCheckin: checkinMap,
-    );
-
-    if (result.success) {
-      state = state.copyWith(
-        status: SyncStatus.synced,
-        lastSyncedAt: result.syncedAt,
-        syncedTaskCount: result.count,
-        clearError: true,
+      // 1. Fetch cloud snapshot
+      final cloudBoard = await firestoreService.loadBoardFromFirestore(
+        userId: user.uid,
+        idToken: user.idToken,
       );
-    } else {
+
+      final checkinMap = state.dailyCheckin?.toJson();
+
+      if (cloudBoard == null) {
+        // Document does not exist on cloud yet — seed cloud with local tasks
+        final result = await firestoreService.syncBoardToFirestore(
+          userId: user.uid,
+          idToken: user.idToken,
+          tasks: localTasks.map((t) => t.toJson()).toList(),
+          dailyCheckin: checkinMap,
+          deletedTaskIds: localDeletedMap,
+        );
+        if (result.success) {
+          state = state.copyWith(
+            status: SyncStatus.synced,
+            lastSyncedAt: result.syncedAt,
+            syncedTaskCount: result.count,
+            clearError: true,
+          );
+        } else {
+          state = state.copyWith(
+            status: SyncStatus.error,
+            errorMessage: result.errorMessage,
+          );
+        }
+        _isSyncing = false;
+        return;
+      }
+
+      // 2. Combine deletion tombstones from cloud and local
+      final mergedDeletedMap = Map<String, int>.from(cloudBoard.deletedTaskIds);
+      for (final entry in localDeletedMap.entries) {
+        final existing = mergedDeletedMap[entry.key];
+        if (existing == null || entry.value > existing) {
+          mergedDeletedMap[entry.key] = entry.value;
+        }
+      }
+      taskNotifier.mergeDeletedTaskIds(mergedDeletedMap);
+
+      // 3. Parse cloud tasks
+      final cloudTasks = cloudBoard.tasks
+          .map((m) => PinTask.fromJson(m))
+          .toList();
+
+      final cloudHasRealTasks = cloudTasks.any((t) => !TaskStateNotifier.isUntouchedSamplePin(t));
+      final localHasRealTasks = localTasks.any((t) => !TaskStateNotifier.isUntouchedSamplePin(t));
+
+      // 4. Merge tasks using CRDT / LWW (Last-Write-Wins)
+      final Map<String, PinTask> merged = {};
+
+      // Filter local tasks
+      final effectiveLocalTasks = localTasks.where((t) {
+        if (cloudHasRealTasks && TaskStateNotifier.isUntouchedSamplePin(t)) {
+          return false;
+        }
+        final deletedAt = mergedDeletedMap[t.id];
+        if (deletedAt != null && deletedAt >= t.updatedAt.millisecondsSinceEpoch) {
+          return false;
+        }
+        return true;
+      });
+
+      for (final t in effectiveLocalTasks) {
+        merged[t.id] = t;
+      }
+
+      // Filter cloud tasks
+      final effectiveCloudTasks = cloudTasks.where((t) {
+        if (localHasRealTasks && TaskStateNotifier.isUntouchedSamplePin(t)) {
+          return false;
+        }
+        final deletedAt = mergedDeletedMap[t.id];
+        if (deletedAt != null && deletedAt >= t.updatedAt.millisecondsSinceEpoch) {
+          return false;
+        }
+        return true;
+      });
+
+      for (final cloudTask in effectiveCloudTasks) {
+        final local = merged[cloudTask.id];
+        if (local == null) {
+          // Task only in cloud (created on another device) → add it
+          merged[cloudTask.id] = cloudTask;
+        } else if (cloudTask.updatedAt.isAfter(local.updatedAt)) {
+          // Cloud version is newer → prefer cloud
+          merged[cloudTask.id] = cloudTask;
+        }
+        // else: local version is newer or equal → keep local
+      }
+
+      final mergedList = merged.values.toList();
+
+      // 5. Update local storage if needed
+      if (_hasListChanged(localTasks, mergedList)) {
+        await taskNotifier.hydrateFromCloud(mergedList);
+      }
+
+      // 6. Merge daily check-in
+      DailyCheckin? checkin = state.dailyCheckin;
+      if (cloudBoard.dailyCheckin != null && cloudBoard.dailyCheckin!.isNotEmpty) {
+        final cloudCheckin = DailyCheckin.fromJson(cloudBoard.dailyCheckin!);
+        if (checkin == null || cloudBoard.lastSyncedAt > (state.lastSyncedAt ?? 0)) {
+          checkin = cloudCheckin;
+        }
+      }
+
+      // 7. Push merged result back to Firestore
+      final pushResult = await firestoreService.syncBoardToFirestore(
+        userId: user.uid,
+        idToken: user.idToken,
+        tasks: mergedList.map((t) => t.toJson()).toList(),
+        dailyCheckin: checkin?.toJson(),
+        deletedTaskIds: mergedDeletedMap,
+      );
+
+      if (pushResult.success) {
+        state = state.copyWith(
+          status: SyncStatus.synced,
+          lastSyncedAt: pushResult.syncedAt,
+          syncedTaskCount: mergedList.length,
+          dailyCheckin: checkin,
+          clearError: true,
+        );
+      } else {
+        state = state.copyWith(
+          status: SyncStatus.error,
+          errorMessage: pushResult.errorMessage,
+        );
+      }
+    } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: result.errorMessage,
+        errorMessage: 'Sync failed: ${e.toString()}',
       );
+    } finally {
+      _isSyncing = false;
     }
   }
 
-  /// Forces an immediate cloud sync, cancelling any pending debounce timer.
-  Future<void> syncNow() async {
-    _debounceTimer?.cancel();
-    final tasks = _ref.read(taskStateProvider).tasks;
-    await _executeCloudSync(tasks);
+  bool _hasListChanged(List<PinTask> a, List<PinTask> b) {
+    if (a.length != b.length) return true;
+    final mapA = {for (final t in a) t.id: t};
+    for (final tb in b) {
+      final ta = mapA[tb.id];
+      if (ta == null) return true;
+      if (ta.updatedAt.millisecondsSinceEpoch != tb.updatedAt.millisecondsSinceEpoch) return true;
+      if (ta.status != tb.status) return true;
+      if (ta.title != tb.title) return true;
+    }
+    return false;
   }
 
   /// Called when a user successfully authenticates. Coordinates cloud hydration
-  /// using a **three-way merge** so neither device silently loses its tasks.
-  ///
-  /// Merge rules (per task ID):
-  ///   1. Task exists on both sides → keep the version with the later [updatedAt].
-  ///   2. Task only in cloud       → add it (created on another device).
-  ///   3. Task only in local       → keep it (not yet synced to cloud).
-  ///
-  /// After merging the unified list is immediately pushed to Firestore so every
-  /// device that signs in next will see the correct merged state.
+  /// using full bi-directional synchronization.
   Future<void> _onUserAuthenticated(AppUser user) async {
     state = state.copyWith(
       user: user,
       status: SyncStatus.syncing,
       clearError: true,
     );
-
-    try {
-      // 1. Fetch cloud snapshot.
-      final cloudBoard = await firestoreService.loadBoardFromFirestore(
-        userId: user.uid,
-        idToken: user.idToken,
-      );
-
-      final taskNotifier = _ref.read(taskStateProvider.notifier);
-      final localTasks = _ref.read(taskStateProvider).tasks;
-
-      if (cloudBoard == null || cloudBoard.tasks.isEmpty) {
-        // New account or empty cloud — seed cloud with local tasks.
-        await _executeCloudSync(localTasks);
-        return;
-      }
-
-      // 2. Parse cloud tasks.
-      final cloudTasks = cloudBoard.tasks
-          .map((m) => PinTask.fromJson(m))
-          .toList();
-
-      // 3. Merge: build a map keyed by task ID, starting from local.
-      final Map<String, PinTask> merged = {
-        for (final t in localTasks) t.id: t,
-      };
-
-      // For each cloud task: if the same ID already exists locally, keep
-      // whichever was updated more recently; otherwise add the cloud task.
-      for (final cloudTask in cloudTasks) {
-        final local = merged[cloudTask.id];
-        if (local == null) {
-          // Task exists only in cloud (created on another device) → add it.
-          merged[cloudTask.id] = cloudTask;
-        } else if (cloudTask.updatedAt.isAfter(local.updatedAt)) {
-          // Cloud version is newer → prefer cloud.
-          merged[cloudTask.id] = cloudTask;
-        }
-        // else: local version is newer or equal → keep local (already in map).
-      }
-
-      final mergedList = merged.values.toList();
-
-      // 4. Apply merged list to local storage.
-      await taskNotifier.hydrateFromCloud(mergedList);
-
-      // 5. Restore daily check-in from cloud if available.
-      DailyCheckin? checkin;
-      if (cloudBoard.dailyCheckin != null &&
-          cloudBoard.dailyCheckin!.isNotEmpty) {
-        checkin = DailyCheckin.fromJson(cloudBoard.dailyCheckin!);
-      }
-
-      state = state.copyWith(
-        user: user,
-        status: SyncStatus.synced,
-        lastSyncedAt: cloudBoard.lastSyncedAt,
-        dailyCheckin: checkin,
-        syncedTaskCount: mergedList.length,
-      );
-
-      // 6. Push the merged result back to Firestore immediately so the next
-      //    device that signs in gets the unified set.
-      await _executeCloudSync(mergedList);
-
-    } catch (e) {
-      state = state.copyWith(
-        user: user,
-        status: SyncStatus.error,
-        errorMessage: 'Sync merge failed: ${e.toString()}',
-      );
-    }
+    // Broadcast authentication to companion watch nodes if running on phone
+    unawaited(WatchAuthBridge().sendAuthToWatch(user));
+    _startPeriodicSync();
+    await _performTwoWaySync();
   }
 
-  /// Sign in with email and password.
-  Future<bool> signInWithEmail(String email, String password) async {
-    if (!_guardConfigLoaded()) return false;
+  /// Signs in using cross-device credentials received from companion phone.
+  Future<bool> signInWithCrossDeviceCredentials(AppUser user) async {
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
-      final user = await authService.signInWithEmail(email, password);
       await _onUserAuthenticated(user);
       return true;
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
   }
 
-  /// Sign up with email and password.
-  Future<bool> signUpWithEmail(String email, String password, {String? displayName}) async {
+  /// Requests companion phone to authenticate or provide existing session.
+  Future<PhoneAuthRequestResult> signInWithCompanionPhone({
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    state = state.copyWith(status: SyncStatus.syncing, clearError: true);
+    final bridge = WatchAuthBridge();
+    final result = await bridge.requestPhoneAuth(timeout: timeout);
+    if (result.success && result.user != null) {
+      await _onUserAuthenticated(result.user!);
+      return result;
+    } else {
+      state = state.copyWith(
+        status: state.user != null ? SyncStatus.synced : SyncStatus.guest,
+        errorMessage: result.errorMessage != null ? _formatError(result.errorMessage!) : null,
+      );
+      return result;
+    }
+  }
+
+
+  /// Sign in with email and password, with optional 2FA verification.
+  Future<bool> signInWithEmail(
+    String email,
+    String password, {
+    String? twoFactorCode,
+  }) async {
     if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
-      final user = await authService.signUpWithEmail(email, password, displayName: displayName);
+      final user = await authService.signInWithEmail(
+        email,
+        password,
+        twoFactorCode: twoFactorCode,
+      );
       await _onUserAuthenticated(user);
       return true;
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
+      );
+      return false;
+    }
+  }
+
+  /// Sign up with email and password, with optional 2FA code setup.
+  Future<bool> signUpWithEmail(
+    String email,
+    String password, {
+    String? displayName,
+    String? twoFactorCode,
+  }) async {
+    if (!_guardConfigLoaded()) return false;
+    state = state.copyWith(status: SyncStatus.syncing, clearError: true);
+    try {
+      final user = await authService.signUpWithEmail(
+        email,
+        password,
+        displayName: displayName,
+        twoFactorCode: twoFactorCode,
+      );
+      await _onUserAuthenticated(user);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        status: SyncStatus.error,
+        errorMessage: _formatError(e),
+      );
+      return false;
+    }
+  }
+
+  GoogleSsoService? _activeSsoService;
+
+  /// Cancels any in-flight Google SSO authorization flow.
+  void cancelGoogleSso() {
+    _activeSsoService?.cancel();
+    _activeSsoService = null;
+    state = state.copyWith(
+      status: state.user != null ? SyncStatus.synced : SyncStatus.guest,
+      clearError: true,
+    );
+  }
+
+  /// Real Google SSO authentication via direct Google OAuth consent screen.
+  Future<bool> signInWithGoogleSso() async {
+    if (!_guardConfigLoaded()) return false;
+    state = state.copyWith(status: SyncStatus.syncing, clearError: true);
+    try {
+      final ssoService = GoogleSsoService();
+      _activeSsoService = ssoService;
+      final result = await ssoService.signIn(
+        clientId: state.config.oAuthClientId,
+        clientSecret: state.config.oAuthClientSecret,
+      );
+      _activeSsoService = null;
+      if (result.isCancelled) {
+        state = state.copyWith(
+          status: state.user != null ? SyncStatus.synced : SyncStatus.guest,
+          clearError: true,
+        );
+        return false;
+      }
+      if (!result.isSuccess) {
+        state = state.copyWith(
+          status: SyncStatus.error,
+          errorMessage: result.errorMessage != null
+              ? _formatError(result.errorMessage!)
+              : 'Google SSO failed.',
+        );
+        return false;
+      }
+      final user = await authService.signInWithGoogleSso(result.idToken!);
+      await _onUserAuthenticated(user);
+      return true;
+    } catch (e) {
+      _activeSsoService = null;
+      state = state.copyWith(
+        status: SyncStatus.error,
+        errorMessage: _formatError(e),
       );
       return false;
     }
   }
 
   /// 1-Click Google Sign-In without passwords or registration.
-  Future<bool> signInWithGoogle({String? email, String? displayName}) async {
+  Future<bool> signInWithGoogle({
+    String? email,
+    String? displayName,
+    String? idToken,
+  }) async {
     if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signInWithGoogle(
         googleEmail: email,
         displayName: displayName,
+        idToken: idToken,
       );
       await _onUserAuthenticated(user);
       return true;
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
@@ -388,15 +607,26 @@ class SyncController extends StateNotifier<SyncState> {
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
   }
 
+  String _formatError(Object e) {
+    final str = e.toString().replaceAll('Exception: ', '');
+    if (str.contains('Failed host lookup') ||
+        str.contains('SocketException') ||
+        str.contains('ClientException')) {
+      return 'Network connection error. Please verify your device has an active internet connection and try again.';
+    }
+    return str;
+  }
+
   /// Signs out the user and switches back to guest mode.
   Future<void> signOut() async {
     _debounceTimer?.cancel();
+    _stopPeriodicSync();
     await authService.signOut();
     state = state.copyWith(
       clearUser: true,
@@ -423,6 +653,7 @@ class SyncController extends StateNotifier<SyncState> {
 
     state = state.copyWith(status: SyncStatus.syncing);
     try {
+      _stopPeriodicSync();
       await firestoreService.deleteBoard(userId: user.uid, idToken: user.idToken);
       await authService.deleteUserAccount(user);
       state = state.copyWith(

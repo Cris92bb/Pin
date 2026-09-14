@@ -367,6 +367,13 @@ if [ -f "$DIR/pubspec.yaml" ]; then
       info "Run: flutter pub get"
     fi
   fi
+  if [ -f "$DIR/firebase-applet-config.json" ]; then
+    pass "Firebase configuration (firebase-applet-config.json) present."
+  else
+    info "Creating placeholder firebase-applet-config.json for asset bundle resolution..."
+    echo '{}' > "$DIR/firebase-applet-config.json"
+    pass "Created placeholder firebase-applet-config.json."
+  fi
 else
   fail "pubspec.yaml not found at $DIR"
 fi

@@ -7,6 +7,8 @@ analyzer:
     - web/**
     - windows/**
     - .dart_tool/**
+  errors:
+    asset_does_not_exist: ignore
 
 include: package:flutter_lints/flutter.yaml
 

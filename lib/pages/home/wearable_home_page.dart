@@ -971,126 +971,134 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
 
   Future<void> _showWatchGoogleSignIn(BuildContext context) async {
     final controller = ref.read(syncControllerProvider.notifier);
-    final emailCtrl = TextEditingController();
 
     await showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF141916),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: PinTokens.accentSage, width: 1.2),
-        ),
-        titlePadding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-        actionsPadding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.account_circle_outlined,
-                color: PinTokens.accentSage, size: 16),
-            SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                'Google Sign-In',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
+      builder: (ctx) {
+        bool isConnecting = false;
+        String? errorMessage;
+
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF141916),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: const BorderSide(color: PinTokens.accentSage, width: 1.2),
               ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter your Google email to sync:',
-              style: TextStyle(color: Colors.white70, fontSize: 10),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              textCapitalization: TextCapitalization.none,
-              autocorrect: false,
-              enableSuggestions: false,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 11),
-              decoration: InputDecoration(
-                hintText: 'user@gmail.com',
-                hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
-                filled: true,
-                fillColor: const Color(0xFF1E211F),
-                isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: PinTokens.accentSage),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('CANCEL',
-                      style: TextStyle(fontSize: 10, color: Colors.white54)),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: PinTokens.accentSage,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () async {
-                    Navigator.of(ctx).pop();
-                    final email = emailCtrl.text.trim().toLowerCase();
-                    final success = await controller.signInWithGoogle(
-                      email: email.isNotEmpty ? email : null,
-                    );
-                    if (!success && context.mounted) {
-                      final errorMsg =
-                          ref.read(syncControllerProvider).errorMessage ?? '';
-                      if (errorMsg.contains('password') ||
-                          errorMsg.contains('EMAIL_EXISTS')) {
-                        _showWatchEmailSignIn(
-                          context,
-                          prefillEmail: email,
-                          hintMessage: 'Password required for this email',
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('SIGN IN',
+              titlePadding: const EdgeInsets.fromLTRB(10, 12, 10, 4),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              actionsPadding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+              title: const Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.account_circle_outlined,
+                      color: PinTokens.accentSage, size: 16),
+                  SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      'Google Sign-In',
                       style: TextStyle(
-                          fontSize: 10, fontWeight: FontWeight.bold)),
-                ),
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ],
-      ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isConnecting) ...[
+                    const SizedBox(height: 8),
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: PinTokens.accentSage,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Connecting to companion phone...',
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ] else if (errorMessage != null) ...[
+                    Text(
+                      errorMessage!,
+                      style: const TextStyle(color: PinTokens.accentRose, fontSize: 9),
+                      textAlign: TextAlign.center,
+                    ),
+                  ] else ...[
+                    const Text(
+                      'Sign in on your paired phone to automatically sync your pins.',
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Tap below to connect.',
+                      style: TextStyle(color: Colors.white38, fontSize: 8),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                if (!isConnecting) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                          child: const Text('CANCEL',
+                              style: TextStyle(fontSize: 10, color: Colors.white54)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: PinTokens.accentSage,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () async {
+                            setDialogState(() {
+                              isConnecting = true;
+                              errorMessage = null;
+                            });
+                            final result = await controller.signInWithCompanionPhone();
+                            if (!dialogCtx.mounted) return;
+                            if (result.success) {
+                              Navigator.of(dialogCtx).pop();
+                            } else {
+                              setDialogState(() {
+                                isConnecting = false;
+                                errorMessage = result.errorMessage ?? 'Sign-in failed.';
+                              });
+                            }
+                          },
+                          child: const Text('SIGN IN',
+                              style: TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1102,6 +1110,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
     final controller = ref.read(syncControllerProvider.notifier);
     final emailCtrl = TextEditingController(text: prefillEmail ?? '');
     final passCtrl = TextEditingController();
+    final twoFaCtrl = TextEditingController();
     final hasPrefill = prefillEmail != null && prefillEmail.trim().isNotEmpty;
 
     await showDialog(
@@ -1120,12 +1129,12 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.mail_outline_rounded,
+            Icon(Icons.shield_outlined,
                 color: PinTokens.accentSage, size: 16),
             SizedBox(width: 4),
             Flexible(
               child: Text(
-                'Email Sign-In',
+                'Email & 2FA',
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -1213,6 +1222,33 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                 ),
               ),
             ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: twoFaCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              style: const TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 1.5),
+              decoration: InputDecoration(
+                hintText: '2FA PIN (optional)',
+                hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3), fontSize: 10, letterSpacing: 0),
+                counterText: '',
+                filled: true,
+                fillColor: const Color(0xFF1E211F),
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: PinTokens.accentSage),
+                ),
+              ),
+            ),
           ],
         ),
         actions: [
@@ -1240,6 +1276,9 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                     await controller.signInWithEmail(
                       emailCtrl.text.trim(),
                       passCtrl.text.trim(),
+                      twoFactorCode: twoFaCtrl.text.trim().isNotEmpty
+                          ? twoFaCtrl.text.trim()
+                          : null,
                     );
                   },
                   child: const Text('SIGN IN',

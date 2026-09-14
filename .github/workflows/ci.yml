@@ -20,6 +20,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Setup placeholder configuration
+        run: |
+          if [ ! -f firebase-applet-config.json ]; then
+            echo '{}' > firebase-applet-config.json
+          fi
+
       - name: Static analysis
         run: flutter analyze
 

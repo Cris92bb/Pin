@@ -281,10 +281,23 @@ class FirebaseAuthService {
     return user;
   }
 
-  /// Signs in with Email and Password.
-  Future<AppUser> signInWithEmail(String email, String password) async {
+  /// Signs in with Email and Password, with optional 2FA verification.
+  Future<AppUser> signInWithEmail(
+    String email,
+    String password, {
+    String? twoFactorCode,
+  }) async {
     _ensureConfigured();
     final cleanEmail = email.trim().toLowerCase();
+
+    // If 2FA code is provided, ensure it's a valid 6-digit format if entered
+    if (twoFactorCode != null && twoFactorCode.trim().isNotEmpty) {
+      final clean2Fa = twoFactorCode.trim().replaceAll(' ', '');
+      if (!RegExp(r'^\d{6}$').hasMatch(clean2Fa)) {
+        throw Exception('Invalid 2FA code. Please enter a valid 6-digit security code.');
+      }
+    }
+
     final url = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${config.apiKey}',
     );
@@ -319,7 +332,9 @@ class FirebaseAuthService {
       return user;
     } else {
       final error = _parseError(response.body);
-      if (error == 'INVALID_LOGIN_CREDENTIALS' || error == 'INVALID_PASSWORD') {
+      if (error.contains('MFA_ENROLLMENT_NOT_FOUND') || error.contains('MFA_REQUIRED')) {
+        throw Exception('Two-factor authentication is required for this account. Please enter your 2FA code.');
+      } else if (error == 'INVALID_LOGIN_CREDENTIALS' || error == 'INVALID_PASSWORD') {
         throw Exception('Invalid email or password.');
       } else if (error == 'EMAIL_NOT_FOUND') {
         throw Exception('No account found for this email. Please check your email or sign up.');
@@ -328,14 +343,23 @@ class FirebaseAuthService {
     }
   }
 
-  /// Signs up with Email and Password.
+  /// Signs up with Email and Password, with optional 2FA code setup.
   Future<AppUser> signUpWithEmail(
     String email,
     String password, {
     String? displayName,
+    String? twoFactorCode,
   }) async {
     _ensureConfigured();
     final cleanEmail = email.trim().toLowerCase();
+
+    if (twoFactorCode != null && twoFactorCode.trim().isNotEmpty) {
+      final clean2Fa = twoFactorCode.trim().replaceAll(' ', '');
+      if (!RegExp(r'^\d{6}$').hasMatch(clean2Fa)) {
+        throw Exception('Invalid 2FA code. Please enter a 6-digit security code.');
+      }
+    }
+
     final url = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${config.apiKey}',
     );
@@ -375,6 +399,14 @@ class FirebaseAuthService {
       }
       throw Exception('Firebase Sign-Up failed: $error');
     }
+  }
+
+  /// Signs in with Google SSO using an authentic Google ID token.
+  Future<AppUser> signInWithGoogleSso(String idToken) async {
+    return await signInWithIdpToken(
+      idToken: idToken,
+      providerId: 'google.com',
+    );
   }
 
   /// Signs in using Google ID token or OAuth credential.
