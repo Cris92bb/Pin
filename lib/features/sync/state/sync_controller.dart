@@ -10,6 +10,7 @@ import '../services/firebase_auth_service.dart';
 import '../services/firebase_config.dart';
 import '../services/firestore_sync_service.dart';
 import '../services/google_sso_service.dart';
+import '../services/watch_auth_bridge.dart';
 
 /// Immutable state containing active user, sync status, and metadata.
 class SyncState {
@@ -410,9 +411,46 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
       status: SyncStatus.syncing,
       clearError: true,
     );
+    // Broadcast authentication to companion watch nodes if running on phone
+    unawaited(WatchAuthBridge().sendAuthToWatch(user));
     _startPeriodicSync();
     await _performTwoWaySync();
   }
+
+  /// Signs in using cross-device credentials received from companion phone.
+  Future<bool> signInWithCrossDeviceCredentials(AppUser user) async {
+    state = state.copyWith(status: SyncStatus.syncing, clearError: true);
+    try {
+      await _onUserAuthenticated(user);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        status: SyncStatus.error,
+        errorMessage: _formatError(e),
+      );
+      return false;
+    }
+  }
+
+  /// Requests companion phone to authenticate or provide existing session.
+  Future<PhoneAuthRequestResult> signInWithCompanionPhone({
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    state = state.copyWith(status: SyncStatus.syncing, clearError: true);
+    final bridge = WatchAuthBridge();
+    final result = await bridge.requestPhoneAuth(timeout: timeout);
+    if (result.success && result.user != null) {
+      await _onUserAuthenticated(result.user!);
+      return result;
+    } else {
+      state = state.copyWith(
+        status: state.user != null ? SyncStatus.synced : SyncStatus.guest,
+        errorMessage: result.errorMessage != null ? _formatError(result.errorMessage!) : null,
+      );
+      return result;
+    }
+  }
+
 
   /// Sign in with email and password, with optional 2FA verification.
   Future<bool> signInWithEmail(

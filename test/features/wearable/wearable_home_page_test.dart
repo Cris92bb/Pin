@@ -175,7 +175,7 @@ void main() {
       await tester.tap(find.text('GOOGLE SIGN-IN'));
       await tester.pumpAndSettle();
       expect(find.text('Google Sign-In'), findsOneWidget);
-      expect(find.text('Enter your Google email to sync:'), findsOneWidget);
+      expect(find.text('Sign in on your paired phone to automatically sync your pins.'), findsOneWidget);
       expect(find.text('SIGN IN'), findsOneWidget);
       expect(find.text('CANCEL'), findsOneWidget);
 
