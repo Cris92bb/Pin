@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/api/storage/prefs_storage_adapter.dart';
 import '../../../shared/api/storage/storage_adapter.dart';
 import '../../../shared/ui/pin_tokens.dart';
-import '../../atomic_step/model/atomic_step.dart';
+import '../model/atomic_step.dart';
 import '../model/pin_task.dart';
 
 /// Immutable state containing the current tasks and active WIP configuration.

@@ -2,26 +2,28 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../entities/atomic_step/model/atomic_step.dart';
-import '../../../entities/atomic_step/ui/atomic_step_tile.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/model/atomic_step.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
-import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/ui/atomic_step_tile.dart';
 import '../../../shared/ui/pill_chip.dart';
 import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
-import '../../ai/ui/ai_task_breakdown_modal.dart';
-import '../../task_crud/ui/task_crud_modal.dart';
 
 /// Immersive, distraction-free execution engine for a single task.
 class FocusModeView extends ConsumerStatefulWidget {
   final PinTask task;
   final VoidCallback onExit;
+  final Future<void> Function(PinTask task)? onEditTask;
+  final Future<bool?> Function(PinTask task)? onReanalyzeWithAi;
 
   const FocusModeView({
     super.key,
     required this.task,
     required this.onExit,
+    this.onEditTask,
+    this.onReanalyzeWithAi,
   });
 
   @override
@@ -47,6 +49,26 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     _stepController = TextEditingController();
     _scrollController = ScrollController()..addListener(_onScroll);
     _startTimer(); // Auto-start timer upon entering Focus Mode for instant immersion
+  }
+
+  @override
+  void didUpdateWidget(covariant FocusModeView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.task.id != widget.task.id) {
+      _pauseTimer();
+      _persistLoggedTime();
+      setState(() {
+        _currentTask = widget.task;
+        _sessionSeconds = 0;
+        _isCompletedState = false;
+        _stepController.clear();
+      });
+      _startTimer();
+    } else if (oldWidget.task != widget.task) {
+      setState(() {
+        _currentTask = widget.task;
+      });
+    }
   }
 
   void _onScroll() {
@@ -128,26 +150,29 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   Future<void> _editTask() async {
     await _persistLoggedTime();
     if (!mounted) return;
-    await TaskCrudModal.show(context, task: _currentTask);
-    if (!mounted) return;
-    final state = ref.read(taskStateProvider);
-    final match = state.tasks.where((t) => t.id == _currentTask.id);
-    if (match.isNotEmpty) {
-      setState(() => _currentTask = match.first);
+    if (widget.onEditTask != null) {
+      await widget.onEditTask!(_currentTask);
+      if (!mounted) return;
+      final state = ref.read(taskStateProvider);
+      final match = state.tasks.where((t) => t.id == _currentTask.id);
+      if (match.isNotEmpty) {
+        setState(() => _currentTask = match.first);
+      }
     }
   }
 
   Future<void> _reanalyzeTaskWithAi() async {
     await _persistLoggedTime();
     if (!mounted) return;
-    final success =
-        await AiTaskBreakdownModal.show(context, task: _currentTask);
-    if (!mounted) return;
-    if (success == true) {
-      final state = ref.read(taskStateProvider);
-      final match = state.tasks.where((t) => t.id == _currentTask.id);
-      if (match.isNotEmpty) {
-        setState(() => _currentTask = match.first);
+    if (widget.onReanalyzeWithAi != null) {
+      final success = await widget.onReanalyzeWithAi!(_currentTask);
+      if (!mounted) return;
+      if (success == true) {
+        final state = ref.read(taskStateProvider);
+        final match = state.tasks.where((t) => t.id == _currentTask.id);
+        if (match.isNotEmpty) {
+          setState(() => _currentTask = match.first);
+        }
       }
     }
   }
@@ -197,6 +222,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
 
   @override
   Widget build(BuildContext context) {
+    final taskState = ref.watch(taskStateProvider);
+    final match = taskState.tasks.where((t) => t.id == _currentTask.id);
+    if (match.isNotEmpty && match.first != _currentTask) {
+      _currentTask = match.first;
+    }
+
     // Total elapsed time including previous sessions
     final totalElapsedSeconds =
         _currentTask.trackedSeconds + _sessionSeconds;
@@ -399,7 +430,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 640;
+        final isNarrow = constraints.maxWidth < 680;
         final isVeryNarrow = constraints.maxWidth < 360;
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -436,7 +467,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                 children: [
                   PinButton(
                     icon: Icons.arrow_back_rounded,
-                    text: isNarrow ? (isVeryNarrow ? null : 'Back') : 'Kanban Board',
+                    text: isNarrow ? (isVeryNarrow ? null : 'Back') : 'Back',
                     isCompact: true,
                     tooltip: 'Return to Board (Esc)',
                     onPressed: _exitFocus,
@@ -494,9 +525,11 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                       onPressed: _reanalyzeTaskWithAi,
                     ),
                     const SizedBox(width: 8),
+                  ],
+                  if (!isVeryNarrow) ...[
                     PinButton(
                       icon: Icons.edit_outlined,
-                      text: 'Edit',
+                      text: isNarrow ? null : 'Edit',
                       isCompact: true,
                       tooltip: 'Edit Pin',
                       onPressed: _editTask,

@@ -1,4 +1,4 @@
-import '../../atomic_step/model/atomic_step.dart';
+import 'atomic_step.dart';
 
 enum TaskStatus {
   backlog,

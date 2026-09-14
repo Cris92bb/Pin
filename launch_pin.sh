@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-DIR="/home/cris92bb/Desktop/Projects/Pin"
-RELEASE_BIN="$DIR/build/linux/x64/release/bundle/pin"
-DEBUG_BIN="$DIR/build/linux/x64/debug/bundle/pin"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ARCH_DIR="$(uname -m | sed -e 's/x86_64/x64/' -e 's/aarch64/arm64/')"
+RELEASE_BIN="$DIR/build/linux/$ARCH_DIR/release/bundle/pin"
+DEBUG_BIN="$DIR/build/linux/$ARCH_DIR/debug/bundle/pin"
 
 # Pick the newest build between release and debug, or build release if missing
 TARGET_BIN=""

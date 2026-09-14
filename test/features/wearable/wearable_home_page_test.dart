@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pin/app/theme/pin_theme.dart';
-import 'package:pin/entities/atomic_step/model/atomic_step.dart';
+import 'package:pin/entities/task/model/atomic_step.dart';
 import 'package:pin/entities/task/model/pin_task.dart';
 import 'package:pin/entities/task/state/task_state_notifier.dart';
-import 'package:pin/features/wearable/ui/wearable_home_page.dart';
-import 'package:pin/features/wearable/wearable_utils.dart';
 import 'package:pin/pages/home/home_page.dart';
+import 'package:pin/pages/home/wearable_home_page.dart';
+import 'package:pin/shared/ui/wearable_utils.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
 
 void main() {

@@ -127,19 +127,24 @@ Pin/
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### 1. Environment & Prerequisites Check
 
-Ensure you have the following installed:
+Audit host OS, Git, Flutter/Dart SDKs, desktop/web build toolchains, and packages:
 
-- **Flutter SDK** (>= 3.19.0)
-- **Dart SDK** (>= 3.3.0)
-- Linux build dependencies (for desktop):
-  ```bash
-  sudo apt-get update
-  sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-  ```
+```bash
+bash .agents/skills/setup-repo/scripts/setup_check.sh
 
-### Development & Debugging
+# Or auto-enable missing platform flags and fetch packages:
+bash .agents/skills/setup-repo/scripts/setup_check.sh --fix
+```
+
+A Git pre-commit hook is included in `.githooks/pre-commit` to prevent committing code if FSD architecture rules, AST static analysis, or architecture tests fail:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+### 2. Development & Debugging
 
 Clone or navigate to the repository and run:
 
@@ -150,15 +155,28 @@ flutter pub get
 # Run on Linux desktop in debug mode
 flutter run -d linux
 
+# Or Windows desktop (on Windows host):
+flutter run -d windows
+
+# Or Web (Chrome or local server):
+flutter run -d chrome
+
 # Run on connected Wear OS smartwatch (e.g. Pixel Watch)
 flutter run -d <device_id_or_watch_name>
 ```
 
-### Running Tests
+### 3. Running Verification & Tests
 
-Run the full automated test suite:
+Run the FSD architecture audit, static analyzer, and test suite:
 
 ```bash
+# Verify Feature-Sliced Design boundary rules
+dart run tool/verify_fsd.dart --strict
+
+# Static analysis
+flutter analyze
+
+# Full test suite
 flutter test
 ```
 
@@ -186,20 +204,13 @@ The provided `launch_pin.sh` script automatically detects whether a release or d
 
 ### 3. GNOME Desktop Integration
 
-To make Pin searchable in your GNOME Applications overview (`Super` key) and add a desktop shortcut:
+To install the desktop launcher and high-resolution icon for your user:
 
 ```bash
-# Install the application launcher
-cp pin.desktop ~/.local/share/applications/pin.desktop
-
-# Optional: Add to desktop
-cp pin.desktop ~/Desktop/pin.desktop
-gio set ~/Desktop/pin.desktop metadata::trusted true
-
-# Update desktop and icon databases
-update-desktop-database ~/.local/share/applications
-gtk-update-icon-cache -f ~/.local/share/icons/hicolor 2>/dev/null || true
+bash install_desktop_entry.sh
 ```
+
+This automatically configures `pin.desktop` with the current checkout path and installs the application icon into `~/.local/share/icons/hicolor/512x512/apps/pin.png`.
 
 ---
 

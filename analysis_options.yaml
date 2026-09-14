@@ -5,6 +5,9 @@ analyzer:
     - android/**
     - ios/**
     - web/**
+    - windows/**
+    - .dart_tool/**
+
 include: package:flutter_lints/flutter.yaml
 
 linter:
@@ -13,3 +16,6 @@ linter:
     prefer_const_declarations: true
     avoid_print: true
     use_key_in_widget_constructors: true
+    avoid_relative_lib_imports: true
+    cancel_subscriptions: true
+    close_sinks: true

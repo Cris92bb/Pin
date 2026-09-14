@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../entities/atomic_step/model/atomic_step.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/model/atomic_step.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
-import 'package:pin/shared/lib/date_helpers.dart';
 import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
-import '../../task_crud/ui/task_crud_modal.dart';
 import '../services/ai_config_service.dart';
 import '../services/gemini_service.dart';
 import 'ai_settings_modal.dart';
@@ -16,17 +15,20 @@ import 'ai_settings_modal.dart';
 class AiTaskBreakdownModal extends ConsumerStatefulWidget {
   final PinTask task;
   final GeminiService? serviceOverride;
+  final void Function(PinTask task)? onOpenEditor;
 
   const AiTaskBreakdownModal({
     super.key,
     required this.task,
     this.serviceOverride,
+    this.onOpenEditor,
   });
 
   static Future<bool?> show(
     BuildContext context, {
     required PinTask task,
     GeminiService? serviceOverride,
+    void Function(PinTask task)? onOpenEditor,
   }) {
     return showDialog<bool>(
       context: context,
@@ -34,6 +36,7 @@ class AiTaskBreakdownModal extends ConsumerStatefulWidget {
       builder: (ctx) => AiTaskBreakdownModal(
         task: task,
         serviceOverride: serviceOverride,
+        onOpenEditor: onOpenEditor,
       ),
     );
   }
@@ -198,7 +201,7 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
     );
 
     Navigator.of(context).pop(false);
-    TaskCrudModal.show(context, task: updatedTask);
+    widget.onOpenEditor?.call(updatedTask);
   }
 
   @override
