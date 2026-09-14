@@ -25,3 +25,8 @@ You MUST create a Git commit for every impactful change made to this repository.
    - `test(...)`: test additions and updates
    - `chore(...)`: build scripts, configs, launcher shortcuts, dependencies
 3. **Clean Staging**: Stage only the files associated with the change. Never commit temporary files, logs, or build artifacts.
+
+## Branching & Pull Request Policy
+
+- **Merge to `develop` Only via PR**: Direct pushes to `develop` or `main` are strictly forbidden. All changes must be developed on dedicated branches (`feat/...`, `fix/...`, `chore/...`) and merged into `develop` exclusively through a Pull Request.
+- **CI Quality Checks**: Every PR must pass all CI checks (FSD architecture verification, AST static analysis, and automated tests) before merging.

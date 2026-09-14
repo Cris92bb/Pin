@@ -34,3 +34,8 @@ Whenever working on this codebase, the agent must adhere to the following rules 
   - `chore(<scope>): <short description>` — build configuration, scripts, packaging, desktop files
 - The commit title should be imperative and concise (under 72 characters).
 - Include bullet points or body explanation when the change requires additional context.
+
+## 5. Branching & Pull Request Workflow
+- **Never push directly to `develop` or `main`**: All direct pushes are blocked by the `.githooks/pre-push` hook.
+- Merging into `develop` is permitted **ONLY** via a GitHub Pull Request from a feature branch (`feat/...`, `fix/...`, `chore/...`).
+- Ensure all CI workflow checks (`.github/workflows/ci.yml`), FSD boundary verification, and test suites are green before merging the PR.
