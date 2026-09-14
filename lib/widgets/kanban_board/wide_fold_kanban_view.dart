@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../entities/task/model/pin_task.dart';
 import '../../entities/task/state/task_state_notifier.dart';
+import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/focus_mode/ui/focus_mode_view.dart';
 import '../../features/task_crud/state/task_editor_state.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
@@ -602,6 +603,15 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
         onExit: () {
           ref.read(activeFocusTaskProvider.notifier).state = null;
         },
+        onEditTask: (t) async {
+          ref.read(activeTaskEditorProvider.notifier).state =
+              TaskEditorArgs(task: t);
+        },
+        onReanalyzeWithAi: (t) => AiTaskBreakdownModal.show(
+          context,
+          task: t,
+          onOpenEditor: (edited) => TaskCrudModal.show(context, task: edited),
+        ),
       ),
     );
   }

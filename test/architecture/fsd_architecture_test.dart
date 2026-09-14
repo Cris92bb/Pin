@@ -100,27 +100,21 @@ void main() {
         }
       }
 
-      // Documented baseline of legacy breaches from Phase 1 audit:
-      // Upward: lib/shared/ui/pin_breakpoints.dart -> features/wearable/wearable_utils.dart
-      const expectedUpwardBreaches = 1;
-      // Cross-slice: wearable->sync (2), ai->task_crud (1), task_crud->ai (3),
-      // focus_mode->ai/task_crud (3), task->atomic_step (2)
-      const expectedCrossSliceBreaches = 11;
-
+      // Strict zero-tolerance FSD baseline:
       expect(
-        upwardViolations.length,
-        lessThanOrEqualTo(expectedUpwardBreaches),
-        reason: 'New upward layer inversions were introduced!\n${upwardViolations.join('\n')}',
+        upwardViolations,
+        isEmpty,
+        reason: 'Upward layer inversions detected!\n${upwardViolations.join('\n')}',
       );
 
       expect(
-        crossSliceViolations.length,
-        lessThanOrEqualTo(expectedCrossSliceBreaches),
-        reason: 'New cross-slice couplings were introduced!\n${crossSliceViolations.join('\n')}',
+        crossSliceViolations,
+        isEmpty,
+        reason: 'Cross-slice couplings detected!\n${crossSliceViolations.join('\n')}',
       );
     });
 
-    test('shared layer must never import from higher layers (excluding baseline)', () {
+    test('shared layer must never import from higher layers', () {
       final sharedDir = Directory('lib/shared');
       if (!sharedDir.existsSync()) return;
 
@@ -134,8 +128,6 @@ void main() {
 
       for (final file in sharedFiles) {
         final relSourcePath = file.path.replaceAll(r'\', '/');
-        // Known legacy violation: pin_breakpoints.dart imports wearable_utils.dart
-        if (relSourcePath.endsWith('pin_breakpoints.dart')) continue;
 
         final lines = file.readAsLinesSync();
         for (int i = 0; i < lines.length; i++) {

@@ -82,7 +82,11 @@ class TaskActionBubble extends StatelessWidget {
               if (onAiBreakdown != null) {
                 onAiBreakdown();
               } else {
-                AiTaskBreakdownModal.show(context, task: task);
+                AiTaskBreakdownModal.show(
+                  context,
+                  task: task,
+                  onOpenEditor: (t) => TaskCrudModal.show(context, task: t),
+                );
               }
             },
             onEdit: () {

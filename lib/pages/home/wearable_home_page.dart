@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../entities/atomic_step/model/atomic_step.dart';
-import '../../../entities/task/model/pin_task.dart';
-import '../../../entities/task/state/task_state_notifier.dart';
-import '../../../shared/ui/pin_tokens.dart';
-import '../../sync/model/sync_status.dart';
-import '../../sync/state/sync_controller.dart';
-import '../wearable_utils.dart';
+import '../../entities/task/model/atomic_step.dart';
+import '../../entities/task/model/pin_task.dart';
+import '../../entities/task/state/task_state_notifier.dart';
+import '../../features/sync/model/sync_status.dart';
+import '../../features/sync/state/sync_controller.dart';
+import '../../shared/ui/pin_tokens.dart';
+import '../../shared/ui/wearable_utils.dart';
 
 /// Custom scroll physics that only permits leftward dragging (advancing forward)
 /// and strictly blocks rightward drags (which conflict with Wear OS system back/dismiss gestures).

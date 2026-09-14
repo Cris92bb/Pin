@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pin/app/theme/pin_theme.dart';
 import 'package:pin/entities/task/state/task_state_notifier.dart';
-import 'package:pin/features/wearable/ui/wearable_home_page.dart';
+import 'package:pin/pages/home/wearable_home_page.dart';
 import 'package:pin/pages/home/home_page.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
 import 'package:pin/shared/ui/pin_breakpoints.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pin/app/theme/pin_theme.dart';
-import 'package:pin/entities/atomic_step/model/atomic_step.dart';
+import 'package:pin/entities/task/model/atomic_step.dart';
 import 'package:pin/entities/task/model/pin_task.dart';
 import 'package:pin/entities/task/state/task_state_notifier.dart';
 import 'package:pin/features/focus_mode/ui/focus_mode_view.dart';

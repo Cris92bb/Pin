@@ -13,9 +13,10 @@ import '../../shared/ui/pin_tokens.dart';
 import '../../widgets/kanban_board/layered_deck_view.dart';
 import '../../widgets/kanban_board/wide_fold_kanban_view.dart';
 import '../../features/ai/ui/ai_settings_modal.dart';
+import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/sync/ui/firebase_account_modal.dart';
 import '../../features/sync/ui/sync_status_badge.dart';
-import '../../features/wearable/ui/wearable_home_page.dart';
+import 'wearable_home_page.dart';
 
 /// The primary companion view assembling the mobile/companion frame,
 /// layered card deck, header with dynamic notch, and quick actions.
@@ -115,6 +116,19 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onExit: () {
                   ref.read(activeFocusTaskProvider.notifier).state = null;
                 },
+                onEditTask: (task) async {
+                  if (isWide) {
+                    ref.read(activeTaskEditorProvider.notifier).state =
+                        TaskEditorArgs(task: task);
+                  } else {
+                    await TaskCrudModal.show(context, task: task);
+                  }
+                },
+                onReanalyzeWithAi: (task) => AiTaskBreakdownModal.show(
+                  context,
+                  task: task,
+                  onOpenEditor: (t) => TaskCrudModal.show(context, task: t),
+                ),
               ),
               if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux)
                 Positioned(

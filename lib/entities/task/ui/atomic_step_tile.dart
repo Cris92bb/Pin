@@ -91,8 +91,8 @@ class AtomicStepTile extends StatelessWidget {
                 borderRadius: PinTokens.radiusSm,
                 border: Border.all(
                   color: step.isCompleted
-                      ? checkColor
-                      : checkBorder,
+                    ? checkColor
+                    : checkBorder,
                   width: 1.5,
                 ),
               ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../features/wearable/wearable_utils.dart';
+import 'wearable_utils.dart';
 
 /// Semantic viewport tiers for Pin across Watch, Smartphone, Foldable, and Web.
 enum PinScreenTier {

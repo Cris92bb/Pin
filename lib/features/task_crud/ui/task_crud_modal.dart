@@ -1,24 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../entities/atomic_step/model/atomic_step.dart';
-import '../../../entities/atomic_step/ui/atomic_step_tile.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/model/atomic_step.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
-import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/ui/atomic_step_tile.dart';
 import '../../../shared/ui/pill_chip.dart';
 import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
-import '../../ai/services/ai_config_service.dart';
-import '../../ai/services/gemini_service.dart';
-import '../../ai/ui/ai_settings_modal.dart';
+
+/// Payload containing AI suggested breakdown results.
+class TaskAiBreakdownPayload {
+  final String title;
+  final String description;
+  final String energyTag;
+  final int estimatedMinutes;
+  final List<String> tags;
+  final List<AtomicStep> atomicSteps;
+
+  const TaskAiBreakdownPayload({
+    required this.title,
+    this.description = '',
+    this.energyTag = 'medium',
+    this.estimatedMinutes = 15,
+    this.tags = const [],
+    this.atomicSteps = const [],
+  });
+}
+
+typedef TaskAiBreakdownHandler = Future<TaskAiBreakdownPayload?> Function(
+  BuildContext context,
+  WidgetRef ref, {
+  required String prompt,
+  String? currentDescription,
+});
 
 /// Modal dialog for creating or editing Pins with tags, estimation chips, and energy states.
 class TaskCrudModal extends ConsumerStatefulWidget {
+  static TaskAiBreakdownHandler? defaultAiBreakdownHandler;
+  static void Function(BuildContext context)? defaultAiSettingsHandler;
+
   final PinTask? initialTask;
   final TaskStatus? defaultStatus;
   final bool autoTriggerAi;
   final bool asDialog;
   final VoidCallback? onClose;
+  final TaskAiBreakdownHandler? onAiBreakdown;
+  final VoidCallback? onOpenAiSettings;
 
   const TaskCrudModal({
     super.key,
@@ -27,6 +55,8 @@ class TaskCrudModal extends ConsumerStatefulWidget {
     this.autoTriggerAi = false,
     this.asDialog = true,
     this.onClose,
+    this.onAiBreakdown,
+    this.onOpenAiSettings,
   });
 
   static Future<void> show(
@@ -34,6 +64,8 @@ class TaskCrudModal extends ConsumerStatefulWidget {
     PinTask? task,
     TaskStatus? defaultStatus,
     bool autoTriggerAi = false,
+    TaskAiBreakdownHandler? onAiBreakdown,
+    VoidCallback? onOpenAiSettings,
   }) {
     return showDialog(
       context: context,
@@ -42,6 +74,8 @@ class TaskCrudModal extends ConsumerStatefulWidget {
         initialTask: task,
         defaultStatus: defaultStatus,
         autoTriggerAi: autoTriggerAi,
+        onAiBreakdown: onAiBreakdown,
+        onOpenAiSettings: onOpenAiSettings,
       ),
     );
   }
@@ -149,17 +183,20 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
   }
 
   Future<void> _generateTaskWithAi() async {
-    final aiConfig = ref.read(aiConfigProvider);
-    if (!aiConfig.hasKey) {
-      final configured = await AiSettingsModal.show(context);
-      if (configured != true || !mounted) return;
-      if (!ref.read(aiConfigProvider).hasKey) return;
-    }
-
+    final handler =
+        widget.onAiBreakdown ?? TaskCrudModal.defaultAiBreakdownHandler;
     final prompt = _titleController.text.trim();
     if (prompt.isEmpty) {
       setState(() {
-        _inlineError = 'Please enter a task title or idea first so Gemini can analyze it.';
+        _inlineError =
+            'Please enter a task title or idea first so Gemini can analyze it.';
+      });
+      return;
+    }
+
+    if (handler == null) {
+      setState(() {
+        _inlineError = 'AI Breakdown handler is not configured.';
       });
       return;
     }
@@ -170,16 +207,15 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
     });
 
     try {
-      final service = GeminiService();
       final currentDesc = _descController.text.trim();
-      final breakdown = await service.suggestTaskBreakdown(
-        apiKey: ref.read(aiConfigProvider).apiKey,
+      final breakdown = await handler(
+        context,
+        ref,
         prompt: prompt,
         currentDescription: currentDesc.isNotEmpty ? currentDesc : null,
-        model: ref.read(aiConfigProvider).selectedModel,
       );
 
-      if (mounted) {
+      if (breakdown != null && mounted) {
         setState(() {
           _titleController.text = breakdown.title;
           if (breakdown.description.isNotEmpty) {
@@ -333,7 +369,13 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                     icon: const Icon(Icons.auto_awesome_rounded, size: 18),
                     color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                     splashRadius: 18,
-                    onPressed: () => AiSettingsModal.show(context),
+                    onPressed: () {
+                      if (widget.onOpenAiSettings != null) {
+                        widget.onOpenAiSettings!();
+                      } else if (TaskCrudModal.defaultAiSettingsHandler != null) {
+                        TaskCrudModal.defaultAiSettingsHandler!(context);
+                      }
+                    },
                   ),
                   IconButton(
                     icon: Icon(

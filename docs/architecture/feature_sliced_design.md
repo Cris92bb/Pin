@@ -286,9 +286,11 @@ A standalone Dart CLI script runnable via `dart run tool/verify_fsd.dart`:
 
 | Phase | Description | Status |
 |---|---|---|
-| **Phase 1** | Audit codebase, generate architecture documentation, implement strict `analysis_options.yaml`, and add automated test & CLI tool with baseline. | **In Progress (This PR)** |
-| **Phase 2** | Relocate `WearableUtils` to `shared/lib/` to resolve the high-severity upward layer violation. | Planned |
-| **Phase 3** | Consolidate `AtomicStep` into `entities/task/` aggregate root. | Planned |
-| **Phase 4** | Relocate `WearableHomePage` to `pages/wearable/`. | Planned |
-| **Phase 5** | Decouple `ai`, `task_crud`, and `focus_mode` via widget/page composition callbacks. | Planned |
-| **Phase 6** | Introduce public API barrel files across all slices and enforce barrel imports. | Planned |
+| **Phase 1** | Audit codebase, generate architecture documentation, implement strict `analysis_options.yaml`, and add automated test & CLI tool. | **Completed** |
+| **Phase 2** | Relocate `WearableUtils` to `shared/ui/` to eliminate upward layer inversion. | **Completed** |
+| **Phase 3** | Consolidate `AtomicStep` into `entities/task/` Aggregate Root, eliminating `entities/atomic_step` cross-slice coupling. | **Completed** |
+| **Phase 4** | Relocate `WearableHomePage` to `pages/home/` as the watch-tier view of the Home page, removing `features/wearable`. | **Completed** |
+| **Phase 5** | Decouple `ai`, `task_crud`, and `focus_mode` via app-layer handlers and widget/page composition callbacks. Zero circular dependencies. | **Completed** |
+| **Phase 6** | Public API barrel exports across all slices. | Planned |
+
+**Current Status**: 0 Upward Inversions, 0 Cross-Slice Couplings, 100% strict compliance in `tool/verify_fsd.dart --strict` and `fsd_architecture_test.dart`.

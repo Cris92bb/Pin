@@ -2,28 +2,28 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../entities/atomic_step/model/atomic_step.dart';
-import '../../../entities/atomic_step/ui/atomic_step_tile.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/model/atomic_step.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
-import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/ui/atomic_step_tile.dart';
 import '../../../shared/ui/pill_chip.dart';
-import '../../../shared/ui/pin_breakpoints.dart';
 import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
-import '../../ai/ui/ai_task_breakdown_modal.dart';
-import '../../task_crud/state/task_editor_state.dart';
-import '../../task_crud/ui/task_crud_modal.dart';
 
 /// Immersive, distraction-free execution engine for a single task.
 class FocusModeView extends ConsumerStatefulWidget {
   final PinTask task;
   final VoidCallback onExit;
+  final Future<void> Function(PinTask task)? onEditTask;
+  final Future<bool?> Function(PinTask task)? onReanalyzeWithAi;
 
   const FocusModeView({
     super.key,
     required this.task,
     required this.onExit,
+    this.onEditTask,
+    this.onReanalyzeWithAi,
   });
 
   @override
@@ -150,11 +150,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   Future<void> _editTask() async {
     await _persistLoggedTime();
     if (!mounted) return;
-    if (PinBreakpoints.isWide(context)) {
-      ref.read(activeTaskEditorProvider.notifier).state =
-          TaskEditorArgs(task: _currentTask);
-    } else {
-      await TaskCrudModal.show(context, task: _currentTask);
+    if (widget.onEditTask != null) {
+      await widget.onEditTask!(_currentTask);
       if (!mounted) return;
       final state = ref.read(taskStateProvider);
       final match = state.tasks.where((t) => t.id == _currentTask.id);
@@ -167,14 +164,15 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   Future<void> _reanalyzeTaskWithAi() async {
     await _persistLoggedTime();
     if (!mounted) return;
-    final success =
-        await AiTaskBreakdownModal.show(context, task: _currentTask);
-    if (!mounted) return;
-    if (success == true) {
-      final state = ref.read(taskStateProvider);
-      final match = state.tasks.where((t) => t.id == _currentTask.id);
-      if (match.isNotEmpty) {
-        setState(() => _currentTask = match.first);
+    if (widget.onReanalyzeWithAi != null) {
+      final success = await widget.onReanalyzeWithAi!(_currentTask);
+      if (!mounted) return;
+      if (success == true) {
+        final state = ref.read(taskStateProvider);
+        final match = state.tasks.where((t) => t.id == _currentTask.id);
+        if (match.isNotEmpty) {
+          setState(() => _currentTask = match.first);
+        }
       }
     }
   }

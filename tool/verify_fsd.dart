@@ -225,8 +225,8 @@ void main(List<String> args) {
   }
 
   // Baseline of currently recorded legacy breaches
-  const knownUpwardBaseline = 1;
-  const knownCrossSliceBaseline = 11;
+  const knownUpwardBaseline = 0;
+  const knownCrossSliceBaseline = 0;
   const knownTotalBaseline = knownUpwardBaseline + knownCrossSliceBaseline;
 
   if (strict) {
