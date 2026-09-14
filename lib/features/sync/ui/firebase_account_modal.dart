@@ -44,13 +44,29 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     super.dispose();
   }
 
+  bool _isGoogleSigningIn = false;
+
   Future<void> _handleGoogleSignIn() async {
     final controller = ref.read(syncControllerProvider.notifier);
-    setState(() => _localNotice = 'Opening browser for Google SSO...');
+    setState(() {
+      _isGoogleSigningIn = true;
+      _localNotice = 'Authorizing in browser via Google consent screen...';
+    });
     final success = await controller.signInWithGoogleSso();
     if (mounted) {
       setState(() {
+        _isGoogleSigningIn = false;
         _localNotice = success ? 'Signed in with Google successfully.' : null;
+      });
+    }
+  }
+
+  void _handleCancelGoogleSignIn() {
+    ref.read(syncControllerProvider.notifier).cancelGoogleSso();
+    if (mounted) {
+      setState(() {
+        _isGoogleSigningIn = false;
+        _localNotice = 'Google sign-in cancelled.';
       });
     }
   }
@@ -641,53 +657,109 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
         const SizedBox(height: 14),
 
-        // 1-Click Google Sign-In button (No registration, no password)
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
-            foregroundColor: textPrimary,
-            side: BorderSide(
-              color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
-              width: 1.0,
+        // 1-Click Google Sign-In button (Direct OAuth consent screen)
+        if (_isGoogleSigningIn) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
+              borderRadius: PinTokens.radiusMd,
+              border: Border.all(
+                color: isDark ? PinTokens.accentEmerald.withValues(alpha: 0.5) : PinTokens.lightFabBg,
+                width: 1.0,
+              ),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusMd),
-            elevation: 0,
-          ),
-          onPressed: () => _handleGoogleSignIn(),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF4285F4),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(PinTokens.accentEmerald),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Waiting for Google in browser...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
-                child: const Center(
-                  child: Text(
-                    'G',
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: _handleCancelGoogleSignIn,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  ),
+                  child: const Text(
+                    'Cancel Sign-In',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
+                      fontSize: 11,
+                      color: PinTokens.accentRose,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Continue with Google',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ] else ...[
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
+              foregroundColor: textPrimary,
+              side: BorderSide(
+                color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
+                width: 1.0,
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusMd),
+              elevation: 0,
+            ),
+            onPressed: () => _handleGoogleSignIn(),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF4285F4),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'G',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Continue with Google',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
 
         const SizedBox(height: 12),
 

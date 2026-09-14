@@ -466,13 +466,30 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
     }
   }
 
-  /// Real Google SSO authentication via system browser & Google Identity Services.
+  GoogleSsoService? _activeSsoService;
+
+  /// Cancels any in-flight Google SSO authorization flow.
+  void cancelGoogleSso() {
+    _activeSsoService?.cancel();
+    _activeSsoService = null;
+    state = state.copyWith(
+      status: state.user != null ? SyncStatus.synced : SyncStatus.guest,
+      clearError: true,
+    );
+  }
+
+  /// Real Google SSO authentication via direct Google OAuth consent screen.
   Future<bool> signInWithGoogleSso() async {
     if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final ssoService = GoogleSsoService();
-      final result = await ssoService.signIn(clientId: state.config.oAuthClientId);
+      _activeSsoService = ssoService;
+      final result = await ssoService.signIn(
+        clientId: state.config.oAuthClientId,
+        clientSecret: state.config.oAuthClientSecret,
+      );
+      _activeSsoService = null;
       if (result.isCancelled) {
         state = state.copyWith(
           status: state.user != null ? SyncStatus.synced : SyncStatus.guest,
@@ -491,6 +508,7 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
       await _onUserAuthenticated(user);
       return true;
     } catch (e) {
+      _activeSsoService = null;
       state = state.copyWith(
         status: SyncStatus.error,
         errorMessage: e.toString().replaceAll('Exception: ', ''),

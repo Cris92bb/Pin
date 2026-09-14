@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 /// Result from a Google SSO operation.
 class GoogleSsoResult {
@@ -25,16 +26,22 @@ class GoogleSsoResult {
 }
 
 /// Service handling Google Single Sign-On (SSO) on native desktop and web
-/// using a local loopback server and Google Identity Services (GIS).
+/// using direct Google OAuth 2.0 authorization code flow with loopback listener (RFC 8252).
 class GoogleSsoService {
+  final http.Client _httpClient;
   HttpServer? _server;
   Completer<GoogleSsoResult>? _completer;
   Timer? _timeoutTimer;
 
-  /// Launches Google SSO in the system browser and waits for the user to authenticate.
+  GoogleSsoService({http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
+
+  /// Launches Google SSO directly into Google's official consent screen in the
+  /// system browser and listens on a local loopback port for the authorization response.
   Future<GoogleSsoResult> signIn({
     required String clientId,
-    Duration timeout = const Duration(minutes: 2),
+    String? clientSecret,
+    Duration timeout = const Duration(minutes: 3),
   }) async {
     cancel();
 
@@ -57,9 +64,19 @@ class GoogleSsoService {
       // 1. Start a local loopback HTTP server on an available port
       _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       final port = _server!.port;
-      final ssoUrl = 'http://127.0.0.1:$port/sso';
+      final redirectUri = 'http://127.0.0.1:$port/callback';
 
-      // 2. Set timeout timer
+      // 2. Build direct Google OAuth 2.0 authorization URL
+      final authUri = Uri.https('accounts.google.com', '/o/oauth2/v2/auth', {
+        'client_id': clientId.trim(),
+        'redirect_uri': redirectUri,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'prompt': 'select_account',
+        'access_type': 'offline',
+      });
+
+      // 3. Set timeout timer
       _timeoutTimer = Timer(timeout, () {
         if (!completer.isCompleted) {
           _cleanUp();
@@ -72,69 +89,143 @@ class GoogleSsoService {
         }
       });
 
-      // 3. Listen for requests
+      // 4. Listen for incoming redirect from Google
       _server!.listen((HttpRequest request) async {
         final path = request.uri.path;
 
-        if (path == '/sso') {
-          // Serve the Google Identity Services HTML page
-          request.response
-            ..statusCode = HttpStatus.ok
-            ..headers.contentType = ContentType.html
-            ..write(_buildSsoHtml(clientId: clientId, port: port));
-          await request.response.close();
-        } else if (path == '/callback' && request.method == 'POST') {
+        if (path == '/callback') {
+          final query = request.uri.queryParameters;
+          final error = query['error'];
+          final code = query['code'];
+
+          if (error != null) {
+            final isAccessDenied = error == 'access_denied';
+            request.response
+              ..statusCode = HttpStatus.ok
+              ..headers.contentType = ContentType.html
+              ..write(_buildCancelledHtml());
+            await request.response.close();
+
+            if (!completer.isCompleted) {
+              completer.complete(
+                GoogleSsoResult(
+                  isCancelled: isAccessDenied,
+                  errorMessage: isAccessDenied
+                      ? null
+                      : 'Google authentication error: $error',
+                ),
+              );
+            }
+            _cleanUp();
+            return;
+          }
+
+          if (code == null || code.isEmpty) {
+            request.response
+              ..statusCode = HttpStatus.badRequest
+              ..headers.contentType = ContentType.html
+              ..write(_buildErrorHtml('Missing authorization code from Google.'));
+            await request.response.close();
+
+            if (!completer.isCompleted) {
+              completer.complete(
+                const GoogleSsoResult(
+                  errorMessage: 'Authorization code missing in Google callback.',
+                ),
+              );
+            }
+            _cleanUp();
+            return;
+          }
+
+          // Exchange authorization code for tokens
           try {
-            final body = await utf8.decoder.bind(request).join();
-            final data = jsonDecode(body) as Map<String, dynamic>;
-            final idToken = data['idToken'] as String?;
+            final tokenResponse = await _httpClient.post(
+              Uri.parse('https://oauth2.googleapis.com/token'),
+              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+              body: {
+                'code': code,
+                'client_id': clientId.trim(),
+                if (clientSecret != null && clientSecret.trim().isNotEmpty)
+                  'client_secret': clientSecret.trim(),
+                'redirect_uri': redirectUri,
+                'grant_type': 'authorization_code',
+              },
+            );
 
-            if (idToken != null && idToken.isNotEmpty) {
+            if (tokenResponse.statusCode >= 200 &&
+                tokenResponse.statusCode < 300) {
+              final tokenData =
+                  jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+              final idToken = tokenData['id_token'] as String?;
+
+              if (idToken != null && idToken.isNotEmpty) {
+                final profile = _decodeJwtPayload(idToken);
+
+                request.response
+                  ..statusCode = HttpStatus.ok
+                  ..headers.contentType = ContentType.html
+                  ..write(_buildSuccessHtml(
+                    email: profile?['email'] as String?,
+                    name: profile?['name'] as String?,
+                  ));
+                await request.response.close();
+
+                if (!completer.isCompleted) {
+                  completer.complete(
+                    GoogleSsoResult(
+                      idToken: idToken,
+                      email: profile?['email'] as String?,
+                      displayName: profile?['name'] as String?,
+                      photoUrl: profile?['picture'] as String?,
+                    ),
+                  );
+                }
+                _cleanUp();
+              } else {
+                throw Exception('Missing id_token in Google token response.');
+              }
+            } else {
+              String errorDesc = 'Failed to exchange authorization token.';
+              try {
+                final errJson =
+                    jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+                errorDesc = errJson['error_description'] as String? ??
+                    errJson['error'] as String? ??
+                    errorDesc;
+              } catch (_) {}
+
               request.response
-                ..statusCode = HttpStatus.ok
-                ..headers.contentType = ContentType.json
-                ..write(jsonEncode({'status': 'ok'}));
+                ..statusCode = HttpStatus.badRequest
+                ..headers.contentType = ContentType.html
+                ..write(_buildErrorHtml(errorDesc));
               await request.response.close();
-
-              // Extract any payload info from ID token JWT
-              final profile = _decodeJwtPayload(idToken);
 
               if (!completer.isCompleted) {
                 completer.complete(
                   GoogleSsoResult(
-                    idToken: idToken,
-                    email: profile?['email'] as String?,
-                    displayName: profile?['name'] as String?,
-                    photoUrl: profile?['picture'] as String?,
+                    errorMessage: 'Google token exchange failed: $errorDesc',
                   ),
                 );
               }
               _cleanUp();
-            } else {
-              request.response
-                ..statusCode = HttpStatus.badRequest
-                ..write('Missing idToken');
-              await request.response.close();
             }
           } catch (e) {
             request.response
               ..statusCode = HttpStatus.internalServerError
-              ..write('Error parsing callback');
+              ..headers.contentType = ContentType.html
+              ..write(_buildErrorHtml(e.toString()));
             await request.response.close();
-          }
-        } else if (path == '/cancel') {
-          request.response
-            ..statusCode = HttpStatus.ok
-            ..headers.contentType = ContentType.html
-            ..write('<html><body><p>Sign-in cancelled.</p></body></html>');
-          await request.response.close();
 
-          if (!completer.isCompleted) {
-            completer.complete(
-              const GoogleSsoResult(isCancelled: true),
-            );
+            if (!completer.isCompleted) {
+              completer.complete(
+                GoogleSsoResult(
+                  errorMessage: 'Error processing Google sign-in: ${e.toString()}',
+                ),
+              );
+            }
+            _cleanUp();
           }
-          _cleanUp();
         } else {
           request.response
             ..statusCode = HttpStatus.notFound
@@ -143,8 +234,8 @@ class GoogleSsoService {
         }
       });
 
-      // 4. Open the system browser
-      await _openBrowser(ssoUrl);
+      // 5. Open the system browser directly to Google's OAuth consent screen
+      await _openBrowser(authUri.toString());
 
       return await completer.future;
     } catch (e) {
@@ -195,14 +286,19 @@ class GoogleSsoService {
     }
   }
 
-  String _buildSsoHtml({required String clientId, required int port}) {
+  String _buildSuccessHtml({String? email, String? name}) {
+    final welcome = name != null && name.isNotEmpty
+        ? 'Welcome, $name!'
+        : 'Sign-in successful!';
+    final accountText = email != null && email.isNotEmpty
+        ? 'Connected as <strong>$email</strong>'
+        : 'Your Google Account is now connected.';
+
     return '''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in to Pin</title>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <title>Pin — Authentication Complete</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -220,122 +316,201 @@ class GoogleSsoService {
       background: #141A16;
       border: 1px solid #233028;
       border-radius: 20px;
-      padding: 36px 28px;
-      max-width: 400px;
+      padding: 40px 32px;
+      max-width: 420px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
     }
     .badge {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 52px;
-      height: 52px;
-      background: #1C2720;
-      border: 1.5px solid #334D3D;
-      border-radius: 16px;
+      width: 56px;
+      height: 56px;
+      background: #162C20;
+      border: 1.5px solid #34D399;
+      border-radius: 18px;
       font-size: 26px;
-      margin-bottom: 18px;
+      color: #34D399;
+      margin-bottom: 20px;
     }
     h1 {
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 800;
       color: #FFFFFF;
-      letter-spacing: -0.3px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
     p {
-      font-size: 13px;
+      font-size: 14px;
       color: #8C9C93;
-      line-height: 1.5;
+      line-height: 1.6;
       margin-bottom: 24px;
     }
-    .btn-container {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 18px;
-      min-height: 48px;
+    strong {
+      color: #A7F3D0;
     }
-    .success-container {
-      display: none;
-      padding: 16px;
-      background: #162C20;
-      border: 1px solid #34D399;
-      border-radius: 12px;
-      color: #34D399;
-      font-weight: 600;
-      font-size: 14px;
-      animation: fadeIn 0.3s ease;
-    }
-    .status-text {
+    .hint {
       font-size: 12px;
-      color: #6EE7B7;
-      margin-top: 10px;
-      display: none;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+      color: #556B5D;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="badge">📌</div>
-    <h1>Sign in with Google</h1>
-    <p>Authenticate with your Google account to sync your Pin Kanban board across your desktop and watch.</p>
-
-    <div id="btn-box" class="btn-container">
-      <div id="g_id_onload"
-           data-client_id="$clientId"
-           data-callback="onGoogleCredential"
-           data-auto_prompt="true">
-      </div>
-      <div class="g_id_signin"
-           data-type="standard"
-           data-size="large"
-           data-theme="filled_black"
-           data-text="continue_with"
-           data-shape="pill"
-           data-logo_alignment="left">
-      </div>
-    </div>
-
-    <div id="status" class="status-text">Completing authentication with Pin...</div>
-
-    <div id="success" class="success-container">
-      ✓ Google Sign-In Successful!<br>
-      <span style="font-size: 11px; font-weight: normal; color: #A7F3D0;">You can close this tab and return to Pin.</span>
-    </div>
+    <div class="badge">✓</div>
+    <h1>$welcome</h1>
+    <p>$accountText<br>You can now close this tab and return to Pin.</p>
+    <div class="hint">This tab may be closed safely.</div>
   </div>
-
   <script>
-    function onGoogleCredential(response) {
-      if (!response || !response.credential) return;
-
-      document.getElementById('btn-box').style.display = 'none';
-      document.getElementById('status').style.display = 'block';
-
-      fetch('http://127.0.0.1:$port/callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: response.credential })
-      })
-      .then(function(res) { return res.json(); })
-      .then(function() {
-        document.getElementById('status').style.display = 'none';
-        document.getElementById('success').style.display = 'block';
-        setTimeout(function() {
-          try { window.close(); } catch(e) {}
-        }, 1500);
-      })
-      .catch(function() {
-        document.getElementById('status').innerText = 'Sync failed. Please return to Pin.';
-        document.getElementById('status').style.color = '#F87171';
-      });
-    }
+    setTimeout(function() {
+      try { window.close(); } catch(e) {}
+    }, 2500);
   </script>
+</body>
+</html>''';
+  }
+
+  String _buildCancelledHtml() {
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pin — Sign-In Cancelled</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0E1411;
+      color: #E2E8F0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #141A16;
+      border: 1px solid #233028;
+      border-radius: 20px;
+      padding: 40px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      background: #2A1F1D;
+      border: 1.5px solid #F87171;
+      border-radius: 18px;
+      font-size: 26px;
+      color: #F87171;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 14px;
+      color: #8C9C93;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .hint {
+      font-size: 12px;
+      color: #556B5D;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">✕</div>
+    <h1>Sign-In Cancelled</h1>
+    <p>You cancelled Google authentication.<br>You can return to Pin to try again.</p>
+    <div class="hint">This tab may be closed safely.</div>
+  </div>
+</body>
+</html>''';
+  }
+
+  String _buildErrorHtml(String errorMessage) {
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pin — Authentication Error</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0E1411;
+      color: #E2E8F0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #141A16;
+      border: 1px solid #3E2424;
+      border-radius: 20px;
+      padding: 40px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      background: #2A1717;
+      border: 1.5px solid #EF4444;
+      border-radius: 18px;
+      font-size: 26px;
+      color: #EF4444;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 14px;
+      color: #F87171;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      word-break: break-word;
+    }
+    .hint {
+      font-size: 12px;
+      color: #556B5D;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">!</div>
+    <h1>Authentication Error</h1>
+    <p>$errorMessage</p>
+    <div class="hint">You can close this tab and return to Pin.</div>
+  </div>
 </body>
 </html>''';
   }

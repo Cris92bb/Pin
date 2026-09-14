@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pin/features/sync/services/firebase_config.dart';
 import 'package:pin/features/sync/services/google_sso_service.dart';
 
 void main() {
@@ -43,6 +44,23 @@ void main() {
       final service = GoogleSsoService();
       // Calling cancel when idle should be completely safe and not throw
       expect(() => service.cancel(), returnsNormally);
+    });
+  });
+
+  group('FirebaseConfig OAuth Secret', () {
+    test('serializes and deserializes oAuthClientSecret correctly', () {
+      const config = FirebaseConfig(
+        apiKey: 'test-api-key',
+        projectId: 'test-project',
+        oAuthClientId: 'test-client-id.apps.googleusercontent.com',
+        oAuthClientSecret: 'GOCSPX-secret123',
+      );
+      final json = config.toJson();
+      expect(json['oAuthClientSecret'], equals('GOCSPX-secret123'));
+
+      final fromJson = FirebaseConfig.fromJson(json);
+      expect(fromJson.oAuthClientSecret, equals('GOCSPX-secret123'));
+      expect(fromJson.oAuthClientId, equals('test-client-id.apps.googleusercontent.com'));
     });
   });
 }
