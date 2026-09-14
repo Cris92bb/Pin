@@ -971,7 +971,6 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
 
   Future<void> _showWatchGoogleSignIn(BuildContext context) async {
     final controller = ref.read(syncControllerProvider.notifier);
-    final emailCtrl = TextEditingController();
 
     await showDialog(
       context: context,
@@ -1004,42 +1003,19 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
             ),
           ],
         ),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Enter your Google email to sync:',
               style: TextStyle(color: Colors.white70, fontSize: 10),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              textCapitalization: TextCapitalization.none,
-              autocorrect: false,
-              enableSuggestions: false,
-              autofocus: true,
-              style: const TextStyle(color: Colors.white, fontSize: 11),
-              decoration: InputDecoration(
-                hintText: 'user@gmail.com',
-                hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3), fontSize: 11),
-                filled: true,
-                fillColor: const Color(0xFF1E211F),
-                isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: PinTokens.accentSage),
-                ),
-              ),
+            SizedBox(height: 6),
+            Text(
+              '1-Click browser SSO connects your Google account and syncs your pins.',
+              style: TextStyle(color: Colors.white54, fontSize: 9),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -1065,22 +1041,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                   ),
                   onPressed: () async {
                     Navigator.of(ctx).pop();
-                    final email = emailCtrl.text.trim().toLowerCase();
-                    final success = await controller.signInWithGoogle(
-                      email: email.isNotEmpty ? email : null,
-                    );
-                    if (!success && context.mounted) {
-                      final errorMsg =
-                          ref.read(syncControllerProvider).errorMessage ?? '';
-                      if (errorMsg.contains('password') ||
-                          errorMsg.contains('EMAIL_EXISTS')) {
-                        _showWatchEmailSignIn(
-                          context,
-                          prefillEmail: email,
-                          hintMessage: 'Password required for this email',
-                        );
-                      }
-                    }
+                    await controller.signInWithGoogleSso();
                   },
                   child: const Text('SIGN IN',
                       style: TextStyle(
@@ -1102,6 +1063,7 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
     final controller = ref.read(syncControllerProvider.notifier);
     final emailCtrl = TextEditingController(text: prefillEmail ?? '');
     final passCtrl = TextEditingController();
+    final twoFaCtrl = TextEditingController();
     final hasPrefill = prefillEmail != null && prefillEmail.trim().isNotEmpty;
 
     await showDialog(
@@ -1120,12 +1082,12 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.mail_outline_rounded,
+            Icon(Icons.shield_outlined,
                 color: PinTokens.accentSage, size: 16),
             SizedBox(width: 4),
             Flexible(
               child: Text(
-                'Email Sign-In',
+                'Email & 2FA',
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -1213,6 +1175,33 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                 ),
               ),
             ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: twoFaCtrl,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              style: const TextStyle(color: Colors.white, fontSize: 11, letterSpacing: 1.5),
+              decoration: InputDecoration(
+                hintText: '2FA PIN (optional)',
+                hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.3), fontSize: 10, letterSpacing: 0),
+                counterText: '',
+                filled: true,
+                fillColor: const Color(0xFF1E211F),
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide:
+                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: PinTokens.accentSage),
+                ),
+              ),
+            ),
           ],
         ),
         actions: [
@@ -1240,6 +1229,9 @@ class _WearableHomePageState extends ConsumerState<WearableHomePage> {
                     await controller.signInWithEmail(
                       emailCtrl.text.trim(),
                       passCtrl.text.trim(),
+                      twoFactorCode: twoFaCtrl.text.trim().isNotEmpty
+                          ? twoFaCtrl.text.trim()
+                          : null,
                     );
                   },
                   child: const Text('SIGN IN',

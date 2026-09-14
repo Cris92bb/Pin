@@ -9,6 +9,7 @@ import '../model/sync_status.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/firebase_config.dart';
 import '../services/firestore_sync_service.dart';
+import '../services/google_sso_service.dart';
 
 /// Immutable state containing active user, sync status, and metadata.
 class SyncState {
@@ -413,12 +414,20 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
     await _performTwoWaySync();
   }
 
-  /// Sign in with email and password.
-  Future<bool> signInWithEmail(String email, String password) async {
+  /// Sign in with email and password, with optional 2FA verification.
+  Future<bool> signInWithEmail(
+    String email,
+    String password, {
+    String? twoFactorCode,
+  }) async {
     if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
-      final user = await authService.signInWithEmail(email, password);
+      final user = await authService.signInWithEmail(
+        email,
+        password,
+        twoFactorCode: twoFactorCode,
+      );
       await _onUserAuthenticated(user);
       return true;
     } catch (e) {
@@ -430,12 +439,55 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
     }
   }
 
-  /// Sign up with email and password.
-  Future<bool> signUpWithEmail(String email, String password, {String? displayName}) async {
+  /// Sign up with email and password, with optional 2FA code setup.
+  Future<bool> signUpWithEmail(
+    String email,
+    String password, {
+    String? displayName,
+    String? twoFactorCode,
+  }) async {
     if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
-      final user = await authService.signUpWithEmail(email, password, displayName: displayName);
+      final user = await authService.signUpWithEmail(
+        email,
+        password,
+        displayName: displayName,
+        twoFactorCode: twoFactorCode,
+      );
+      await _onUserAuthenticated(user);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        status: SyncStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  /// Real Google SSO authentication via system browser & Google Identity Services.
+  Future<bool> signInWithGoogleSso() async {
+    if (!_guardConfigLoaded()) return false;
+    state = state.copyWith(status: SyncStatus.syncing, clearError: true);
+    try {
+      final ssoService = GoogleSsoService();
+      final result = await ssoService.signIn(clientId: state.config.oAuthClientId);
+      if (result.isCancelled) {
+        state = state.copyWith(
+          status: state.user != null ? SyncStatus.synced : SyncStatus.guest,
+          clearError: true,
+        );
+        return false;
+      }
+      if (!result.isSuccess) {
+        state = state.copyWith(
+          status: SyncStatus.error,
+          errorMessage: result.errorMessage ?? 'Google SSO failed.',
+        );
+        return false;
+      }
+      final user = await authService.signInWithGoogleSso(result.idToken!);
       await _onUserAuthenticated(user);
       return true;
     } catch (e) {
@@ -448,13 +500,18 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
   }
 
   /// 1-Click Google Sign-In without passwords or registration.
-  Future<bool> signInWithGoogle({String? email, String? displayName}) async {
+  Future<bool> signInWithGoogle({
+    String? email,
+    String? displayName,
+    String? idToken,
+  }) async {
     if (!_guardConfigLoaded()) return false;
     state = state.copyWith(status: SyncStatus.syncing, clearError: true);
     try {
       final user = await authService.signInWithGoogle(
         googleEmail: email,
         displayName: displayName,
+        idToken: idToken,
       );
       await _onUserAuthenticated(user);
       return true;
