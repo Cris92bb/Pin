@@ -139,94 +139,86 @@ class GoogleSsoService {
             return;
           }
 
-          // Exchange authorization code for tokens
-          try {
-            final tokenResponse = await _httpClient.post(
-              Uri.parse('https://oauth2.googleapis.com/token'),
-              headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-              body: {
-                'code': code,
-                'client_id': clientId.trim(),
-                if (clientSecret != null && clientSecret.trim().isNotEmpty)
-                  'client_secret': clientSecret.trim(),
-                'redirect_uri': redirectUri,
-                'grant_type': 'authorization_code',
-              },
-            );
+          // 1. Release browser immediately with success page so user transitions back to Pin
+          request.response
+            ..statusCode = HttpStatus.ok
+            ..headers.contentType = ContentType.html
+            ..write(_buildSuccessHtml());
+          await request.response.close();
 
-            if (tokenResponse.statusCode >= 200 &&
-                tokenResponse.statusCode < 300) {
-              final tokenData =
-                  jsonDecode(tokenResponse.body) as Map<String, dynamic>;
-              final idToken = tokenData['id_token'] as String?;
+          // 2. Exchange authorization code with retries (accommodating mobile background app network restrictions)
+          GoogleSsoResult? ssoResult;
+          for (int attempt = 0; attempt < 8; attempt++) {
+            try {
+              final tokenResponse = await _httpClient.post(
+                Uri.parse('https://oauth2.googleapis.com/token'),
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: {
+                  'code': code,
+                  'client_id': clientId.trim(),
+                  if (clientSecret != null && clientSecret.trim().isNotEmpty)
+                    'client_secret': clientSecret.trim(),
+                  'redirect_uri': redirectUri,
+                  'grant_type': 'authorization_code',
+                },
+              );
 
-              if (idToken != null && idToken.isNotEmpty) {
-                final profile = _decodeJwtPayload(idToken);
-
-                request.response
-                  ..statusCode = HttpStatus.ok
-                  ..headers.contentType = ContentType.html
-                  ..write(_buildSuccessHtml(
-                    email: profile?['email'] as String?,
-                    name: profile?['name'] as String?,
-                  ));
-                await request.response.close();
-
-                if (!completer.isCompleted) {
-                  completer.complete(
-                    GoogleSsoResult(
-                      idToken: idToken,
-                      email: profile?['email'] as String?,
-                      displayName: profile?['name'] as String?,
-                      photoUrl: profile?['picture'] as String?,
-                    ),
-                  );
-                }
-                _cleanUp();
-              } else {
-                throw Exception('Missing id_token in Google token response.');
-              }
-            } else {
-              String errorDesc = 'Failed to exchange authorization token.';
-              try {
-                final errJson =
+              if (tokenResponse.statusCode >= 200 &&
+                  tokenResponse.statusCode < 300) {
+                final tokenData =
                     jsonDecode(tokenResponse.body) as Map<String, dynamic>;
-                errorDesc = errJson['error_description'] as String? ??
-                    errJson['error'] as String? ??
-                    errorDesc;
-              } catch (_) {}
+                final idToken = tokenData['id_token'] as String?;
 
-              request.response
-                ..statusCode = HttpStatus.badRequest
-                ..headers.contentType = ContentType.html
-                ..write(_buildErrorHtml(errorDesc));
-              await request.response.close();
-
-              if (!completer.isCompleted) {
-                completer.complete(
-                  GoogleSsoResult(
-                    errorMessage: 'Google token exchange failed: $errorDesc',
-                  ),
+                if (idToken != null && idToken.isNotEmpty) {
+                  final profile = _decodeJwtPayload(idToken);
+                  ssoResult = GoogleSsoResult(
+                    idToken: idToken,
+                    email: profile?['email'] as String?,
+                    displayName: profile?['name'] as String?,
+                    photoUrl: profile?['picture'] as String?,
+                  );
+                  break;
+                } else {
+                  ssoResult = const GoogleSsoResult(
+                    errorMessage: 'Missing id_token in Google token response.',
+                  );
+                  break;
+                }
+              } else {
+                String errorDesc = 'Failed to exchange authorization token.';
+                try {
+                  final errJson =
+                      jsonDecode(tokenResponse.body) as Map<String, dynamic>;
+                  errorDesc = errJson['error_description'] as String? ??
+                      errJson['error'] as String? ??
+                      errorDesc;
+                } catch (_) {}
+                ssoResult = GoogleSsoResult(
+                  errorMessage: 'Google token exchange failed: $errorDesc',
                 );
+                break;
               }
-              _cleanUp();
-            }
-          } catch (e) {
-            request.response
-              ..statusCode = HttpStatus.internalServerError
-              ..headers.contentType = ContentType.html
-              ..write(_buildErrorHtml(e.toString()));
-            await request.response.close();
-
-            if (!completer.isCompleted) {
-              completer.complete(
-                GoogleSsoResult(
-                  errorMessage: 'Error processing Google sign-in: ${e.toString()}',
-                ),
+            } catch (e) {
+              if (attempt < 7) {
+                await Future.delayed(Duration(milliseconds: 350 * (attempt + 1)));
+                continue;
+              }
+              ssoResult = GoogleSsoResult(
+                errorMessage:
+                    'Network error connecting to Google ($e). Please return to Pin and try again.',
               );
             }
-            _cleanUp();
           }
+
+          if (!completer.isCompleted) {
+            completer.complete(
+              ssoResult ??
+                  const GoogleSsoResult(
+                    errorMessage: 'Authentication timed out. Please try again.',
+                  ),
+            );
+          }
+          _cleanUp();
         } else {
           request.response
             ..statusCode = HttpStatus.notFound
@@ -369,13 +361,15 @@ class GoogleSsoService {
   <div class="card">
     <div class="badge">✓</div>
     <h1>$welcome</h1>
-    <p>$accountText<br>You can now close this tab and return to Pin.</p>
+    <p>$accountText<br>Return to Pin to finish connecting your board.</p>
+    <a href="intent://#Intent;package=com.example.pin;scheme=pin;end" style="display:inline-block;padding:12px 24px;background:#34D399;color:#0E1411;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:16px;font-size:14px;">Open Pin</a>
     <div class="hint">This tab may be closed safely.</div>
   </div>
   <script>
     setTimeout(function() {
+      try { window.location.href = "intent://#Intent;package=com.example.pin;scheme=pin;end"; } catch(e) {}
       try { window.close(); } catch(e) {}
-    }, 2500);
+    }, 500);
   </script>
 </body>
 </html>''';
