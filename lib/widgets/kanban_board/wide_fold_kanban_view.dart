@@ -246,16 +246,19 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                 Expanded(
                   child: Row(
                     children: [
-                      Text(
-                        _statusTitle(status),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: textPrimary,
-                          letterSpacing: -0.3,
+                      Flexible(
+                        child: Text(
+                          _statusTitle(status),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       // Count Badge
                       Container(
                         padding: const EdgeInsets.symmetric(

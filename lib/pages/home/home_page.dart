@@ -8,13 +8,13 @@ import '../../features/focus_mode/ui/focus_mode_view.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
 import '../../features/task_crud/state/task_editor_state.dart';
 import '../../features/task_export_import/ui/task_export_import_modal.dart';
+import '../../shared/ui/pin_breakpoints.dart';
 import '../../shared/ui/pin_tokens.dart';
 import '../../widgets/kanban_board/layered_deck_view.dart';
 import '../../widgets/kanban_board/wide_fold_kanban_view.dart';
 import '../../features/ai/ui/ai_settings_modal.dart';
 import '../../features/sync/ui/firebase_account_modal.dart';
 import '../../features/sync/ui/sync_status_badge.dart';
-import '../../features/wearable/wearable_utils.dart';
 import '../../features/wearable/ui/wearable_home_page.dart';
 
 /// The primary companion view assembling the mobile/companion frame,
@@ -43,7 +43,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ? TaskStatus.backlog
             : activeDeck);
 
-    final isWide = MediaQuery.of(context).size.width >= 600 || kIsWeb;
+    final isWide = PinBreakpoints.isWide(context);
     if (isWide) {
       ref.read(activeTaskEditorProvider.notifier).state =
           TaskEditorArgs(defaultStatus: initialDeck);
@@ -84,7 +84,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (WearableUtils.isWearable(context)) {
+    final screenTier = PinBreakpoints.getTier(context);
+    if (screenTier == PinScreenTier.xs) {
       return const WearableHomePage();
     }
 
@@ -96,82 +97,43 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final isDesktopOrWeb = screenWidth > 540;
-    final isWide = screenWidth >= 600 || kIsWeb;
+    final isWide = screenTier == PinScreenTier.wide;
 
     final frameBg = isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightPhoneFrameBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
 
-    // If Focus Mode is active on a compact mobile screen, render full Focus Mode view
+    // If Focus Mode is active on a compact / small screen, render full-width edge-to-edge Focus Mode view
     if (activeFocusTask != null && !isWide) {
       return Scaffold(
-        backgroundColor: isDesktopOrWeb
-            ? (isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg)
-            : frameBg,
-        body: Center(
-          child: Container(
-            width: isDesktopOrWeb ? 430 : double.infinity,
-            height: isDesktopOrWeb
-                ? (screenHeight > 540 ? screenHeight - 32 : screenHeight)
-                : double.infinity,
-            constraints: isDesktopOrWeb
-                ? BoxConstraints(
-                    maxHeight: screenHeight > 480 ? screenHeight - 20 : 480,
-                    minHeight: 480,
-                  )
-                : null,
-            decoration: BoxDecoration(
-              color: frameBg,
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(36) : BorderRadius.zero,
-              border: isDesktopOrWeb
-                  ? Border.all(
-                      color: isDark ? borderColor : const Color(0x1F0F172A),
-                      width: isDark ? 2.0 : 1.5,
-                    )
-                  : null,
-              boxShadow: isDesktopOrWeb
-                  ? [
-                      BoxShadow(
-                        color: (isDark ? Colors.black : const Color(0xFF0F172A))
-                            .withValues(alpha: isDark ? 0.45 : 0.12),
-                        blurRadius: 28,
-                        offset: const Offset(0, 14),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: ClipRRect(
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(34) : BorderRadius.zero,
-              child: Stack(
-                children: [
-                  FocusModeView(
-                    task: activeFocusTask,
-                    onExit: () {
-                      ref.read(activeFocusTaskProvider.notifier).state = null;
-                    },
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 10,
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.resizeUpDown,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onPanStart: (_) {
-                          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) {
-                            const MethodChannel('pin/window')
-                                .invokeMethod('resize', {'edge': 'south'});
-                          }
-                        },
-                      ),
+        backgroundColor: frameBg,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              FocusModeView(
+                task: activeFocusTask,
+                onExit: () {
+                  ref.read(activeFocusTaskProvider.notifier).state = null;
+                },
+              ),
+              if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 10,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeUpDown,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onPanStart: (_) {
+                        const MethodChannel('pin/window')
+                            .invokeMethod('resize', {'edge': 'south'});
+                      },
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+            ],
           ),
         ),
       );
@@ -234,39 +196,36 @@ class _HomePageState extends ConsumerState<HomePage> {
         return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: isDesktopOrWeb
+        backgroundColor: isWide
             ? (isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg)
             : frameBg,
         body: Center(
           child: Container(
             width: isWide
-                ? (screenWidth > 1240 ? 1240.0 : screenWidth - 32)
-                : (isDesktopOrWeb ? 430.0 : double.infinity),
-            height: isDesktopOrWeb
+                ? (screenWidth > PinBreakpoints.wideMaxWidth
+                    ? PinBreakpoints.wideMaxWidth
+                    : screenWidth - 32)
+                : double.infinity,
+            height: isWide
                 ? (screenHeight > 540 ? screenHeight - 32 : screenHeight)
                 : double.infinity,
             constraints: isWide
                 ? BoxConstraints(
-                    maxWidth: 1240,
+                    maxWidth: PinBreakpoints.wideMaxWidth,
                     maxHeight: screenHeight > 540 ? screenHeight - 20 : screenHeight,
                     minHeight: 480,
                   )
-                : (isDesktopOrWeb
-                    ? BoxConstraints(
-                        maxHeight: screenHeight > 480 ? screenHeight - 20 : 480,
-                        minHeight: 480,
-                      )
-                    : null),
+                : null,
             decoration: BoxDecoration(
               color: frameBg,
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(36) : BorderRadius.zero,
-              border: isDesktopOrWeb
+              borderRadius: isWide ? BorderRadius.circular(32) : BorderRadius.zero,
+              border: isWide
                   ? Border.all(
                       color: isDark ? borderColor : const Color(0x1F0F172A),
                       width: 1.0,
                     )
                   : null,
-              boxShadow: isDesktopOrWeb
+              boxShadow: isWide
                   ? [
                       BoxShadow(
                         color: (isDark ? Colors.black : const Color(0xFF0F172A))
@@ -278,7 +237,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   : null,
             ),
             child: ClipRRect(
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(34) : BorderRadius.zero,
+              borderRadius: isWide ? BorderRadius.circular(30) : BorderRadius.zero,
               child: SafeArea(
                 child: Stack(
                   children: [
