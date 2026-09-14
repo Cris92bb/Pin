@@ -688,5 +688,210 @@ void main() {
       expect(cleared.storageBucket, isEmpty);
       expect(cleared.oAuthClientId, isEmpty);
     });
+
+    test('syncNow performs bi-directional sync pulling remote changes while pushing local tasks', () async {
+      const user = AppUser(
+        uid: 'user-multi-device',
+        email: 'user@example.com',
+        idToken: 'token-abc',
+        isAnonymous: false,
+      );
+
+      final now = DateTime.now();
+      final remoteTask = PinTask(
+        id: 'task-device-1',
+        title: 'Task from Device 1',
+        status: TaskStatus.today,
+        createdAt: now.subtract(const Duration(minutes: 5)),
+        updatedAt: now.subtract(const Duration(minutes: 5)),
+      );
+
+      mockHttp.getResponseBody = {
+        'fields': FirestoreRestCodec.encodeFields({
+          'tasks': [remoteTask.toJson()],
+          'lastSyncedAt': now.millisecondsSinceEpoch,
+        }),
+      };
+
+      // Local storage on Device 2 has task-device-2
+      final localTask = PinTask(
+        id: 'task-device-2',
+        title: 'Task from Device 2',
+        status: TaskStatus.backlog,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final device2Storage = MemoryStorageAdapter();
+      await device2Storage.saveTasks([localTask.toJson()]);
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(device2Storage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: device2Storage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+              initialUser: user,
+            );
+          }),
+        ],
+      );
+
+      // Settle async storage load
+      await Future.delayed(Duration.zero);
+
+      final syncController = container.read(syncControllerProvider.notifier);
+
+      // Trigger syncNow on Device 2
+      await syncController.syncNow();
+
+      // Device 2's local tasks must now include BOTH task-device-1 and task-device-2
+      final localTasksAfterSync = container.read(taskStateProvider).tasks;
+      expect(localTasksAfterSync.length, equals(2));
+      expect(localTasksAfterSync.any((t) => t.id == 'task-device-1'), isTrue);
+      expect(localTasksAfterSync.any((t) => t.id == 'task-device-2'), isTrue);
+
+      // And the patched cloud document must also contain both
+      expect(mockHttp.patchCallCount, greaterThanOrEqualTo(1));
+      expect(mockHttp.lastPatchedBody, isNotNull);
+    });
+
+    test('tombstone prevents resurrection of deleted task across devices', () async {
+      const user = AppUser(
+        uid: 'user-tombstone-test',
+        email: 'user@example.com',
+        idToken: 'token-tombstone',
+        isAnonymous: false,
+      );
+
+      final now = DateTime.now();
+      final tombstoneTimestamp = now.millisecondsSinceEpoch;
+
+      mockHttp.getResponseBody = {
+        'fields': FirestoreRestCodec.encodeFields({
+          'tasks': [
+            {
+              'id': 'task-survivor',
+              'title': 'Survivor Task',
+              'status': 'today',
+              'createdAt': now.toIso8601String(),
+              'updatedAt': now.toIso8601String(),
+            }
+          ],
+          'deletedTaskIds': {
+            'task-deleted-on-device-1': tombstoneTimestamp,
+          },
+          'lastSyncedAt': now.millisecondsSinceEpoch,
+        }),
+      };
+
+      // Device 2 still had task-deleted-on-device-1 locally because it was offline
+      final staleTaskOnDevice2 = PinTask(
+        id: 'task-deleted-on-device-1',
+        title: 'Task that was deleted remotely',
+        status: TaskStatus.today,
+        createdAt: now.subtract(const Duration(hours: 1)),
+        updatedAt: now.subtract(const Duration(minutes: 30)),
+      );
+
+      final device2Storage = MemoryStorageAdapter();
+      await device2Storage.saveTasks([staleTaskOnDevice2.toJson()]);
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(device2Storage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: device2Storage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+              initialUser: user,
+            );
+          }),
+        ],
+      );
+
+      // Settle async storage load
+      await Future.delayed(Duration.zero);
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      await syncController.syncNow();
+
+      // The deleted task must have been purged on Device 2 via tombstone, NOT resurrected!
+      final tasks = container.read(taskStateProvider).tasks;
+      expect(tasks.any((t) => t.id == 'task-deleted-on-device-1'), isFalse);
+      expect(tasks.any((t) => t.id == 'task-survivor'), isTrue);
+    });
+
+    test('unedited sample tasks are discarded and do not pollute cloud account with real tasks', () async {
+      final now = DateTime.now();
+      // Cloud has real tasks from Device 1
+      final realCloudTask = PinTask(
+        id: 'real-user-pin-100',
+        title: 'My Important Work Project',
+        status: TaskStatus.today,
+        createdAt: now.subtract(const Duration(hours: 2)),
+        updatedAt: now.subtract(const Duration(hours: 2)),
+      );
+
+      mockHttp.getResponseBody = {
+        'fields': FirestoreRestCodec.encodeFields({
+          'tasks': [realCloudTask.toJson()],
+          'lastSyncedAt': now.millisecondsSinceEpoch,
+        }),
+      };
+
+      // Device 2 is fresh install with seedInitialSample: true (has sample-pin-1..10)
+      final device2Storage = MemoryStorageAdapter();
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(device2Storage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: device2Storage,
+                seedInitialSample: true,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      // Settle async storage load
+      final taskNotifier = container.read(taskStateProvider.notifier);
+      await taskNotifier.loadFuture;
+
+      // Verify Device 2 seeded samples locally
+      final localBeforeLogin = container.read(taskStateProvider).tasks;
+      expect(localBeforeLogin.any((t) => t.id.startsWith('sample-pin-')), isTrue);
+
+      // User signs in with their existing cloud account
+      final syncController = container.read(syncControllerProvider.notifier);
+      await syncController.signInWithGoogle(
+        email: 'user@example.com',
+        displayName: 'Pin User',
+      );
+
+      // Device 2's tasks must now be the real cloud tasks, without sample-pin pollution!
+      final localAfterLogin = container.read(taskStateProvider).tasks;
+      expect(localAfterLogin.any((t) => t.id == 'real-user-pin-100'), isTrue);
+      expect(localAfterLogin.any((t) => t.id.startsWith('sample-pin-')), isFalse);
+    });
   });
 }

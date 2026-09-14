@@ -22,12 +22,14 @@ class SyncResult {
 class CloudBoardData {
   final List<Map<String, dynamic>> tasks;
   final Map<String, dynamic>? dailyCheckin;
+  final Map<String, int> deletedTaskIds;
   final int lastSyncedAt;
   final int count;
 
   const CloudBoardData({
     required this.tasks,
     this.dailyCheckin,
+    this.deletedTaskIds = const {},
     required this.lastSyncedAt,
     required this.count,
   });
@@ -65,6 +67,7 @@ class FirestoreSyncService {
     String? idToken,
     required List<Map<String, dynamic>> tasks,
     Map<String, dynamic>? dailyCheckin,
+    Map<String, int>? deletedTaskIds,
   }) async {
     if (!config.isConfigured) {
       return SyncResult(
@@ -91,6 +94,7 @@ class FirestoreSyncService {
     final fields = FirestoreRestCodec.encodeFields({
       'tasks': tasks,
       'dailyCheckin': dailyCheckin ?? {},
+      'deletedTaskIds': deletedTaskIds ?? {},
       'lastSyncedAt': syncedAt,
       'count': tasks.length,
     });
@@ -178,12 +182,23 @@ class FirestoreSyncService {
 
         final rawCheckin = decoded['dailyCheckin'];
         final checkinMap = rawCheckin is Map ? Map<String, dynamic>.from(rawCheckin) : null;
+        final rawDeleted = decoded['deletedTaskIds'];
+        final deletedMap = <String, int>{};
+        if (rawDeleted is Map) {
+          for (final entry in rawDeleted.entries) {
+            final val = entry.value;
+            if (val is num) {
+              deletedMap[entry.key.toString()] = val.toInt();
+            }
+          }
+        }
         final lastSyncedAt = (decoded['lastSyncedAt'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch;
         final count = (decoded['count'] as num?)?.toInt() ?? taskMaps.length;
 
         return CloudBoardData(
           tasks: taskMaps,
           dailyCheckin: checkinMap,
+          deletedTaskIds: deletedMap,
           lastSyncedAt: lastSyncedAt,
           count: count,
         );
