@@ -214,4 +214,143 @@ void main() {
     // TaskCrudModal dismissed
     expect(find.byType(TaskCrudModal), findsNothing);
   });
+
+  testWidgets(
+      'when in focus mode, clicking any pin on active drawer selects that one as focused',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final now = DateTime.now();
+    final task1 = PinTask(
+      id: 'task_1',
+      title: 'First Focused Task',
+      description: 'First task details',
+      status: TaskStatus.today,
+      isPinned: true,
+      energyTag: 'deep-focus',
+      estimatedMinutes: 25,
+      tags: const ['#one'],
+      createdAt: now,
+      updatedAt: now,
+    );
+    final task2 = PinTask(
+      id: 'task_2',
+      title: 'Second Focused Task',
+      description: 'Second task details',
+      status: TaskStatus.today,
+      isPinned: true,
+      energyTag: 'creative',
+      estimatedMinutes: 30,
+      tags: const ['#two'],
+      createdAt: now.add(const Duration(seconds: 1)),
+      updatedAt: now.add(const Duration(seconds: 1)),
+    );
+    final fakeStorage = MemoryStorageAdapter([task1.toJson(), task2.toJson()]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.lightTheme,
+          home: const HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Click Task 1 to focus it
+    await tester.tap(find.text('First Focused Task'));
+    await tester.pumpAndSettle();
+
+    // FocusModeView is open with First Focused Task
+    expect(find.byType(FocusModeView), findsOneWidget);
+    expect(find.text('First Focused Task'), findsAtLeastNWidgets(1));
+
+    // Now click Task 2 in the active drawer
+    await tester.tap(find.text('Second Focused Task'));
+    await tester.pumpAndSettle();
+
+    // FocusModeView now switches to Second Focused Task!
+    expect(find.byType(FocusModeView), findsOneWidget);
+    expect(find.text('Second Focused Task'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets(
+      'editing a pin goes on top of focus mode with at max 1 overlay at a time, resuming focus on cancel',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final now = DateTime.now();
+    final task = PinTask(
+      id: 'task_edit_layering',
+      title: 'Task To Edit On Top',
+      description: 'Testing overlay priority',
+      status: TaskStatus.today,
+      isPinned: true,
+      energyTag: 'deep-focus',
+      estimatedMinutes: 25,
+      tags: const ['#overlay'],
+      createdAt: now,
+      updatedAt: now,
+    );
+    final fakeStorage = MemoryStorageAdapter([task.toJson()]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.lightTheme,
+          home: const HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Click task to enter focus mode
+    await tester.tap(find.text('Task To Edit On Top'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FocusModeView), findsOneWidget);
+    expect(find.byType(TaskCrudModal), findsNothing);
+
+    // Click "Edit" in FocusModeView
+    final editBtn = find.byTooltip('Edit Pin');
+    expect(editBtn, findsOneWidget);
+    await tester.tap(editBtn);
+    await tester.pumpAndSettle();
+
+    // TaskCrudModal is now ON TOP as the single overlay instance
+    expect(find.byType(TaskCrudModal), findsOneWidget);
+    expect(find.byType(FocusModeView), findsNothing); // only 1 overlay rendered at a time
+
+    // Cancel editing
+    final cancelBtn = find.text('Cancel');
+    expect(cancelBtn, findsOneWidget);
+    await tester.tap(cancelBtn);
+    await tester.pumpAndSettle();
+
+    // Editor dismissed, FocusModeView returns!
+    expect(find.byType(TaskCrudModal), findsNothing);
+    expect(find.byType(FocusModeView), findsOneWidget);
+  });
 }

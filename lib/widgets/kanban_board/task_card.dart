@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../entities/task/model/pin_task.dart';
 import '../../entities/task/state/task_state_notifier.dart';
+import '../../features/task_crud/state/task_editor_state.dart';
 import 'package:pin/shared/lib/date_helpers.dart';
 import '../../shared/ui/pin_tokens.dart';
 import 'task_action_bubble.dart';
@@ -32,6 +33,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     final isDone = task.status == TaskStatus.done;
     final isToday = task.status == TaskStatus.today;
 
+    final activeFocusTask = ref.watch(activeFocusTaskProvider);
+    final isFocused = activeFocusTask?.id == task.id;
+    final activeFocusColor =
+        isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus;
+
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final cardBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final textPrimary =
@@ -44,15 +50,28 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: PinTokens.radiusCard,
-        border: isDark
+        border: isFocused
             ? Border.all(
-                color: borderColor,
-                width: 1.6,
+                color: activeFocusColor,
+                width: 2.0,
               )
-            : null,
-        boxShadow: isDark
-            ? PinTokens.darkCardShadow
-            : PinTokens.lightCardShadow,
+            : (isDark
+                ? Border.all(
+                    color: borderColor,
+                    width: 1.6,
+                  )
+                : null),
+        boxShadow: isFocused
+            ? [
+                BoxShadow(
+                  color: activeFocusColor.withValues(alpha: isDark ? 0.35 : 0.20),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : (isDark
+                ? PinTokens.darkCardShadow
+                : PinTokens.lightCardShadow),
       ),
       child: InkWell(
         borderRadius: PinTokens.radiusCard,
@@ -60,7 +79,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
           _lastTapDownPosition = details.globalPosition;
         },
         onTap: () {
-          // Tap card to enter immersive Focus Mode
+          // Select pin as focused and dismiss any active edit overlay
+          ref.read(activeTaskEditorProvider.notifier).state = null;
           ref.read(activeFocusTaskProvider.notifier).state = task;
         },
         onLongPress: () {
@@ -127,16 +147,26 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
                   // ACTIVE FOCUS status badge
                   Text(
-                    isToday
+                    isFocused
                         ? 'ACTIVE FOCUS'
-                        : (isDone ? 'COMPLETED' : 'BACKLOG'),
+                        : (isToday
+                            ? 'TODAY'
+                            : (isDone ? 'COMPLETED' : 'BACKLOG')),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
-                      color: isToday
-                          ? (isDark ? PinTokens.darkActiveFocus : PinTokens.lightActiveFocus)
-                          : (isDone ? PinTokens.accentEmerald : (isDark ? PinTokens.darkTextMuted : PinTokens.lightTextSecondary)),
+                      color: isFocused
+                          ? activeFocusColor
+                          : (isToday
+                              ? (isDark
+                                  ? PinTokens.darkActiveFocus.withValues(alpha: 0.75)
+                                  : PinTokens.lightActiveFocus.withValues(alpha: 0.85))
+                              : (isDone
+                                  ? PinTokens.accentEmerald
+                                  : (isDark
+                                      ? PinTokens.darkTextMuted
+                                      : PinTokens.lightTextSecondary))),
                     ),
                   ),
 

@@ -165,20 +165,21 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                   ),
                 ),
 
-                // Overlay Panel: Focus Mode or Task Editor (hiding the 2 inactive drawers beneath)
-                if (activeFocusTask != null)
-                  Positioned.fill(
-                    child: _buildFocusOverlay(
-                      context,
-                      task: activeFocusTask,
-                      isDark: isDark,
-                    ),
-                  )
-                else if (activeTaskEditor != null)
+                // Overlay Panel: at max 1 instance of an overlay at a time.
+                // Editing/creating a pin goes on top of focus mode!
+                if (activeTaskEditor != null)
                   Positioned.fill(
                     child: _buildEditorOverlay(
                       context,
                       args: activeTaskEditor,
+                      isDark: isDark,
+                    ),
+                  )
+                else if (activeFocusTask != null)
+                  Positioned.fill(
+                    child: _buildFocusOverlay(
+                      context,
+                      task: activeFocusTask,
                       isDark: isDark,
                     ),
                   ),
@@ -596,6 +597,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
       ),
       clipBehavior: Clip.antiAlias,
       child: FocusModeView(
+        key: ValueKey<String>('focus_${task.id}'),
         task: task,
         onExit: () {
           ref.read(activeFocusTaskProvider.notifier).state = null;

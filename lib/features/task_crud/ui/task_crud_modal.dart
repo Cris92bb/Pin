@@ -278,6 +278,10 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
       final success = await notifier.updateTask(updated);
       if (mounted) {
         if (success) {
+          final currentFocus = ref.read(activeFocusTaskProvider);
+          if (currentFocus?.id == updated.id) {
+            ref.read(activeFocusTaskProvider.notifier).state = updated;
+          }
           ref.read(activeDeckProvider.notifier).state = _selectedStatus;
           _dismiss();
         } else {
