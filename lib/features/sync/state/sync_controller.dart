@@ -433,7 +433,7 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
@@ -460,7 +460,7 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
@@ -500,7 +500,9 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
       if (!result.isSuccess) {
         state = state.copyWith(
           status: SyncStatus.error,
-          errorMessage: result.errorMessage ?? 'Google SSO failed.',
+          errorMessage: result.errorMessage != null
+              ? _formatError(result.errorMessage!)
+              : 'Google SSO failed.',
         );
         return false;
       }
@@ -511,7 +513,7 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
       _activeSsoService = null;
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
@@ -536,7 +538,7 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
@@ -567,10 +569,20 @@ class SyncController extends StateNotifier<SyncState> with WidgetsBindingObserve
     } catch (e) {
       state = state.copyWith(
         status: SyncStatus.error,
-        errorMessage: e.toString().replaceAll('Exception: ', ''),
+        errorMessage: _formatError(e),
       );
       return false;
     }
+  }
+
+  String _formatError(Object e) {
+    final str = e.toString().replaceAll('Exception: ', '');
+    if (str.contains('Failed host lookup') ||
+        str.contains('SocketException') ||
+        str.contains('ClientException')) {
+      return 'Network connection error. Please verify your device has an active internet connection and try again.';
+    }
+    return str;
   }
 
   /// Signs out the user and switches back to guest mode.
