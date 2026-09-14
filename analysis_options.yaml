@@ -5,6 +5,8 @@ analyzer:
     - android/**
     - ios/**
     - web/**
+    - windows/**
+    - .dart_tool/**
 
 include: package:flutter_lints/flutter.yaml
 
