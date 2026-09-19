@@ -91,18 +91,57 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
           Expanded(
             flex: 4,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
-              switchOutCurve: Curves.easeIn,
+              duration: const Duration(milliseconds: 460),
+              switchInCurve: Curves.linear,
+              switchOutCurve: Curves.linear,
+              layoutBuilder:
+                  (Widget? currentChild, List<Widget> previousChildren) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
               transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(-0.04, 0.0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
+                final curved = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeInOutCubic,
+                  reverseCurve: Curves.easeInOutCubic,
+                );
+
+                // Physical directional slide:
+                // Incoming active drawer slides from right (inactive section) to foreground.
+                // Outgoing active drawer slides to the right towards inactive section.
+                final slideAnimation = Tween<Offset>(
+                  begin: const Offset(0.06, 0.0),
+                  end: Offset.zero,
+                ).animate(curved);
+
+                // Tactile scale: expands into foreground (0.93 -> 1.0)
+                // Outgoing shrinks into background (1.0 -> 0.93)
+                final scaleAnimation = Tween<double>(
+                  begin: 0.93,
+                  end: 1.0,
+                ).animate(curved);
+
+                // Synchronized opacity fade
+                final fadeAnimation = CurvedAnimation(
+                  parent: animation,
+                  curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
+                  reverseCurve: const Interval(0.0, 0.85, curve: Curves.easeIn),
+                );
+
+                return SlideTransition(
+                  position: slideAnimation,
+                  child: ScaleTransition(
+                    scale: scaleAnimation,
+                    alignment: Alignment.centerLeft,
+                    child: FadeTransition(
+                      opacity: fadeAnimation,
+                      child: child,
+                    ),
                   ),
                 );
               },
@@ -126,68 +165,164 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Underneath: 2 Inactive Drawers side-by-side
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
-                  switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
-                  },
-                  child: KeyedSubtree(
-                    key: ValueKey<String>(
-                      '${inactiveStatuses[0].name}_${inactiveStatuses[1].name}',
+                // Underneath: 2 Inactive Drawers side-by-side with independent tactile slot switchers
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _buildInactiveSlotSwitcher(
+                        context,
+                        status: inactiveStatuses[0],
+                        taskState: taskState,
+                        isDark: isDark,
+                      ),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: _buildInactiveDrawer(
-                            context,
-                            status: inactiveStatuses[0],
-                            taskState: taskState,
-                            isDark: isDark,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: _buildInactiveDrawer(
-                            context,
-                            status: inactiveStatuses[1],
-                            taskState: taskState,
-                            isDark: isDark,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _buildInactiveSlotSwitcher(
+                        context,
+                        status: inactiveStatuses[1],
+                        taskState: taskState,
+                        isDark: isDark,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
 
                 // Overlay Panel: at max 1 instance of an overlay at a time.
-                // Editing/creating a pin goes on top of focus mode!
-                if (activeTaskEditor != null)
-                  Positioned.fill(
-                    child: _buildEditorOverlay(
-                      context,
-                      args: activeTaskEditor,
-                      isDark: isDark,
-                    ),
-                  )
-                else if (activeFocusTask != null)
-                  Positioned.fill(
-                    child: _buildFocusOverlay(
-                      context,
-                      task: activeFocusTask,
-                      isDark: isDark,
-                    ),
-                  ),
+                // Editing/creating a pin goes on top of focus mode with smooth entrance/exit!
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 360),
+                  switchInCurve: Curves.linear,
+                  switchOutCurve: Curves.linear,
+                  layoutBuilder:
+                      (Widget? currentChild, List<Widget> previousChildren) {
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        ...previousChildren,
+                        if (currentChild != null) currentChild,
+                      ],
+                    );
+                  },
+                  transitionBuilder: (child, animation) {
+                    final curved = CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOutCubic,
+                      reverseCurve: Curves.easeInOutCubic,
+                    );
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.0, 0.04),
+                        end: Offset.zero,
+                      ).animate(curved),
+                      child: FadeTransition(
+                        opacity: CurvedAnimation(
+                          parent: animation,
+                          curve:
+                              const Interval(0.0, 0.85, curve: Curves.easeOut),
+                          reverseCurve:
+                              const Interval(0.0, 0.85, curve: Curves.easeIn),
+                        ),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: activeTaskEditor != null
+                      ? KeyedSubtree(
+                          key: const ValueKey<String>('editor_overlay'),
+                          child: _buildEditorOverlay(
+                            context,
+                            args: activeTaskEditor,
+                            isDark: isDark,
+                          ),
+                        )
+                      : (activeFocusTask != null
+                          ? KeyedSubtree(
+                              key: ValueKey<String>(
+                                  'focus_overlay_${activeFocusTask.id}'),
+                              child: _buildFocusOverlay(
+                                context,
+                                task: activeFocusTask,
+                                isDark: isDark,
+                              ),
+                            )
+                          : const SizedBox.shrink()),
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Builds an independently animated switcher slot for an inactive drawer column.
+  Widget _buildInactiveSlotSwitcher(
+    BuildContext context, {
+    required TaskStatus status,
+    required TaskListState taskState,
+    required bool isDark,
+  }) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 460),
+      switchInCurve: Curves.linear,
+      switchOutCurve: Curves.linear,
+      layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            ...previousChildren,
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
+      transitionBuilder: (child, animation) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOutCubic,
+          reverseCurve: Curves.easeInOutCubic,
+        );
+
+        // Incoming: was active on the left, so slides in from the left (-0.06 -> 0.0).
+        // Outgoing: promoted to active on the left, so slides to the left (0.0 -> -0.06).
+        final slideAnimation = Tween<Offset>(
+          begin: const Offset(-0.06, 0.0),
+          end: Offset.zero,
+        ).animate(curved);
+
+        // Tactile scale: incoming settles into inactive perspective; outgoing promotes
+        final scaleAnimation = Tween<double>(
+          begin: 1.04,
+          end: 1.0,
+        ).animate(curved);
+
+        final fadeAnimation = CurvedAnimation(
+          parent: animation,
+          curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
+          reverseCurve: const Interval(0.0, 0.85, curve: Curves.easeIn),
+        );
+
+        return SlideTransition(
+          position: slideAnimation,
+          child: ScaleTransition(
+            scale: scaleAnimation,
+            alignment: Alignment.centerRight,
+            child: FadeTransition(
+              opacity: fadeAnimation,
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: KeyedSubtree(
+        key: ValueKey<TaskStatus>(status),
+        child: _buildInactiveDrawer(
+          context,
+          status: status,
+          taskState: taskState,
+          isDark: isDark,
+        ),
       ),
     );
   }
