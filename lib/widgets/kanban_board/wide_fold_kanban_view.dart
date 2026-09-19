@@ -1,4 +1,3 @@
-import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../entities/task/model/pin_task.dart';
@@ -47,7 +46,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
     _activeStatus = ref.read(activeDeckProvider);
     _transitionController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 520),
+      duration: const Duration(milliseconds: 350),
     );
     _transitionCurve = CurvedAnimation(
       parent: _transitionController,
@@ -78,6 +77,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
       return;
     }
 
+    _transitionController.value = 0.0;
     setState(() {
       _departingStatus = _activeStatus;
       _arrivingStatus = newActiveStatus;
@@ -262,67 +262,57 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
                   ),
                 );
 
-                // 3. Departing Drawer (glides from left active column to right slot)
-                final departingLeft = lerpDouble(0.0, targetSlotLeft, t)!;
-                final departingWidth =
-                    lerpDouble(activeWidth, inactiveCardWidth, t)!;
-                final departingOpacity = lerpDouble(1.0, 0.70, t)!;
-
+                // 3. Departing Drawer (glides right into target slot)
                 children.add(
                   Positioned(
-                    left: departingLeft,
+                    left: 0,
                     top: 0,
-                    width: departingWidth,
+                    width: inactiveCardWidth,
                     bottom: 0,
-                    child: Opacity(
-                      opacity: departingOpacity,
-                      child: _buildInactiveDrawer(
-                        context,
-                        status: _departingStatus!,
-                        taskState: taskState,
-                        isDark: isDark,
+                    child: IgnorePointer(
+                      child: Transform.translate(
+                        offset: Offset(targetSlotLeft * t, 0),
+                        child: _buildInactiveDrawer(
+                          context,
+                          status: _departingStatus!,
+                          taskState: taskState,
+                          isDark: isDark,
+                        ),
                       ),
                     ),
                   ),
                 );
 
-                // 4. Arriving Drawer (glides from right slot to left active column, ON TOP)
-                final arrivingLeft = lerpDouble(targetSlotLeft, 0.0, t)!;
-                final arrivingWidth =
-                    lerpDouble(inactiveCardWidth, activeWidth, t)!;
-                final arrivingOpacity = lerpDouble(0.85, 1.0, t)!;
-                final midFlightBump = 1.0 - (2.0 * t - 1.0).abs();
-
+                // 4. Arriving Drawer (glides left into active column, elevated ON TOP)
                 children.add(
                   Positioned(
-                    left: arrivingLeft,
+                    left: 0,
                     top: 0,
-                    width: arrivingWidth,
+                    width: activeWidth,
                     bottom: 0,
-                    child: Opacity(
-                      opacity: arrivingOpacity,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isDark
-                                      ? Colors.black
-                                      : const Color(0xFF0F172A))
-                                  .withValues(
-                                      alpha: lerpDouble(
-                                          0.08, 0.22, midFlightBump)!),
-                              blurRadius:
-                                  lerpDouble(12, 28, midFlightBump)!,
-                              offset: Offset(
-                                  0, lerpDouble(4, 14, midFlightBump)!),
-                            ),
-                          ],
-                        ),
-                        child: _buildActiveDrawer(
-                          context,
-                          status: _arrivingStatus!,
-                          taskState: taskState,
-                          isDark: isDark,
+                    child: IgnorePointer(
+                      child: Transform.translate(
+                        offset: Offset(targetSlotLeft * (1.0 - t), 0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: PinTokens.radiusDeck,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isDark
+                                        ? Colors.black
+                                        : const Color(0xFF0F172A))
+                                    .withValues(alpha: 0.25),
+                                blurRadius: 20,
+                                offset: const Offset(-6, 8),
+                              ),
+                            ],
+                          ),
+                          child: _buildActiveDrawer(
+                            context,
+                            status: _arrivingStatus!,
+                            taskState: taskState,
+                            isDark: isDark,
+                          ),
                         ),
                       ),
                     ),
