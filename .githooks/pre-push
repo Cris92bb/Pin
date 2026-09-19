@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Git Pre-Push Hook for Pin Companion Kanban
+# Blocks direct pushes to protected branches ('develop' and 'main').
+# All changes to 'develop' and 'main' MUST go through Pull Requests (PRs).
+# ==============================================================================
+
+set -eo pipefail
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/develop" ]; then
+    echo -e "\n${RED}${BOLD}❌ Push Rejected: Direct push to 'develop' is forbidden!${NC}" >&2
+    echo -e "${YELLOW}Changes may only be merged into 'develop' through Pull Requests (PRs).${NC}" >&2
+    echo -e "Please push your feature branch and open a PR into 'develop'.\n" >&2
+    exit 1
+  fi
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo -e "\n${RED}${BOLD}❌ Push Rejected: Direct push to 'main' is forbidden!${NC}" >&2
+    echo -e "${YELLOW}Changes may only be merged into 'main' through Pull Requests (PRs).${NC}" >&2
+    echo -e "Please create a PR from 'develop' into 'main'.\n" >&2
+    exit 1
+  fi
+done
+
+exit 0

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/api/storage/prefs_storage_adapter.dart';
 import '../../../shared/api/storage/storage_adapter.dart';
 import '../../../shared/ui/pin_tokens.dart';
-import '../../atomic_step/model/atomic_step.dart';
+import '../model/atomic_step.dart';
 import '../model/pin_task.dart';
 
 /// Immutable state containing the current tasks and active WIP configuration.
@@ -55,6 +55,44 @@ class TaskListState {
 class TaskStateNotifier extends StateNotifier<TaskListState> {
   final StorageAdapter storage;
   void Function(List<PinTask> tasks)? onTasksPersisted;
+  final Map<String, int> _deletedTaskIds = {};
+
+  Map<String, int> get deletedTaskIds => Map.unmodifiable(_deletedTaskIds);
+
+  void recordTaskDeleted(String taskId) {
+    _deletedTaskIds[taskId] = DateTime.now().millisecondsSinceEpoch;
+  }
+
+  void mergeDeletedTaskIds(Map<String, int> incoming) {
+    for (final entry in incoming.entries) {
+      final existing = _deletedTaskIds[entry.key];
+      if (existing == null || entry.value > existing) {
+        _deletedTaskIds[entry.key] = entry.value;
+      }
+    }
+  }
+
+  static final Map<String, String> defaultSampleTitles = {
+    'sample-pin-1': 'Refactor drawer transition physics in UI',
+    'sample-pin-2': 'Send project update email to team',
+    'sample-pin-3': 'Draft architecture diagram for sync adapter',
+    'sample-pin-4': 'Investigate offline IndexedDB fallback for Web',
+    'sample-pin-5': 'Design app icon variations for smartphone home screen',
+    'sample-pin-6': 'Setup automated GitHub Actions runner',
+    'sample-pin-7': 'Initial Flutter companion app scaffold',
+    'sample-pin-8': 'Define design tokens and calm color palette',
+    'sample-pin-9': 'Unit test Base64 blueprint codec',
+    'sample-pin-10': 'Implement atomic local storage adapter',
+  };
+
+  /// Returns true if this task is an unedited default sample pin generated on first launch.
+  static bool isUntouchedSamplePin(PinTask task) {
+    if (!task.id.startsWith('sample-pin-')) return false;
+    final defaultTitle = defaultSampleTitles[task.id];
+    return defaultTitle == task.title;
+  }
+
+  late Future<void> loadFuture;
 
   TaskStateNotifier({
     required this.storage,
@@ -62,7 +100,7 @@ class TaskStateNotifier extends StateNotifier<TaskListState> {
     bool seedInitialSample = false,
     this.onTasksPersisted,
   }) : super(TaskListState(wipLimit: initialWipLimit)) {
-    loadTasks(seedIfEmpty: seedInitialSample);
+    loadFuture = loadTasks(seedIfEmpty: seedInitialSample);
   }
 
   /// Loads tasks from storage adapter; optionally seeds companion sample data if empty.
@@ -365,6 +403,7 @@ class TaskStateNotifier extends StateNotifier<TaskListState> {
 
   /// Deletes a task by ID.
   Future<void> deleteTask(String taskId) async {
+    recordTaskDeleted(taskId);
     final updatedList = state.tasks.where((t) => t.id != taskId).toList();
     state = state.copyWith(tasks: updatedList);
     await _persist();
@@ -431,6 +470,12 @@ class TaskStateNotifier extends StateNotifier<TaskListState> {
 
   /// Clears all Done tasks (Archive).
   Future<void> clearDoneTasks() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final t in state.tasks) {
+      if (t.status == TaskStatus.done) {
+        _deletedTaskIds[t.id] = now;
+      }
+    }
     final updatedList =
         state.tasks.where((t) => t.status != TaskStatus.done).toList();
     state = state.copyWith(tasks: updatedList);

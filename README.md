@@ -1,13 +1,14 @@
 # <p align="center"><img src="assets/icons/pin.png" width="64" height="64" alt="Pin Icon" valign="middle" /><br>Pin</p>
 
 <p align="center">
-  <strong>A minimalist, high-focus companion Kanban desktop app built for Linux.</strong>
+  <strong>A minimalist, high-focus companion Kanban app built for Linux Desktop & Wear OS Smartwatches.</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white" alt="Dart" />
   <img src="https://img.shields.io/badge/Platform-Linux%20(GTK)-E95420?logo=linux&logoColor=white" alt="Linux" />
+  <img src="https://img.shields.io/badge/Platform-Wear%20OS%20%7C%20Android-green?logo=android&logoColor=white" alt="Wear OS" />
   <img src="https://img.shields.io/badge/Architecture-Riverpod-blueviolet" alt="Riverpod" />
   <img src="https://img.shields.io/badge/Storage-Local--First%20(Offline)-green" alt="Local-First" />
 </p>
@@ -16,9 +17,11 @@
 
 ## 📌 Overview
 
-**Pin** is a companion Kanban application tailored for power users, developers, and writers on Linux desktop environments (such as GNOME). 
+**Pin** is a companion Kanban application tailored for power users, developers, and writers on Linux desktop environments (such as GNOME) as well as **Wear OS smartwatches**.
 
-Designed to sit snugly alongside your IDE, terminal, or web browser, **Pin** adopts a **companion layout** (fixed 430px width, height-only resizing, and full monitor workarea default height) so you never lose context while organizing your workload.
+On desktop, designed to sit snugly alongside your IDE, terminal, or web browser, **Pin** adopts a **companion layout** (fixed 430px width, height-only resizing, and full monitor workarea default height) so you never lose context while organizing your workload.
+
+On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist companion with gesture-safe navigation, OLED-optimized contrast, full-width task cards, and cloud synchronization.
 
 ![Pin Screenshot](screenshot.png)
 
@@ -29,6 +32,12 @@ Designed to sit snugly alongside your IDE, terminal, or web browser, **Pin** ado
 - **🗂️ Layered Deck Kanban**:
   - Three intuitive, full-width drawers: **Backlog**, **In Progress**, and **Done**.
   - One-click toggling and seamless animated transitions between layers.
+- **⌚ Wear OS Smartwatch Companion**:
+  - **Auto Viewport Adaptation**: Automatically identifies circular and wearable viewports via `WearableUtils.isWearable(context)` and activates `WearableHomePage`.
+  - **Left-Only Infinite Carousel Navigation**: Custom `LeftOnlyPageScrollPhysics` ensures navigation only swipes left forward (`Today -> Backlog -> Completed -> Account -> Today...`), completely avoiding interference with the Wear OS left-edge swipe-to-dismiss system gesture.
+  - **Full-Width Multi-Line Task Cards**: Expands cards to edge-to-edge width with 2-line title and 3-line description rendering so you can read your pins at a glance on the go.
+  - **Wearable Focus Mode**: Immersive single-pin focus view with elapsed timer, step-by-step checklist, and instant completion.
+  - **Watch Cloud Sync & Account**: Dedicated watch Account screen with 1-click Google Sign-In, Email/Password sign-in, case-insensitive credential normalization, and auto password prompting.
 - **⚡ Atomic Steps & Task Breakdown**:
   - Decompose large cards into actionable, bite-sized micro-steps.
   - Interactive checklists with real-time completion progress indicators.
@@ -92,6 +101,7 @@ Pin/
 │   └── runner/
 │       ├── main.cc
 │       └── my_application.cc  # GTK window customization (frameless, drag, resize, theme channels)
+├── android/                   # Android & Wear OS runner manifests and configurations
 ├── lib/
 │   ├── main.dart              # Application entry point
 │   ├── app/                   # App-wide routing, configuration & theme tokens
@@ -99,9 +109,12 @@ Pin/
 │   │   ├── task/              # PinTask entity, state notifier & repository
 │   │   └── atomic_step/       # Micro-step models and widgets
 │   ├── features/
+│   │   ├── ai/                # Gemini task breakdown & smart decomposition
 │   │   ├── focus_mode/        # Deep-focus immersion view and timer
+│   │   ├── sync/              # Cloud Firestore dual-layer sync & auth service
 │   │   ├── task_crud/         # Task creation, editing & priority tags
-│   │   └── task_export_import/# JSON export & import tools
+│   │   ├── task_export_import/# JSON export & import tools
+│   │   └── wearable/          # Wear OS smartwatch UI, left-only physics & watch login
 │   ├── pages/
 │   │   └── home/              # Main companion window & header controls
 │   ├── shared/                # Common UI tokens, constants & utilities
@@ -114,19 +127,24 @@ Pin/
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### 1. Environment & Prerequisites Check
 
-Ensure you have the following installed on your Linux machine:
+Audit host OS, Git, Flutter/Dart SDKs, desktop/web build toolchains, and packages:
 
-- **Flutter SDK** (>= 3.19.0)
-- **Dart SDK** (>= 3.3.0)
-- Linux build dependencies:
-  ```bash
-  sudo apt-get update
-  sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-  ```
+```bash
+bash .agents/skills/setup-repo/scripts/setup_check.sh
 
-### Development & Debugging
+# Or auto-enable missing platform flags and fetch packages:
+bash .agents/skills/setup-repo/scripts/setup_check.sh --fix
+```
+
+A Git pre-commit hook is included in `.githooks/pre-commit` to prevent committing code if FSD architecture rules, AST static analysis, or architecture tests fail:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+### 2. Development & Debugging
 
 Clone or navigate to the repository and run:
 
@@ -136,13 +154,29 @@ flutter pub get
 
 # Run on Linux desktop in debug mode
 flutter run -d linux
+
+# Or Windows desktop (on Windows host):
+flutter run -d windows
+
+# Or Web (Chrome or local server):
+flutter run -d chrome
+
+# Run on connected Wear OS smartwatch (e.g. Pixel Watch)
+flutter run -d <device_id_or_watch_name>
 ```
 
-### Running Tests
+### 3. Running Verification & Tests
 
-Run the full automated test suite:
+Run the FSD architecture audit, static analyzer, and test suite:
 
 ```bash
+# Verify Feature-Sliced Design boundary rules
+dart run tool/verify_fsd.dart --strict
+
+# Static analysis
+flutter analyze
+
+# Full test suite
 flutter test
 ```
 
@@ -170,20 +204,13 @@ The provided `launch_pin.sh` script automatically detects whether a release or d
 
 ### 3. GNOME Desktop Integration
 
-To make Pin searchable in your GNOME Applications overview (`Super` key) and add a desktop shortcut:
+To install the desktop launcher and high-resolution icon for your user:
 
 ```bash
-# Install the application launcher
-cp pin.desktop ~/.local/share/applications/pin.desktop
-
-# Optional: Add to desktop
-cp pin.desktop ~/Desktop/pin.desktop
-gio set ~/Desktop/pin.desktop metadata::trusted true
-
-# Update desktop and icon databases
-update-desktop-database ~/.local/share/applications
-gtk-update-icon-cache -f ~/.local/share/icons/hicolor 2>/dev/null || true
+bash install_desktop_entry.sh
 ```
+
+This automatically configures `pin.desktop` with the current checkout path and installs the application icon into `~/.local/share/icons/hicolor/512x512/apps/pin.png`.
 
 ---
 

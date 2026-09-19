@@ -7,36 +7,92 @@ import 'package:flutter/material.dart';
 class PinTokens {
   const PinTokens._();
 
-  // Light Mode Palette (from screenshot)
-  static const Color lightCanvasBg = Color(0xFF18181B); // Outer desktop canvas backdrop
-  static const Color lightPhoneFrameBg = Color(0xFFFFFFFF); // Companion card container
-  static const Color lightCardBg = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFF111827);
-  static const Color lightBorderSubtle = Color(0xFFE5E7EB);
-  static const Color lightTextPrimary = Color(0xFF111827);
-  static const Color lightTextSecondary = Color(0xFF4B5563);
-  static const Color lightTextMuted = Color(0xFF9CA3AF);
-  static const Color lightActiveFocus = Color(0xFF2563EB); // Royal blue
-  static const Color lightMaxFocusBg = Color(0xFFEEF2FF); // Soft indigo tint
-  static const Color lightMaxFocusText = Color(0xFF4338CA);
-  static const Color lightTagBg = Color(0xFFF3F4F6);
-  static const Color lightTagText = Color(0xFF374151);
-  static const Color primary = lightActiveFocus;
+  // Light Mode Palette (Faded Sage Green Design Palette)
+  static const Color lightCanvasBg =
+      Color(0xFFF3F5EE); // Main page backdrop behind the card stack
+  static const Color lightPhoneFrameBg =
+      Color(0xFFF3F5EE); // Companion container background
+  static const Color lightSheetBg =
+      Color(0xFFE7ECE1); // Active bottom sheet / sliding sheet body surface
+  static const Color lightStackedTabBg =
+      Color(0xFFDEE3D7); // Stacked card tabs (Backlog & Done)
+  static const Color lightCardBg =
+      Color(0xFFEFF3EA); // Foreground inner task item cards
+  static const Color lightBorder =
+      Color(0xFFD4DCCE); // Subtle leafy gray card borders & dividers
+  static const Color lightBorderSubtle = Color(0xFFD4DCCE);
+  static const Color lightTextPrimary =
+      Color(0xFF1A241E); // Deep forest near-black
+  static const Color lightTextSecondary = Color(0xFF5F6D64); // Muted sage slate
+  static const Color lightTextTertiary = Color(
+      0xFF8E9C92); // Soft olive-slate for unpin, trash, radio ring, grab handle
+  static const Color lightTextMuted = Color(0xFF8E9C92);
+  static const Color lightFabBg =
+      Color(0xFF2B3B32); // Dark spruce evergreen action accent
+  static const Color lightActiveFocus = Color(
+      0xFF2B3B32); // Dark spruce evergreen for active focus & completed progress
+  static const Color lightMaxFocusBg =
+      Color(0xFFDEE3D7); // Muted desaturated olive-gray
+  static const Color lightMaxFocusText = Color(0xFF1A241E);
+  static const Color lightTagBg =
+      Color(0xFFE2E9DC); // Ultra-light desaturated fill
+  static const Color lightTagText = Color(0xFF5F6D64);
+  static const Color primary = lightFabBg;
+
+  // Header Utility Accent Tokens (Light Mode)
+  static const Color headerSyncBgLight =
+      Color(0xFFDEE3D7); // Muted desaturated olive-gray base
+  static const Color headerSyncBorderLight =
+      Color(0xFFD4DCCE); // Leafy gray border
+  static const Color headerSyncFgLight = Color(0xFF1A241E); // Deep forest icon
+  static const Color headerThemeBgLight = Color(0xFFDEE3D7);
+  static const Color headerThemeBorderLight = Color(0xFFD4DCCE);
+  static const Color headerThemeFgLight = Color(0xFF1A241E);
 
   // Dark Mode Palette
-  static const Color darkCanvasBg = Color(0xFF090A0F);
-  static const Color darkPhoneFrameBg = Color(0xFF11141D);
-  static const Color darkCardBg = Color(0xFF181C28);
-  static const Color darkBorder = Color(0xFF2E3547);
-  static const Color darkBorderSubtle = Color(0xFF232838);
-  static const Color darkTextPrimary = Color(0xFFF8FAFC);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  static const Color darkCanvasBg =
+      Color(0xFF0D1117); // App Canvas / Root: Deep obsidian slate
+  static const Color darkPhoneFrameBg =
+      Color(0xFF0D1117); // Base viewport background
+  static const Color darkStackedTabBg =
+      Color(0xFF161B22); // Collapsed Cards Layer: Dark charcoal slate
+  static const Color darkSheetBg =
+      Color(0xFF11161D); // Active Sheet Background: Deep gunmetal blue-gray
+  static const Color darkCardBg =
+      Color(0xFF18202A); // Task Card Surface: Muted twilight blue-black
+  static const Color darkBorder =
+      Color(0xFF26303D); // Border / Hairline: Low-contrast steel slate
+  static const Color darkBorderSubtle = Color(0xFF26303D);
+  static const Color darkTextPrimary =
+      Color(0xFFE6EDF3); // Text Primary: Crisp frosted white
+  static const Color darkTextSecondary =
+      Color(0xFF8B949E); // Text Secondary: Cool stone gray
+  static const Color darkTextTertiary =
+      Color(0xFF64748B); // Tertiary Icons: Desaturated slate
   static const Color darkTextMuted = Color(0xFF64748B);
-  static const Color darkActiveFocus = Color(0xFF60A5FA);
-  static const Color darkMaxFocusBg = Color(0xFF1E1B4B);
-  static const Color darkMaxFocusText = Color(0xFF818CF8);
-  static const Color darkTagBg = Color(0xFF1F2432);
-  static const Color darkTagText = Color(0xFFCBD5E1);
+  static const Color darkFabBg =
+      Color(0xFF1F2937); // FAB (Floating Button): Elevated dark charcoal
+  static const Color darkActiveFocus = Color(0xFFA5B4FC);
+  static const Color darkMaxFocusBg = Color(0xFF22243C);
+  static const Color darkMaxFocusText = Color(0xFFA5B4FC);
+  static const Color darkTagBg = Color(0xFF11161D);
+  static const Color darkTagText = Color(0xFF8B949E);
+
+  // Tag & Semantic Accents (Dark Mode Adjusted)
+  static const Color darkEnergyLowBg = Color(0xFF162E25);
+  static const Color darkEnergyLowText = Color(0xFF4ADE80);
+  static const Color darkEnergyMediumBg = Color(0xFF2F2119);
+  static const Color darkEnergyMediumText = Color(0xFFFB923C);
+  static const Color darkEnergyFocusBg = Color(0xFF22243C);
+  static const Color darkEnergyFocusText = Color(0xFFA5B4FC);
+  static const Color darkTimerBg = Color(0xFF22243C);
+  static const Color darkTimerText = Color(0xFFA5B4FC);
+
+  // Action Accents (Top) - Dark Mode
+  static const Color darkActionSyncBg = Color(0xFF193836);
+  static const Color darkActionSyncFg = Color(0xFF5EEAD4);
+  static const Color darkActionThemeBg = Color(0xFF362C1C);
+  static const Color darkActionThemeFg = Color(0xFFFBBF24);
 
   // Backward Compatible Aliases
   static const Color canvasBg = Color(0xFF0D0F14);
@@ -55,10 +111,11 @@ class PinTokens {
   static const Color textPrimary = Color(0xFFF8FAFC);
   static const Color textSecondary = Color(0xFF94A3B8);
   static const Color textMuted = Color(0xFF64748B);
-  static const Color textInverse = Color(0xFF0F172A);
+  static const Color textInverse = Color(0xFFFFFFFF);
 
   static const Color accentSky = Color(0xFF0EA5E9);
   static const Color accentEmerald = Color(0xFF10B981);
+  static const Color accentSage = Color(0xFF7E9A86);
   static const Color accentViolet = Color(0xFF8B5CF6);
   static const Color accentAmber = Color(0xFFF59E0B);
   static const Color accentRose = Color(0xFFEF4444);
@@ -71,17 +128,21 @@ class PinTokens {
     'administrative': Color(0xFF38BDF8),
   };
 
-  // Energy Badges
-  static const Color energyLowBg = Color(0xFFDCFCE7);
-  static const Color energyLowText = Color(0xFF15803D);
-  static const Color energyMediumBg = Color(0xFFF4F1E8);
-  static const Color energyMediumText = Color(0xFF1F2937);
-  static const Color energyDeepBg = Color(0xFFEEF2FF);
-  static const Color energyDeepText = Color(0xFF4338CA);
+  // Energy Badges (Balanced desaturated pastels)
+  static const Color energyLowBg = Color(0xFFE7F4ED); // Soft sage / eucalyptus
+  static const Color energyLowText = Color(0xFF166534); // Deep forest
+  static const Color energyMediumBg =
+      Color(0xFFFBE9DD); // Muted terra-cotta / apricot
+  static const Color energyMediumText = Color(0xFF9A3412); // Warm mahogany
+  static const Color energyDeepBg =
+      Color(0xFFEEF0FB); // Soft periwinkle / lavender
+  static const Color energyDeepText = Color(0xFF4338CA); // Indigo
+  static const Color energyTimerBg = Color(0xFFEEF0FB); // Soft periwinkle
+  static const Color energyTimerText = Color(0xFF4338CA);
   static const Color energyCreativeBg = Color(0xFFFEF3C7);
   static const Color energyCreativeText = Color(0xFFB45309);
-  static const Color energyAdminBg = Color(0xFFF3F4F6);
-  static const Color energyAdminText = Color(0xFF374151);
+  static const Color energyAdminBg = Color(0xFFF1ECE1);
+  static const Color energyAdminText = Color(0xFF475569);
 
   // Border Radii
   static const BorderRadius radiusSm = BorderRadius.all(Radius.circular(6));
@@ -90,6 +151,29 @@ class PinTokens {
   static const BorderRadius radiusCard = BorderRadius.all(Radius.circular(20));
   static const BorderRadius radiusDeck = BorderRadius.all(Radius.circular(28));
   static const BorderRadius radiusFull = BorderRadius.all(Radius.circular(999));
+
+  // Pin Card Elevation Shadows
+  static List<BoxShadow> get lightCardShadow => [
+        BoxShadow(
+          color: const Color(0xFF1A241E).withValues(alpha: 0.04),
+          blurRadius: 4,
+          offset: const Offset(0, 1),
+        ),
+        BoxShadow(
+          color: const Color(0xFF1A241E).withValues(alpha: 0.07),
+          blurRadius: 16,
+          spreadRadius: -2,
+          offset: const Offset(0, 4),
+        ),
+      ];
+
+  static List<BoxShadow> get darkCardShadow => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.25),
+          blurRadius: 10,
+          offset: const Offset(0, 2),
+        ),
+      ];
 
   // Spacing scales
   static const double space2 = 2.0;

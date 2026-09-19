@@ -13,11 +13,11 @@ class PinTheme {
       scaffoldBackgroundColor: PinTokens.lightCanvasBg,
       canvasColor: PinTokens.lightPhoneFrameBg,
       cardColor: PinTokens.lightCardBg,
-      dividerColor: PinTokens.lightBorderSubtle,
+      dividerColor: PinTokens.lightBorder,
       colorScheme: const ColorScheme.light(
-        primary: PinTokens.lightBorder,
+        primary: PinTokens.lightFabBg,
         secondary: PinTokens.lightActiveFocus,
-        surface: PinTokens.lightCardBg,
+        surface: PinTokens.lightSheetBg,
         surfaceContainerHighest: PinTokens.lightTagBg,
         error: PinTokens.accentRose,
         onPrimary: Colors.white,
@@ -27,7 +27,7 @@ class PinTheme {
       fontFamily: 'sans-serif',
       tooltipTheme: const TooltipThemeData(
         decoration: BoxDecoration(
-          color: PinTokens.lightBorder,
+          color: PinTokens.lightFabBg,
           borderRadius: PinTokens.radiusSm,
         ),
         textStyle: TextStyle(
@@ -49,12 +49,12 @@ class PinTheme {
       cardColor: PinTokens.darkCardBg,
       dividerColor: PinTokens.darkBorderSubtle,
       colorScheme: const ColorScheme.dark(
-        primary: PinTokens.accentEmerald,
+        primary: PinTokens.darkFabBg,
         secondary: PinTokens.darkActiveFocus,
-        surface: PinTokens.darkCardBg,
-        surfaceContainerHighest: PinTokens.darkTagBg,
+        surface: PinTokens.darkSheetBg,
+        surfaceContainerHighest: PinTokens.darkCardBg,
         error: PinTokens.accentRose,
-        onPrimary: PinTokens.darkPhoneFrameBg,
+        onPrimary: PinTokens.darkTextPrimary,
         onSecondary: Colors.white,
         onSurface: PinTokens.darkTextPrimary,
       ),

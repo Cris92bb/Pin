@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Git Pre-Commit Hook for Pin Companion Kanban
+# Blocks commits if:
+#   1. Feature-Sliced Design (FSD v2.1) architecture rules fail
+#   2. Dart AST / static analysis (flutter analyze) finds errors or lints
+#   3. Architecture boundary tests fail
+# ==============================================================================
+
+set -eo pipefail
+
+# ANSI Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}${BLUE}🔍 Running Pre-Commit Verification (FSD & AST Analyzer)${NC}"
+echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Ensure flutter and dart are in PATH
+if ! command -v flutter >/dev/null 2>&1; then
+  if [ -d "$HOME/flutter/bin" ]; then
+    export PATH="$PATH:$HOME/flutter/bin"
+  fi
+fi
+
+if ! command -v flutter >/dev/null 2>&1; then
+  echo -e "${RED}[✗ FAIL] Flutter SDK not found in PATH. Cannot verify commit.${NC}" >&2
+  exit 1
+fi
+
+# 1. Feature-Sliced Design Architecture Audit
+echo -e "${BOLD}1. Auditing FSD v2.1 Architecture Boundaries...${NC}"
+if ! dart run tool/verify_fsd.dart --strict; then
+  echo -e "\n${RED}${BOLD}❌ Pre-commit Hook Aborted: FSD Architectural Violations Found!${NC}" >&2
+  echo -e "${YELLOW}Please fix the import layer inversions, cross-slice couplings, or deep imports before committing.${NC}" >&2
+  exit 1
+fi
+echo -e "${GREEN}✓ FSD architecture audit passed.${NC}\n"
+
+# 2. AST Static Analysis & Lint Audit (flutter analyze)
+echo -e "${BOLD}2. Inspecting Dart AST & Static Analysis (flutter analyze)...${NC}"
+if ! flutter analyze --no-pub; then
+  echo -e "\n${RED}${BOLD}❌ Pre-commit Hook Aborted: AST / Static Analysis Failed!${NC}" >&2
+  echo -e "${YELLOW}Please fix compilation, syntax, type, or lint errors before committing.${NC}" >&2
+  exit 1
+fi
+echo -e "${GREEN}✓ AST static analysis passed with zero errors.${NC}\n"
+
+# 3. Architecture Boundary Unit Tests
+echo -e "${BOLD}3. Running Architecture Unit Tests...${NC}"
+if ! flutter test test/architecture/fsd_architecture_test.dart; then
+  echo -e "\n${RED}${BOLD}❌ Pre-commit Hook Aborted: Architecture tests failed!${NC}" >&2
+  exit 1
+fi
+echo -e "${GREEN}✓ Architecture boundary tests passed.${NC}\n"
+
+echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BOLD}${GREEN}✅ All Pre-Commit Checks Passed! Proceeding with commit.${NC}"
+echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+exit 0

@@ -2,26 +2,28 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../entities/atomic_step/model/atomic_step.dart';
-import '../../../entities/atomic_step/ui/atomic_step_tile.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/model/atomic_step.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
-import 'package:pin/shared/lib/date_helpers.dart';
+import '../../../entities/task/ui/atomic_step_tile.dart';
 import '../../../shared/ui/pill_chip.dart';
 import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
-import '../../ai/ui/ai_task_breakdown_modal.dart';
-import '../../task_crud/ui/task_crud_modal.dart';
 
 /// Immersive, distraction-free execution engine for a single task.
 class FocusModeView extends ConsumerStatefulWidget {
   final PinTask task;
   final VoidCallback onExit;
+  final Future<void> Function(PinTask task)? onEditTask;
+  final Future<bool?> Function(PinTask task)? onReanalyzeWithAi;
 
   const FocusModeView({
     super.key,
     required this.task,
     required this.onExit,
+    this.onEditTask,
+    this.onReanalyzeWithAi,
   });
 
   @override
@@ -47,6 +49,26 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     _stepController = TextEditingController();
     _scrollController = ScrollController()..addListener(_onScroll);
     _startTimer(); // Auto-start timer upon entering Focus Mode for instant immersion
+  }
+
+  @override
+  void didUpdateWidget(covariant FocusModeView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.task.id != widget.task.id) {
+      _pauseTimer();
+      _persistLoggedTime();
+      setState(() {
+        _currentTask = widget.task;
+        _sessionSeconds = 0;
+        _isCompletedState = false;
+        _stepController.clear();
+      });
+      _startTimer();
+    } else if (oldWidget.task != widget.task) {
+      setState(() {
+        _currentTask = widget.task;
+      });
+    }
   }
 
   void _onScroll() {
@@ -98,7 +120,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     }
   }
 
+  bool _isExiting = false;
+
   Future<void> _exitFocus() async {
+    if (_isExiting) return;
+    _isExiting = true;
+    _pauseTimer();
     await _persistLoggedTime();
     ref.read(activeFocusTaskProvider.notifier).state = null;
     widget.onExit();
@@ -123,26 +150,29 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   Future<void> _editTask() async {
     await _persistLoggedTime();
     if (!mounted) return;
-    await TaskCrudModal.show(context, task: _currentTask);
-    if (!mounted) return;
-    final state = ref.read(taskStateProvider);
-    final match = state.tasks.where((t) => t.id == _currentTask.id);
-    if (match.isNotEmpty) {
-      setState(() => _currentTask = match.first);
+    if (widget.onEditTask != null) {
+      await widget.onEditTask!(_currentTask);
+      if (!mounted) return;
+      final state = ref.read(taskStateProvider);
+      final match = state.tasks.where((t) => t.id == _currentTask.id);
+      if (match.isNotEmpty) {
+        setState(() => _currentTask = match.first);
+      }
     }
   }
 
   Future<void> _reanalyzeTaskWithAi() async {
     await _persistLoggedTime();
     if (!mounted) return;
-    final success =
-        await AiTaskBreakdownModal.show(context, task: _currentTask);
-    if (!mounted) return;
-    if (success == true) {
-      final state = ref.read(taskStateProvider);
-      final match = state.tasks.where((t) => t.id == _currentTask.id);
-      if (match.isNotEmpty) {
-        setState(() => _currentTask = match.first);
+    if (widget.onReanalyzeWithAi != null) {
+      final success = await widget.onReanalyzeWithAi!(_currentTask);
+      if (!mounted) return;
+      if (success == true) {
+        final state = ref.read(taskStateProvider);
+        final match = state.tasks.where((t) => t.id == _currentTask.id);
+        if (match.isNotEmpty) {
+          setState(() => _currentTask = match.first);
+        }
       }
     }
   }
@@ -192,6 +222,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
 
   @override
   Widget build(BuildContext context) {
+    final taskState = ref.watch(taskStateProvider);
+    final match = taskState.tasks.where((t) => t.id == _currentTask.id);
+    if (match.isNotEmpty && match.first != _currentTask) {
+      _currentTask = match.first;
+    }
+
     // Total elapsed time including previous sessions
     final totalElapsedSeconds =
         _currentTask.trackedSeconds + _sessionSeconds;
@@ -200,37 +236,44 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     final progress = _currentTask.subtaskProgress;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Focus(
-      focusNode: _keyboardFocusNode,
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.escape) {
-            _exitFocus();
-            return KeyEventResult.handled;
-          } else if (event.logicalKey == LogicalKeyboardKey.space &&
-              !_stepController.text.isNotEmpty &&
-              !FocusScope.of(context).hasPrimaryFocus) {
-            _toggleTimer();
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _exitFocus();
       },
-      child: Scaffold(
-        backgroundColor:
-            isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightPhoneFrameBg,
-        body: SafeArea(
-          child: AnimatedSwitcher(
-            duration: PinTokens.animNormal,
-            child: _isCompletedState
-                ? _buildCelebrationView(isDark)
-                : _buildImmersiveView(
-                    totalElapsedSeconds,
-                    totalSteps,
-                    completedSteps,
-                    progress,
-                  ),
+      child: Focus(
+        focusNode: _keyboardFocusNode,
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.escape) {
+              _exitFocus();
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.space &&
+                !_stepController.text.isNotEmpty &&
+                !FocusScope.of(context).hasPrimaryFocus) {
+              _toggleTimer();
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Scaffold(
+          backgroundColor:
+              isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
+          body: SafeArea(
+            child: AnimatedSwitcher(
+              duration: PinTokens.animNormal,
+              child: _isCompletedState
+                  ? _buildCelebrationView(isDark)
+                  : _buildImmersiveView(
+                      totalElapsedSeconds,
+                      totalSteps,
+                      completedSteps,
+                      progress,
+                    ),
+            ),
           ),
         ),
       ),
@@ -289,7 +332,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
     Color textMuted,
     Color borderSubtle,
   ) {
-    final bannerBg = isDark ? PinTokens.surfaceColumn : Colors.white;
+    final bannerBg = isDark ? PinTokens.surfaceColumn : PinTokens.lightSheetBg;
 
     return Container(
       key: const ValueKey('sticky_timer_banner'),
@@ -318,7 +361,9 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
             height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _isRunning ? PinTokens.accentEmerald : textMuted,
+              color: _isRunning
+                  ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
+                  : textMuted,
             ),
           ),
           const SizedBox(width: 8),
@@ -343,7 +388,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: _isRunning
-                  ? (isDark ? PinTokens.accentViolet : const Color(0xFF6D28D9))
+                  ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
                   : textMuted,
             ),
           ),
@@ -385,7 +430,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 640;
+        final isNarrow = constraints.maxWidth < 680;
         final isVeryNarrow = constraints.maxWidth < 360;
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -396,16 +441,16 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
         final textMuted =
             isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted;
         final borderSubtle =
-            isDark ? PinTokens.darkBorderSubtle : PinTokens.lightBorderSubtle;
+            isDark ? PinTokens.darkBorderSubtle : PinTokens.lightBorder;
         final borderDefault =
-            isDark ? PinTokens.borderDefault : PinTokens.lightBorderSubtle;
+            isDark ? PinTokens.borderDefault : PinTokens.lightBorder;
 
-        // Subtasks background has a slightly different background color from the timer
+        // Subtasks background matches the sliding sheet surface in light mode
         final subtasksBg = isDark
             ? const Color(0xFF161A26)
-            : const Color(0xFFF3F4F6);
+            : PinTokens.lightSheetBg;
 
-        final inputBg = isDark ? PinTokens.surfaceCard : Colors.white;
+        final inputBg = isDark ? PinTokens.surfaceCard : PinTokens.lightCardBg;
 
         return Column(
           children: [
@@ -422,7 +467,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                 children: [
                   PinButton(
                     icon: Icons.arrow_back_rounded,
-                    text: isNarrow ? (isVeryNarrow ? null : 'Back') : 'Kanban Board',
+                    text: isNarrow ? (isVeryNarrow ? null : 'Back') : 'Back',
                     isCompact: true,
                     tooltip: 'Return to Board (Esc)',
                     onPressed: _exitFocus,
@@ -431,10 +476,14 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: PinTokens.accentViolet.withValues(alpha: isDark ? 0.15 : 0.10),
+                      color: isDark
+                          ? PinTokens.accentEmerald.withValues(alpha: 0.15)
+                          : PinTokens.lightTagBg,
                       borderRadius: PinTokens.radiusFull,
                       border: Border.all(
-                        color: PinTokens.accentViolet.withValues(alpha: isDark ? 0.6 : 0.4),
+                        color: isDark
+                            ? PinTokens.accentEmerald.withValues(alpha: 0.5)
+                            : PinTokens.lightBorder,
                         width: 1,
                       ),
                     ),
@@ -444,9 +493,11 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: PinTokens.accentViolet,
+                            color: isDark
+                                ? PinTokens.accentEmerald
+                                : PinTokens.lightFabBg,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -456,8 +507,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: isDark
-                                ? PinTokens.accentViolet
-                                : const Color(0xFF6D28D9),
+                                ? PinTokens.accentEmerald
+                                : PinTokens.lightTextPrimary,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -474,9 +525,11 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                       onPressed: _reanalyzeTaskWithAi,
                     ),
                     const SizedBox(width: 8),
+                  ],
+                  if (!isVeryNarrow) ...[
                     PinButton(
                       icon: Icons.edit_outlined,
-                      text: 'Edit',
+                      text: isNarrow ? null : 'Edit',
                       isCompact: true,
                       tooltip: 'Edit Pin',
                       onPressed: _editTask,
@@ -595,8 +648,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                     fontWeight: FontWeight.w500,
                                     color: _isRunning
                                         ? (isDark
-                                            ? PinTokens.accentViolet
-                                            : const Color(0xFF6D28D9))
+                                            ? PinTokens.accentEmerald
+                                            : PinTokens.lightFabBg)
                                         : textMuted,
                                   ),
                                 ),
@@ -681,7 +734,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                           color: completedSteps == totalSteps
-                                              ? PinTokens.accentEmerald
+                                              ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
                                               : textMuted,
                                         ),
                                       ),
@@ -696,10 +749,10 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                       minHeight: 4,
                                       backgroundColor: isDark
                                           ? PinTokens.canvasBg
-                                          : const Color(0xFFE5E7EB),
+                                          : PinTokens.lightBorder,
                                       valueColor:
-                                          const AlwaysStoppedAnimation<Color>(
-                                        PinTokens.accentEmerald,
+                                          AlwaysStoppedAnimation<Color>(
+                                        isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
                                       ),
                                     ),
                                   ),
@@ -781,10 +834,12 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                                             ),
                                           ),
                                           focusedBorder:
-                                              const OutlineInputBorder(
+                                              OutlineInputBorder(
                                             borderRadius: PinTokens.radiusMd,
                                             borderSide: BorderSide(
-                                              color: PinTokens.accentViolet,
+                                              color: isDark
+                                                  ? PinTokens.accentEmerald
+                                                  : PinTokens.lightFabBg,
                                               width: 1.5,
                                             ),
                                           ),

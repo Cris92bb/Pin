@@ -21,6 +21,8 @@ class MockHttpClient extends http.BaseClient {
   Map<String, dynamic>? lastPatchedBody;
   Map<String, dynamic>? getResponseBody;
   String? postErrorMessage;
+  final List<Uri> deletedUris = [];
+  http.Request? lastPostRequest;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -45,7 +47,16 @@ class MockHttpClient extends http.BaseClient {
         Stream.value(utf8.encode(jsonEncode({'error': 'Not found'}))),
         404,
       );
+    } else if (request.method == 'DELETE') {
+      deletedUris.add(request.url);
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(jsonEncode({'status': 'deleted'}))),
+        200,
+      );
     } else if (request.method == 'POST') {
+      if (request is http.Request) {
+        lastPostRequest = request;
+      }
       if (postErrorMessage != null) {
         return http.StreamedResponse(
           Stream.value(utf8.encode(jsonEncode({
@@ -329,6 +340,51 @@ void main() {
       expect(syncState.errorMessage, contains('Firebase Anonymous sign-in is disabled'));
     });
 
+    test('normalizes email to lowercase and maps EMAIL_EXISTS to actionable password message', () async {
+      final errorClient = MockHttpClient();
+      final authService = FirebaseAuthService(
+        client: errorClient,
+        config: testConfig,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(memoryStorage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: memoryStorage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      errorClient.postErrorMessage = 'EMAIL_EXISTS';
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      final success = await syncController.signInWithGoogle(
+        email: '  User.Test@Gmail.COM  ',
+      );
+
+      expect(success, isFalse);
+      final syncState = container.read(syncControllerProvider);
+      expect(syncState.isSignedIn, isFalse);
+      expect(
+        syncState.errorMessage,
+        contains('This account was created with a password'),
+      );
+      // Verify the request sent lowercase normalized email
+      expect(errorClient.lastPostRequest, isNotNull);
+      final requestBody = jsonDecode(errorClient.lastPostRequest!.body) as Map<String, dynamic>;
+      expect(requestBody['email'], equals('user.test@gmail.com'));
+    });
+
     test('persists idToken in AppUser serialization and restores valid session', () async {
       SharedPreferences.setMockInitialValues({});
       const originalUser = AppUser(
@@ -573,6 +629,269 @@ void main() {
       final syncState = container.read(syncControllerProvider);
       expect(syncState.status, equals(SyncStatus.synced));
       expect(syncState.isSignedIn, isTrue);
+    });
+
+    test('refreshIdToken sends form-encoded parameters and parses snake_case and camelCase payloads', () async {
+      const user = AppUser(
+        uid: 'refresh-test-user',
+        email: 'test@example.com',
+        idToken: 'old-token',
+        refreshToken: 'refresh+token/with=special&chars',
+        isAnonymous: false,
+      );
+
+      final refreshed = await authService.refreshIdToken(user);
+      expect(refreshed.idToken, equals('token-mock-xyz'));
+      expect(mockHttp.lastPostRequest, isNotNull);
+      expect(mockHttp.lastPostRequest!.headers['content-type'], contains('application/x-www-form-urlencoded'));
+      // Verify body was properly form URL-encoded by package:http
+      expect(mockHttp.lastPostRequest!.body, contains('grant_type=refresh_token'));
+      expect(mockHttp.lastPostRequest!.body, contains('refresh_token='));
+    });
+
+    test('deleteUserAccount cascades deletion to board doc, profile doc, and auth record', () async {
+      const user = AppUser(
+        uid: 'delete-target-user',
+        email: 'delete@example.com',
+        idToken: 'valid-id-token',
+        isAnonymous: false,
+      );
+
+      await authService.deleteUserAccount(user);
+
+      // Verify board doc and profile doc were deleted
+      expect(mockHttp.deletedUris.any((uri) => uri.path.contains('/users/delete-target-user/meta/board')), isTrue);
+      expect(mockHttp.deletedUris.any((uri) => uri.path.contains('/users/delete-target-user')), isTrue);
+    });
+
+    test('FirebaseConfig persists and restores storageBucket and oAuthClientId via SharedPreferences', () async {
+      SharedPreferences.setMockInitialValues({});
+      const config = FirebaseConfig(
+        apiKey: 'custom-api-key',
+        projectId: 'custom-project-id',
+        authDomain: 'custom.firebaseapp.com',
+        firestoreDatabaseId: '(default)',
+        storageBucket: 'custom.appspot.com',
+        oAuthClientId: 'custom-client-id.apps.googleusercontent.com',
+      );
+
+      await config.save();
+      final loaded = await FirebaseConfig.loadFromPreferences();
+
+      expect(loaded.apiKey, equals('custom-api-key'));
+      expect(loaded.projectId, equals('custom-project-id'));
+      expect(loaded.storageBucket, equals('custom.appspot.com'));
+      expect(loaded.oAuthClientId, equals('custom-client-id.apps.googleusercontent.com'));
+
+      await FirebaseConfig.clear();
+      final cleared = await FirebaseConfig.loadFromPreferences();
+      expect(cleared.storageBucket, isEmpty);
+      expect(cleared.oAuthClientId, isEmpty);
+    });
+
+    test('syncNow performs bi-directional sync pulling remote changes while pushing local tasks', () async {
+      const user = AppUser(
+        uid: 'user-multi-device',
+        email: 'user@example.com',
+        idToken: 'token-abc',
+        isAnonymous: false,
+      );
+
+      final now = DateTime.now();
+      final remoteTask = PinTask(
+        id: 'task-device-1',
+        title: 'Task from Device 1',
+        status: TaskStatus.today,
+        createdAt: now.subtract(const Duration(minutes: 5)),
+        updatedAt: now.subtract(const Duration(minutes: 5)),
+      );
+
+      mockHttp.getResponseBody = {
+        'fields': FirestoreRestCodec.encodeFields({
+          'tasks': [remoteTask.toJson()],
+          'lastSyncedAt': now.millisecondsSinceEpoch,
+        }),
+      };
+
+      // Local storage on Device 2 has task-device-2
+      final localTask = PinTask(
+        id: 'task-device-2',
+        title: 'Task from Device 2',
+        status: TaskStatus.backlog,
+        createdAt: now,
+        updatedAt: now,
+      );
+      final device2Storage = MemoryStorageAdapter();
+      await device2Storage.saveTasks([localTask.toJson()]);
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(device2Storage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: device2Storage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+              initialUser: user,
+            );
+          }),
+        ],
+      );
+
+      // Settle async storage load
+      await Future.delayed(Duration.zero);
+
+      final syncController = container.read(syncControllerProvider.notifier);
+
+      // Trigger syncNow on Device 2
+      await syncController.syncNow();
+
+      // Device 2's local tasks must now include BOTH task-device-1 and task-device-2
+      final localTasksAfterSync = container.read(taskStateProvider).tasks;
+      expect(localTasksAfterSync.length, equals(2));
+      expect(localTasksAfterSync.any((t) => t.id == 'task-device-1'), isTrue);
+      expect(localTasksAfterSync.any((t) => t.id == 'task-device-2'), isTrue);
+
+      // And the patched cloud document must also contain both
+      expect(mockHttp.patchCallCount, greaterThanOrEqualTo(1));
+      expect(mockHttp.lastPatchedBody, isNotNull);
+    });
+
+    test('tombstone prevents resurrection of deleted task across devices', () async {
+      const user = AppUser(
+        uid: 'user-tombstone-test',
+        email: 'user@example.com',
+        idToken: 'token-tombstone',
+        isAnonymous: false,
+      );
+
+      final now = DateTime.now();
+      final tombstoneTimestamp = now.millisecondsSinceEpoch;
+
+      mockHttp.getResponseBody = {
+        'fields': FirestoreRestCodec.encodeFields({
+          'tasks': [
+            {
+              'id': 'task-survivor',
+              'title': 'Survivor Task',
+              'status': 'today',
+              'createdAt': now.toIso8601String(),
+              'updatedAt': now.toIso8601String(),
+            }
+          ],
+          'deletedTaskIds': {
+            'task-deleted-on-device-1': tombstoneTimestamp,
+          },
+          'lastSyncedAt': now.millisecondsSinceEpoch,
+        }),
+      };
+
+      // Device 2 still had task-deleted-on-device-1 locally because it was offline
+      final staleTaskOnDevice2 = PinTask(
+        id: 'task-deleted-on-device-1',
+        title: 'Task that was deleted remotely',
+        status: TaskStatus.today,
+        createdAt: now.subtract(const Duration(hours: 1)),
+        updatedAt: now.subtract(const Duration(minutes: 30)),
+      );
+
+      final device2Storage = MemoryStorageAdapter();
+      await device2Storage.saveTasks([staleTaskOnDevice2.toJson()]);
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(device2Storage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: device2Storage,
+                seedInitialSample: false,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+              initialUser: user,
+            );
+          }),
+        ],
+      );
+
+      // Settle async storage load
+      await Future.delayed(Duration.zero);
+
+      final syncController = container.read(syncControllerProvider.notifier);
+      await syncController.syncNow();
+
+      // The deleted task must have been purged on Device 2 via tombstone, NOT resurrected!
+      final tasks = container.read(taskStateProvider).tasks;
+      expect(tasks.any((t) => t.id == 'task-deleted-on-device-1'), isFalse);
+      expect(tasks.any((t) => t.id == 'task-survivor'), isTrue);
+    });
+
+    test('unedited sample tasks are discarded and do not pollute cloud account with real tasks', () async {
+      final now = DateTime.now();
+      // Cloud has real tasks from Device 1
+      final realCloudTask = PinTask(
+        id: 'real-user-pin-100',
+        title: 'My Important Work Project',
+        status: TaskStatus.today,
+        createdAt: now.subtract(const Duration(hours: 2)),
+        updatedAt: now.subtract(const Duration(hours: 2)),
+      );
+
+      mockHttp.getResponseBody = {
+        'fields': FirestoreRestCodec.encodeFields({
+          'tasks': [realCloudTask.toJson()],
+          'lastSyncedAt': now.millisecondsSinceEpoch,
+        }),
+      };
+
+      // Device 2 is fresh install with seedInitialSample: true (has sample-pin-1..10)
+      final device2Storage = MemoryStorageAdapter();
+
+      final container = ProviderContainer(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(device2Storage),
+          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+                storage: device2Storage,
+                seedInitialSample: true,
+              )),
+          syncControllerProvider.overrideWith((ref) {
+            return SyncController(
+              ref: ref,
+              authService: authService,
+              firestoreService: firestoreService,
+              initialConfig: testConfig,
+            );
+          }),
+        ],
+      );
+
+      // Settle async storage load
+      final taskNotifier = container.read(taskStateProvider.notifier);
+      await taskNotifier.loadFuture;
+
+      // Verify Device 2 seeded samples locally
+      final localBeforeLogin = container.read(taskStateProvider).tasks;
+      expect(localBeforeLogin.any((t) => t.id.startsWith('sample-pin-')), isTrue);
+
+      // User signs in with their existing cloud account
+      final syncController = container.read(syncControllerProvider.notifier);
+      await syncController.signInWithGoogle(
+        email: 'user@example.com',
+        displayName: 'Pin User',
+      );
+
+      // Device 2's tasks must now be the real cloud tasks, without sample-pin pollution!
+      final localAfterLogin = container.read(taskStateProvider).tasks;
+      expect(localAfterLogin.any((t) => t.id == 'real-user-pin-100'), isTrue);
+      expect(localAfterLogin.any((t) => t.id.startsWith('sample-pin-')), isFalse);
     });
   });
 }

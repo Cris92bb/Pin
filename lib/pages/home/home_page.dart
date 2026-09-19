@@ -6,12 +6,17 @@ import '../../entities/task/model/pin_task.dart';
 import '../../entities/task/state/task_state_notifier.dart';
 import '../../features/focus_mode/ui/focus_mode_view.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
+import '../../features/task_crud/state/task_editor_state.dart';
 import '../../features/task_export_import/ui/task_export_import_modal.dart';
+import '../../shared/ui/pin_breakpoints.dart';
 import '../../shared/ui/pin_tokens.dart';
 import '../../widgets/kanban_board/layered_deck_view.dart';
+import '../../widgets/kanban_board/wide_fold_kanban_view.dart';
 import '../../features/ai/ui/ai_settings_modal.dart';
+import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/sync/ui/firebase_account_modal.dart';
 import '../../features/sync/ui/sync_status_badge.dart';
+import 'wearable_home_page.dart';
 
 /// The primary companion view assembling the mobile/companion frame,
 /// layered card deck, header with dynamic notch, and quick actions.
@@ -33,7 +38,19 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _openCreateTaskModal([TaskStatus? defaultStatus]) {
     final activeDeck = ref.read(activeDeckProvider);
-    TaskCrudModal.show(context, defaultStatus: defaultStatus ?? activeDeck);
+    final isTodayFull = ref.read(taskStateProvider).isTodayWipFull;
+    final initialDeck = defaultStatus ??
+        (activeDeck == TaskStatus.today && isTodayFull
+            ? TaskStatus.backlog
+            : activeDeck);
+
+    final isWide = PinBreakpoints.isWide(context);
+    if (isWide) {
+      ref.read(activeTaskEditorProvider.notifier).state =
+          TaskEditorArgs(defaultStatus: initialDeck);
+    } else {
+      TaskCrudModal.show(context, defaultStatus: initialDeck);
+    }
   }
 
   void _openFocusModeFirstToday() {
@@ -68,6 +85,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenTier = PinBreakpoints.getTier(context);
+    if (screenTier == PinScreenTier.xs) {
+      return const WearableHomePage();
+    }
+
     final activeFocusTask = ref.watch(activeFocusTaskProvider);
     final taskState = ref.watch(taskStateProvider);
     final notifier = ref.read(taskStateProvider.notifier);
@@ -76,77 +98,56 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final isDesktopOrWeb = screenWidth > 540;
+    final isWide = screenTier == PinScreenTier.wide;
 
     final frameBg = isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightPhoneFrameBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
 
-    // If Focus Mode is active, render Focus Mode view inside companion shell
-    if (activeFocusTask != null) {
+    // If Focus Mode is active on a compact / small screen, render full-width edge-to-edge Focus Mode view
+    if (activeFocusTask != null && !isWide) {
       return Scaffold(
-        backgroundColor: isDesktopOrWeb
-            ? (isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg)
-            : frameBg,
-        body: Center(
-          child: Container(
-            width: isDesktopOrWeb ? 430 : double.infinity,
-            height: isDesktopOrWeb
-                ? (screenHeight > 540 ? screenHeight - 32 : screenHeight)
-                : double.infinity,
-            constraints: isDesktopOrWeb
-                ? BoxConstraints(
-                    maxHeight: screenHeight > 480 ? screenHeight - 20 : 480,
-                    minHeight: 480,
-                  )
-                : null,
-            decoration: BoxDecoration(
-              color: frameBg,
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(36) : BorderRadius.zero,
-              border: isDesktopOrWeb
-                  ? Border.all(color: borderColor, width: 2.0)
-                  : null,
-              boxShadow: isDesktopOrWeb
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
-                        blurRadius: 28,
-                        offset: const Offset(0, 14),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: ClipRRect(
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(34) : BorderRadius.zero,
-              child: Stack(
-                children: [
-                  FocusModeView(
-                    task: activeFocusTask,
-                    onExit: () {
-                      ref.read(activeFocusTaskProvider.notifier).state = null;
-                    },
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 10,
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.resizeUpDown,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onPanStart: (_) {
-                          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) {
-                            const MethodChannel('pin/window')
-                                .invokeMethod('resize', {'edge': 'south'});
-                          }
-                        },
-                      ),
+        backgroundColor: frameBg,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              FocusModeView(
+                task: activeFocusTask,
+                onExit: () {
+                  ref.read(activeFocusTaskProvider.notifier).state = null;
+                },
+                onEditTask: (task) async {
+                  if (isWide) {
+                    ref.read(activeTaskEditorProvider.notifier).state =
+                        TaskEditorArgs(task: task);
+                  } else {
+                    await TaskCrudModal.show(context, task: task);
+                  }
+                },
+                onReanalyzeWithAi: (task) => AiTaskBreakdownModal.show(
+                  context,
+                  task: task,
+                  onOpenEditor: (t) => TaskCrudModal.show(context, task: t),
+                ),
+              ),
+              if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 10,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.resizeUpDown,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onPanStart: (_) {
+                        const MethodChannel('pin/window')
+                            .invokeMethod('resize', {'edge': 'south'});
+                      },
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+            ],
           ),
         ),
       );
@@ -209,31 +210,40 @@ class _HomePageState extends ConsumerState<HomePage> {
         return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: isDesktopOrWeb
+        backgroundColor: isWide
             ? (isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg)
             : frameBg,
         body: Center(
           child: Container(
-            width: isDesktopOrWeb ? 430 : double.infinity,
-            height: isDesktopOrWeb
+            width: isWide
+                ? (screenWidth > PinBreakpoints.wideMaxWidth
+                    ? PinBreakpoints.wideMaxWidth
+                    : screenWidth - 32)
+                : double.infinity,
+            height: isWide
                 ? (screenHeight > 540 ? screenHeight - 32 : screenHeight)
                 : double.infinity,
-            constraints: isDesktopOrWeb
+            constraints: isWide
                 ? BoxConstraints(
-                    maxHeight: screenHeight > 480 ? screenHeight - 20 : 480,
+                    maxWidth: PinBreakpoints.wideMaxWidth,
+                    maxHeight: screenHeight > 540 ? screenHeight - 20 : screenHeight,
                     minHeight: 480,
                   )
                 : null,
             decoration: BoxDecoration(
               color: frameBg,
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(36) : BorderRadius.zero,
-              border: isDesktopOrWeb
-                  ? Border.all(color: borderColor, width: 2.0)
+              borderRadius: isWide ? BorderRadius.circular(32) : BorderRadius.zero,
+              border: isWide
+                  ? Border.all(
+                      color: isDark ? borderColor : const Color(0x1F0F172A),
+                      width: 1.0,
+                    )
                   : null,
-              boxShadow: isDesktopOrWeb
+              boxShadow: isWide
                   ? [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.45),
+                        color: (isDark ? Colors.black : const Color(0xFF0F172A))
+                            .withValues(alpha: isDark ? 0.45 : 0.12),
                         blurRadius: 28,
                         offset: const Offset(0, 14),
                       ),
@@ -241,7 +251,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   : null,
             ),
             child: ClipRRect(
-              borderRadius: isDesktopOrWeb ? BorderRadius.circular(34) : BorderRadius.zero,
+              borderRadius: isWide ? BorderRadius.circular(30) : BorderRadius.zero,
               child: SafeArea(
                 child: Stack(
                   children: [
@@ -256,9 +266,11 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                         const SizedBox(height: 8),
 
-                        // Layered Deck Kanban View
-                        const Expanded(
-                          child: LayeredDeckView(),
+                        // Kanban View (Wide 3-drawer on web & fold, layered deck on narrow phone)
+                        Expanded(
+                          child: isWide
+                              ? const WideFoldKanbanView()
+                              : const LayeredDeckView(),
                         ),
                       ],
                     ),
@@ -371,15 +383,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                   height: 32,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    color: isDark ? PinTokens.darkActionThemeBg : PinTokens.headerThemeBgLight,
                     border: Border.all(
-                      color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
-                      width: 1.4,
+                      color: isDark ? PinTokens.darkBorder : PinTokens.headerThemeBorderLight,
+                      width: 1.0,
                     ),
                   ),
                   child: Icon(
                     isDark ? Icons.nightlight_round : Icons.wb_sunny_outlined,
                     size: 16,
-                    color: textPrimary,
+                    color: isDark ? PinTokens.darkActionThemeFg : PinTokens.headerThemeFgLight,
                   ),
                 ),
               ),
@@ -396,7 +409,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   size: 20,
                   color: textPrimary,
                 ),
-                color: isDark ? PinTokens.darkCardBg : Colors.white,
+                color: isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg,
                 shape: RoundedRectangleBorder(
                   borderRadius: PinTokens.radiusMd,
                   side: BorderSide(
@@ -553,30 +566,32 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Widget _buildFloatingActionButton(bool isDark, Color borderColor) {
     return InkWell(
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(24),
       onTap: () => _openCreateTaskModal(),
       child: Container(
-        width: 58,
-        height: 58,
+        width: 68,
+        height: 46,
         decoration: BoxDecoration(
-          color: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isDark ? Colors.white : Colors.black,
-            width: 2.2,
-          ),
+          color: isDark ? PinTokens.darkFabBg : PinTokens.lightFabBg,
+          borderRadius: BorderRadius.circular(24),
+          border: isDark
+              ? Border.all(color: PinTokens.darkBorder, width: 1.0)
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: (isDark ? Colors.black : PinTokens.lightFabBg)
+                  .withValues(alpha: isDark ? 0.4 : 0.25),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-        child: Icon(
-          Icons.add_rounded,
-          size: 32,
-          color: isDark ? Colors.white : Colors.black,
+        child: Center(
+          child: Icon(
+            Icons.add_rounded,
+            size: 28,
+            color: isDark ? PinTokens.darkTextPrimary : Colors.white,
+          ),
         ),
       ),
     );

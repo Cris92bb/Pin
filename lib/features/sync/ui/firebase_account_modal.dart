@@ -24,138 +24,92 @@ class FirebaseAccountModal extends ConsumerStatefulWidget {
 class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
   String? _localNotice;
 
-  Future<void> _handleGoogleSignIn([String? email, String? name]) async {
+  // Hidden Email & 2FA state
+  bool _showEmailAuth = false;
+  bool _isSignUpMode = false;
+  bool _obscurePassword = true;
+  bool _isSubmittingEmail = false;
+
+  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _twoFaCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _twoFaCtrl.dispose();
+    super.dispose();
+  }
+
+  bool _isGoogleSigningIn = false;
+
+  Future<void> _handleGoogleSignIn() async {
     final controller = ref.read(syncControllerProvider.notifier);
-    String chosenEmail = email ?? '';
-    String chosenName = name ?? '';
-
-    if (chosenEmail.isEmpty) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
-      final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
-      final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
-      final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
-      final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
-
-      // Pre-populate from any existing cached session, otherwise leave empty.
-      final existingUser = ref.read(syncControllerProvider).user;
-      final prefillName = chosenName.isNotEmpty
-          ? chosenName
-          : (existingUser?.displayName ?? '');
-      final prefillEmail = existingUser?.email ?? '';
-
-      final result = await showDialog<Map<String, String>>(
-        context: context,
-        builder: (ctx) {
-          final nameCtrl = TextEditingController(text: prefillName);
-          final emailCtrl = TextEditingController(text: prefillEmail);
-          return AlertDialog(
-            backgroundColor: dialogBg,
-            shape: RoundedRectangleBorder(
-              borderRadius: PinTokens.radiusLg,
-              side: BorderSide(color: borderCol),
-            ),
-            title: Row(
-              children: [
-                const Icon(Icons.account_circle_outlined, color: PinTokens.primary, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  'Google Sign-In',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sign in with your Google account. No registration or password required.',
-                  style: TextStyle(fontSize: 12, color: textSecondary),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: nameCtrl,
-                  keyboardType: TextInputType.name,
-                  style: TextStyle(fontSize: 14, color: textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Full Name',
-                    labelStyle: TextStyle(color: textSecondary),
-                    hintText: 'e.g. Jane Smith',
-                    hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
-                    filled: true,
-                    fillColor: inputBg,
-                    isDense: true,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: PinTokens.radiusSm,
-                      borderSide: BorderSide(color: borderCol),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderRadius: PinTokens.radiusSm,
-                      borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  autofocus: true,
-                  style: TextStyle(fontSize: 14, color: textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Google Email Address',
-                    labelStyle: TextStyle(color: textSecondary),
-                    hintText: 'e.g. user@gmail.com',
-                    hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
-                    filled: true,
-                    fillColor: inputBg,
-                    isDense: true,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: PinTokens.radiusSm,
-                      borderSide: BorderSide(color: borderCol),
-                    ),
-                    focusedBorder: const OutlineInputBorder(
-                      borderRadius: PinTokens.radiusSm,
-                      borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: Text('Cancel', style: TextStyle(color: textSecondary)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: PinTokens.primary,
-                  elevation: 0,
-                  shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
-                ),
-                onPressed: () => Navigator.of(ctx).pop({
-                  'email': emailCtrl.text.trim(),
-                  'name': nameCtrl.text.trim(),
-                }),
-                child: const Text('Sign In Instantly', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          );
-        },
-      );
-      if (result == null || result['email'] == null || result['email']!.isEmpty) return;
-      chosenEmail = result['email']!;
-      chosenName = result['name'] ?? '';
-    }
-
-    setState(() => _localNotice = 'Signing in with Google...');
-    final success = await controller.signInWithGoogle(
-      email: chosenEmail,
-      displayName: chosenName.isNotEmpty ? chosenName : null,
-    );
+    setState(() {
+      _isGoogleSigningIn = true;
+      _localNotice = 'Authorizing in browser via Google consent screen...';
+    });
+    final success = await controller.signInWithGoogleSso();
     if (mounted) {
       setState(() {
-        _localNotice = success ? 'Signed in as ${chosenName.isNotEmpty ? chosenName : chosenEmail}' : null;
+        _isGoogleSigningIn = false;
+        _localNotice = success ? 'Signed in with Google successfully.' : null;
+      });
+    }
+  }
+
+  void _handleCancelGoogleSignIn() {
+    ref.read(syncControllerProvider.notifier).cancelGoogleSso();
+    if (mounted) {
+      setState(() {
+        _isGoogleSigningIn = false;
+        _localNotice = 'Google sign-in cancelled.';
+      });
+    }
+  }
+
+  Future<void> _handleEmailAuthSubmit() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    final twoFactor = _twoFaCtrl.text.trim();
+    final name = _nameCtrl.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _localNotice = 'Please enter both email and password.');
+      return;
+    }
+
+    setState(() {
+      _isSubmittingEmail = true;
+      _localNotice = _isSignUpMode ? 'Creating account...' : 'Signing in...';
+    });
+
+    final controller = ref.read(syncControllerProvider.notifier);
+    bool success;
+    if (_isSignUpMode) {
+      success = await controller.signUpWithEmail(
+        email,
+        password,
+        displayName: name.isNotEmpty ? name : null,
+        twoFactorCode: twoFactor.isNotEmpty ? twoFactor : null,
+      );
+    } else {
+      success = await controller.signInWithEmail(
+        email,
+        password,
+        twoFactorCode: twoFactor.isNotEmpty ? twoFactor : null,
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _isSubmittingEmail = false;
+        _localNotice = success
+            ? (_isSignUpMode ? 'Account registered & cloud sync active.' : 'Signed in with Email & 2FA.')
+            : null;
       });
     }
   }
@@ -167,38 +121,41 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
         return 'Cristian';
       }
       if (name.contains('.') || name.contains('_')) {
-        return name
+        final formatted = name
             .split(RegExp(r'[._]'))
             .where((s) => s.isNotEmpty)
             .map((s) => s[0].toUpperCase() + s.substring(1))
             .join(' ');
+        if (formatted.isNotEmpty) return formatted;
       }
       return name;
     }
     if (user.email != null && user.email!.contains('@')) {
-      final prefix = user.email!.split('@').first;
+      final prefix = user.email!.split('@').first.trim();
+      if (prefix.isEmpty) return 'User';
       if (prefix.toLowerCase() == 'cristun92xd') {
         return 'Cristian';
       }
       if (prefix.contains('.') || prefix.contains('_')) {
-        return prefix
+        final formatted = prefix
             .split(RegExp(r'[._]'))
             .where((s) => s.isNotEmpty)
             .map((s) => s[0].toUpperCase() + s.substring(1))
             .join(' ');
+        if (formatted.isNotEmpty) return formatted;
       }
       return prefix[0].toUpperCase() + prefix.substring(1);
     }
-    return 'Cristian';
+    return 'User';
   }
 
   Future<void> _handleEditDisplayName(String currentName) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+    final dialogBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
-    final inputBg = isDark ? PinTokens.darkCanvasBg : const Color(0xFFF9FAFB);
-    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+    final inputBg = isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg;
+    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
 
     final nameCtrl = TextEditingController(text: currentName);
 
@@ -225,6 +182,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 labelText: 'Full Name',
                 labelStyle: TextStyle(color: textSecondary),
                 hintText: 'e.g. Cristian',
+                hintStyle: TextStyle(color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
                 filled: true,
                 fillColor: inputBg,
                 isDense: true,
@@ -232,9 +190,12 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                   borderRadius: PinTokens.radiusSm,
                   borderSide: BorderSide(color: borderCol),
                 ),
-                focusedBorder: const OutlineInputBorder(
+                focusedBorder: OutlineInputBorder(
                   borderRadius: PinTokens.radiusSm,
-                  borderSide: BorderSide(color: PinTokens.primary, width: 1.5),
+                  borderSide: BorderSide(
+                    color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
+                    width: 1.4,
+                  ),
                 ),
               ),
             ),
@@ -247,12 +208,18 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: PinTokens.primary,
+              backgroundColor: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
               elevation: 0,
               shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
             ),
             onPressed: () => Navigator.of(ctx).pop(nameCtrl.text.trim()),
-            child: const Text('Save Name', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Save Name',
+              style: TextStyle(
+                color: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -270,10 +237,10 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
   Future<void> _confirmDeleteAccount() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dialogBg = isDark ? PinTokens.darkCardBg : Colors.white;
+    final dialogBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
-    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+    final borderCol = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -338,23 +305,23 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final bgColor = isDark ? PinTokens.darkCardBg : Colors.white;
+    final bgColor = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
-    final cardBorder = isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle;
+    final cardBorder = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
     return Dialog(
       backgroundColor: bgColor,
       shape: RoundedRectangleBorder(
-        borderRadius: PinTokens.radiusLg,
-        side: BorderSide(color: borderColor),
+        borderRadius: PinTokens.radiusDeck,
+        side: BorderSide(color: borderColor, width: isDark ? 1.5 : 1.0),
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400, maxHeight: 680),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -363,13 +330,21 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               Row(
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
-                      color: PinTokens.primary.withValues(alpha: isDark ? 0.2 : 0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      color: isDark ? const Color(0xFF11221A) : PinTokens.headerSyncBgLight,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF1F3D2E) : PinTokens.headerSyncBorderLight,
+                        width: 1.0,
+                      ),
                     ),
-                    child: const Icon(Icons.cloud_sync_rounded, color: PinTokens.primary, size: 20),
+                    child: Icon(
+                      Icons.cloud_sync_rounded,
+                      color: isDark ? PinTokens.accentEmerald : PinTokens.headerSyncFgLight,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -379,11 +354,16 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, color: textSecondary, size: 20),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
+                      size: 20,
+                    ),
                     splashRadius: 18,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -397,15 +377,14 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: (syncState.errorMessage != null
-                            ? PinTokens.accentRose
-                            : PinTokens.primary)
-                        .withValues(alpha: isDark ? 0.12 : 0.08),
+                    color: syncState.errorMessage != null
+                        ? (isDark ? PinTokens.accentRose.withValues(alpha: 0.12) : const Color(0xFFFDF2F2))
+                        : (isDark ? const Color(0xFF1B2520) : PinTokens.lightTagBg),
                     borderRadius: PinTokens.radiusSm,
                     border: Border.all(
                       color: syncState.errorMessage != null
-                          ? PinTokens.accentRose
-                          : PinTokens.primary.withValues(alpha: 0.4),
+                          ? PinTokens.accentRose.withValues(alpha: 0.4)
+                          : (isDark ? const Color(0xFF2E4536) : PinTokens.lightBorder),
                       width: 1.0,
                     ),
                   ),
@@ -416,7 +395,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                       fontWeight: FontWeight.w600,
                       color: syncState.errorMessage != null
                           ? PinTokens.accentRose
-                          : (isDark ? PinTokens.primary : const Color(0xFF1D4ED8)),
+                          : (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg),
                     ),
                   ),
                 ),
@@ -516,15 +495,19 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
               decoration: BoxDecoration(
                 color: isDark
                     ? PinTokens.accentEmerald.withValues(alpha: 0.15)
-                    : const Color(0xFFDCFCE7),
+                    : PinTokens.energyLowBg,
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF1F3D2E) : const Color(0xFFA7D7BE),
+                  width: 1.0,
+                ),
               ),
               child: Text(
                 syncState.status.label,
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? PinTokens.accentEmerald : const Color(0xFF15803D),
+                  color: isDark ? PinTokens.accentEmerald : PinTokens.energyLowText,
                 ),
               ),
             ),
@@ -573,7 +556,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 label: const Text('Sync Now'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textPrimary,
-                  backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                  backgroundColor: isDark ? PinTokens.darkCardBg : PinTokens.lightTagBg,
                   side: BorderSide(color: cardBorder),
                   padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -588,7 +571,7 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
                 label: const Text('Sign Out'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textPrimary,
-                  backgroundColor: isDark ? PinTokens.darkCardBg : Colors.white,
+                  backgroundColor: isDark ? PinTokens.darkCardBg : PinTokens.lightTagBg,
                   side: BorderSide(color: cardBorder),
                   padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -630,18 +613,23 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: isDark
-                ? PinTokens.primary.withValues(alpha: 0.10)
-                : const Color(0xFFEFF6FF),
+                ? PinTokens.darkPhoneFrameBg
+                : PinTokens.lightTagBg,
             borderRadius: PinTokens.radiusMd,
             border: Border.all(
               color: isDark
-                  ? PinTokens.primary.withValues(alpha: 0.25)
-                  : const Color(0xFFBFDBFE),
+                  ? PinTokens.darkBorder
+                  : PinTokens.lightBorder,
+              width: 1.0,
             ),
           ),
           child: Row(
             children: [
-              const Icon(Icons.offline_pin_rounded, color: PinTokens.primary, size: 20),
+              Icon(
+                Icons.offline_pin_rounded,
+                color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -669,54 +657,369 @@ class _FirebaseAccountModalState extends ConsumerState<FirebaseAccountModal> {
 
         const SizedBox(height: 14),
 
-        // 1-Click Google Sign-In button (No registration, no password)
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
-            foregroundColor: textPrimary,
-            side: BorderSide(
-              color: isDark ? PinTokens.darkBorder : PinTokens.lightBorderSubtle,
-              width: 1.2,
+        // 1-Click Google Sign-In button (Direct OAuth consent screen)
+        if (_isGoogleSigningIn) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
+              borderRadius: PinTokens.radiusMd,
+              border: Border.all(
+                color: isDark ? PinTokens.accentEmerald.withValues(alpha: 0.5) : PinTokens.lightFabBg,
+                width: 1.0,
+              ),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusMd),
-            elevation: isDark ? 0 : 0.5,
-            shadowColor: Colors.black.withValues(alpha: 0.08),
-          ),
-          onPressed: () => _handleGoogleSignIn(),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFF4285F4),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(PinTokens.accentEmerald),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Waiting for Google in browser...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
-                child: const Center(
-                  child: Text(
-                    'G',
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: _handleCancelGoogleSignIn,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  ),
+                  child: const Text(
+                    'Cancel Sign-In',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
+                      fontSize: 11,
+                      color: PinTokens.accentRose,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+        ] else ...[
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
+              foregroundColor: textPrimary,
+              side: BorderSide(
+                color: isDark ? PinTokens.darkBorder : PinTokens.lightBorder,
+                width: 1.0,
               ),
-              const SizedBox(width: 10),
-              const Text(
-                'Continue with Google',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusMd),
+              elevation: 0,
+            ),
+            onPressed: () => _handleGoogleSignIn(),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF4285F4),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'G',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                const Text(
+                  'Continue with Google',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 12),
+
+        // Hidden Email & 2FA Option (Discreet collapsible accordion)
+        _buildHiddenEmail2FaSection(
+          textPrimary: textPrimary,
+          textSecondary: textSecondary,
+          isDark: isDark,
+          cardBorder: cardBorder,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHiddenEmail2FaSection({
+    required Color textPrimary,
+    required Color textSecondary,
+    required bool isDark,
+    required Color cardBorder,
+  }) {
+    final inputBg = isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg;
+    final accentCol = isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Discreet Toggle Row
+        InkWell(
+          onTap: () => setState(() => _showEmailAuth = !_showEmailAuth),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  size: 13,
+                  color: textSecondary.withValues(alpha: 0.75),
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    _showEmailAuth ? 'Hide Email & 2FA' : 'Email & 2FA Options',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: textSecondary.withValues(alpha: 0.85),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _showEmailAuth ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  size: 15,
+                  color: textSecondary.withValues(alpha: 0.75),
+                ),
+              ],
+            ),
           ),
         ),
+
+        if (_showEmailAuth) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF101713) : PinTokens.lightTagBg,
+              borderRadius: PinTokens.radiusMd,
+              border: Border.all(color: cardBorder, width: 1.0),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Mode switcher (Sign In vs Register)
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _isSignUpMode = false),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            color: !_isSignUpMode
+                                ? (isDark ? PinTokens.darkCardBg : Colors.white)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: !_isSignUpMode ? cardBorder : Colors.transparent,
+                              width: 1.0,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Sign In',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: !_isSignUpMode ? FontWeight.bold : FontWeight.normal,
+                              color: !_isSignUpMode ? textPrimary : textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _isSignUpMode = true),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _isSignUpMode
+                                ? (isDark ? PinTokens.darkCardBg : Colors.white)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: _isSignUpMode ? cardBorder : Colors.transparent,
+                              width: 1.0,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Register',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: _isSignUpMode ? FontWeight.bold : FontWeight.normal,
+                              color: _isSignUpMode ? textPrimary : textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                if (_isSignUpMode) ...[
+                  TextField(
+                    controller: _nameCtrl,
+                    style: TextStyle(fontSize: 12, color: textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Display Name (optional)',
+                      hintStyle: TextStyle(fontSize: 11, color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
+                      prefixIcon: Icon(Icons.badge_outlined, size: 16, color: textSecondary),
+                      filled: true,
+                      fillColor: inputBg,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      border: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                      enabledBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                      focusedBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: accentCol, width: 1.2)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                TextField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(fontSize: 12, color: textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Email address',
+                    hintStyle: TextStyle(fontSize: 11, color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
+                    prefixIcon: Icon(Icons.mail_outline_rounded, size: 16, color: textSecondary),
+                    filled: true,
+                    fillColor: inputBg,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                    enabledBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                    focusedBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: accentCol, width: 1.2)),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                TextField(
+                  controller: _passwordCtrl,
+                  obscureText: _obscurePassword,
+                  style: TextStyle(fontSize: 12, color: textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    hintStyle: TextStyle(fontSize: 11, color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted),
+                    prefixIcon: Icon(Icons.lock_outline_rounded, size: 16, color: textSecondary),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        size: 16,
+                        color: textSecondary,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    filled: true,
+                    fillColor: inputBg,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                    enabledBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                    focusedBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: accentCol, width: 1.2)),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                TextField(
+                  controller: _twoFaCtrl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  style: TextStyle(fontSize: 12, color: textPrimary, letterSpacing: 2.0),
+                  decoration: InputDecoration(
+                    hintText: '2FA Code / PIN (optional)',
+                    hintStyle: TextStyle(fontSize: 11, color: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted, letterSpacing: 0),
+                    prefixIcon: Icon(Icons.security_rounded, size: 16, color: textSecondary),
+                    counterText: '',
+                    filled: true,
+                    fillColor: inputBg,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                    enabledBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: cardBorder)),
+                    focusedBorder: OutlineInputBorder(borderRadius: PinTokens.radiusSm, borderSide: BorderSide(color: accentCol, width: 1.2)),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentCol,
+                    foregroundColor: isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: const RoundedRectangleBorder(borderRadius: PinTokens.radiusSm),
+                  ),
+                  onPressed: _isSubmittingEmail ? null : _handleEmailAuthSubmit,
+                  child: _isSubmittingEmail
+                      ? SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isDark ? PinTokens.darkPhoneFrameBg : Colors.white,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          _isSignUpMode ? 'Register & Enable 2FA' : 'Sign In with 2FA',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

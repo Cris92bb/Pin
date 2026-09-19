@@ -79,7 +79,7 @@ class PillChip extends StatelessWidget {
       key: key,
       label: durationText,
       icon: Icons.timer_outlined,
-      color: const Color(0xFF2563EB),
+      color: PinTokens.lightTextSecondary,
       isSelected: isSelected,
       onTap: onTap,
       isCompact: isCompact,
@@ -87,6 +87,9 @@ class PillChip extends StatelessWidget {
   }
 
   static Color _getLightText(Color accent) {
+    if (accent == PinTokens.lightFabBg || accent == PinTokens.lightTextSecondary) {
+      return PinTokens.lightFabBg;
+    }
     if (accent == const Color(0xFF10B981)) return const Color(0xFF047857);
     if (accent == const Color(0xFFF59E0B)) return const Color(0xFFB45309);
     if (accent == const Color(0xFF8B5CF6)) return const Color(0xFF6D28D9);
@@ -112,29 +115,99 @@ class PillChip extends StatelessWidget {
     Color textColor;
     Color iconColor;
 
+    final isDuration = icon == Icons.timer_outlined;
+
     if (isSelected) {
       if (isDark) {
-        bgColor = baseAccent.withValues(alpha: 0.22);
-        borderColor = baseAccent;
-        textColor = baseAccent;
-        iconColor = baseAccent;
+        if (isDuration) {
+          bgColor = PinTokens.darkTimerBg;
+          borderColor = PinTokens.darkTimerText;
+          textColor = PinTokens.darkTimerText;
+          iconColor = PinTokens.darkTimerText;
+        } else {
+          switch (label) {
+            case 'low-friction':
+              bgColor = PinTokens.darkEnergyLowBg;
+              borderColor = PinTokens.darkEnergyLowText;
+              textColor = PinTokens.darkEnergyLowText;
+              iconColor = PinTokens.darkEnergyLowText;
+              break;
+            case 'medium-flow':
+              bgColor = PinTokens.darkEnergyMediumBg;
+              borderColor = PinTokens.darkEnergyMediumText;
+              textColor = PinTokens.darkEnergyMediumText;
+              iconColor = PinTokens.darkEnergyMediumText;
+              break;
+            case 'deep-focus':
+              bgColor = PinTokens.darkEnergyFocusBg;
+              borderColor = PinTokens.darkEnergyFocusText;
+              textColor = PinTokens.darkEnergyFocusText;
+              iconColor = PinTokens.darkEnergyFocusText;
+              break;
+            default:
+              bgColor = baseAccent.withValues(alpha: 0.22);
+              borderColor = baseAccent;
+              textColor = baseAccent;
+              iconColor = baseAccent;
+          }
+        }
       } else {
-        bgColor = baseAccent.withValues(alpha: 0.12);
-        borderColor = baseAccent;
-        textColor = _getLightText(baseAccent);
-        iconColor = _getLightText(baseAccent);
+        if (isDuration) {
+          bgColor = PinTokens.lightSheetBg;
+          borderColor = PinTokens.lightFabBg;
+          textColor = PinTokens.lightTextPrimary;
+          iconColor = PinTokens.lightFabBg;
+        } else {
+          switch (label) {
+            case 'low-friction':
+              bgColor = PinTokens.energyLowBg;
+              borderColor = const Color(0xFFA7D7BE);
+              textColor = PinTokens.energyLowText;
+              iconColor = PinTokens.energyLowText;
+              break;
+            case 'medium-flow':
+              bgColor = PinTokens.energyMediumBg;
+              borderColor = const Color(0xFFF6C3A6);
+              textColor = PinTokens.energyMediumText;
+              iconColor = PinTokens.energyMediumText;
+              break;
+            case 'deep-focus':
+              bgColor = PinTokens.energyDeepBg;
+              borderColor = const Color(0xFFC7CDFA);
+              textColor = PinTokens.energyDeepText;
+              iconColor = PinTokens.energyDeepText;
+              break;
+            case 'creative':
+              bgColor = PinTokens.energyCreativeBg;
+              borderColor = const Color(0xFFFDE68A);
+              textColor = PinTokens.energyCreativeText;
+              iconColor = PinTokens.energyCreativeText;
+              break;
+            case 'administrative':
+              bgColor = PinTokens.energyAdminBg;
+              borderColor = const Color(0xFFD8D2C4);
+              textColor = PinTokens.energyAdminText;
+              iconColor = PinTokens.energyAdminText;
+              break;
+            default:
+              bgColor = baseAccent.withValues(alpha: 0.12);
+              borderColor = baseAccent;
+              textColor = _getLightText(baseAccent);
+              iconColor = _getLightText(baseAccent);
+          }
+        }
       }
     } else {
       if (isDark) {
         bgColor = PinTokens.darkCardBg;
         borderColor = PinTokens.darkBorder;
         textColor = PinTokens.darkTextSecondary;
-        iconColor = baseAccent.withValues(alpha: 0.7);
+        iconColor = isDuration ? PinTokens.darkTextTertiary : baseAccent.withValues(alpha: 0.7);
       } else {
-        bgColor = const Color(0xFFF3F4F6);
-        borderColor = const Color(0xFFE5E7EB);
-        textColor = const Color(0xFF374151);
-        iconColor = baseAccent.withValues(alpha: 0.85);
+        bgColor = PinTokens.lightTagBg;
+        borderColor = PinTokens.lightBorder;
+        textColor = PinTokens.lightTextSecondary;
+        iconColor = PinTokens.lightTextTertiary;
       }
     }
 
@@ -173,14 +246,14 @@ class PillChip extends StatelessWidget {
         borderRadius: PinTokens.radiusFull,
         border: Border.all(
           color: borderColor,
-          width: isSelected ? 1.5 : 1.0,
+          width: isSelected ? 1.2 : 1.0,
         ),
         boxShadow: isSelected && !isDark
             ? [
                 BoxShadow(
-                  color: baseAccent.withValues(alpha: 0.14),
+                  color: const Color(0xFF1A241E).withValues(alpha: 0.05),
                   blurRadius: 4,
-                  offset: const Offset(0, 1.5),
+                  offset: const Offset(0, 1),
                 ),
               ]
             : null,

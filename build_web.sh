@@ -22,7 +22,11 @@ flutter build web \
 
 echo ""
 echo "Compressing static assets with gzip (-9) for ultra-fast CDN delivery..."
-find build/web -type f \( -name "*.wasm" -o -name "*.js" -o -name "*.json" -o -name "*.html" -o -name "*.css" \) -exec gzip -k -9 -f {} +
+if command -v gzip >/dev/null 2>&1; then
+  find build/web -type f \( -name "*.wasm" -o -name "*.js" -o -name "*.json" -o -name "*.html" -o -name "*.css" \) -exec gzip -k -9 -f {} +
+else
+  echo "gzip not found: skipping pre-compression."
+fi
 
 echo ""
 echo "======================================================"

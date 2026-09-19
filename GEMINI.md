@@ -14,3 +14,7 @@ For all coding tasks in this repository, the agent must adhere to:
   - `test(...)`: test additions or adjustments
   - `chore(...)`: build scripts, desktop integration, dependency management
 - **Staging**: Stage only the relevant changed files. Keep commits atomic and clean.
+
+## Branching & Pull Request Policy
+- **Merge into `develop` Only via PR**: Direct pushes to `develop` or `main` are strictly forbidden. All modifications must be committed to feature/fix branches and merged through a GitHub Pull Request.
+- **Verification Before Merge**: Pull Requests must pass the FSD strict boundary audit, static analysis, and the automated test suite.

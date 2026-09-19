@@ -25,27 +25,30 @@ class AtomicStepTile extends StatelessWidget {
     final tileBg = step.isCompleted
         ? (isDark
             ? PinTokens.canvasBg.withValues(alpha: 0.3)
-            : const Color(0xFFF3F4F6).withValues(alpha: 0.6))
+            : PinTokens.lightTagBg.withValues(alpha: 0.6))
         : (isDark
             ? PinTokens.surfaceCard.withValues(alpha: 0.5)
-            : Colors.white);
+            : PinTokens.lightCardBg);
 
     final borderColor = step.isCompleted
-        ? (isDark ? PinTokens.borderSubtle : PinTokens.lightBorderSubtle)
+        ? (isDark ? PinTokens.borderSubtle : PinTokens.lightBorder)
         : (isDark
             ? PinTokens.borderDefault.withValues(alpha: 0.5)
-            : PinTokens.lightBorderSubtle);
+            : PinTokens.lightBorder);
 
     final textPrimary =
         isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary =
         isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
     final textMuted =
-        isDark ? PinTokens.darkTextMuted : PinTokens.lightTextMuted;
+        isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary;
 
-    final badgeBg = isDark ? PinTokens.canvasBg : const Color(0xFFF3F4F6);
+    final badgeBg = isDark ? PinTokens.canvasBg : PinTokens.lightTagBg;
     final badgeBorder =
-        isDark ? PinTokens.borderSubtle : PinTokens.lightBorderSubtle;
+        isDark ? PinTokens.borderSubtle : PinTokens.lightBorder;
+
+    final checkColor = isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg;
+    final checkBorder = isDark ? textMuted : PinTokens.lightTextTertiary;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
@@ -53,10 +56,21 @@ class AtomicStepTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: tileBg,
         borderRadius: PinTokens.radiusMd,
-        border: Border.all(
-          color: borderColor,
-          width: 1,
-        ),
+        border: isDark
+            ? Border.all(
+                color: borderColor,
+                width: 1,
+              )
+            : null,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF1A241E).withValues(alpha: 0.04),
+                  blurRadius: 5,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       child: Row(
         children: [
@@ -72,13 +86,13 @@ class AtomicStepTile extends StatelessWidget {
               height: 20,
               decoration: BoxDecoration(
                 color: step.isCompleted
-                    ? PinTokens.accentEmerald
+                    ? checkColor
                     : Colors.transparent,
                 borderRadius: PinTokens.radiusSm,
                 border: Border.all(
                   color: step.isCompleted
-                      ? PinTokens.accentEmerald
-                      : textMuted,
+                    ? checkColor
+                    : checkBorder,
                   width: 1.5,
                 ),
               ),

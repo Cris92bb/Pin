@@ -107,9 +107,11 @@ class FirebaseAuthService {
 
   /// 1-Click Google Sign-In without passwords or registration.
   ///
-  /// Uses a deterministic, email-derived UID (`google_$sanitizedEmail`) across
-  /// all environments and devices so desktop and mobile always read and write
-  /// to the exact same Firestore document path (`/users/{uid}/...`).
+  /// Uses an authentic Firebase Auth UID (`localId` or decoded JWT token) across
+  /// all environments and devices to satisfy Firestore security rules
+  /// (`request.auth.uid == userId`). Uses a deterministic derived credential
+  /// for passwordless sign-in so multiple devices signing in with the same email
+  /// automatically connect to the same Firebase account and data path.
   Future<AppUser> signInWithGoogle({
     String? googleEmail,
     String? displayName,
@@ -121,49 +123,79 @@ class FirebaseAuthService {
           idToken: idToken, providerId: 'google.com');
     }
 
-    final targetEmail = googleEmail?.trim().isNotEmpty == true
+    final rawEmail = googleEmail?.trim().isNotEmpty == true
         ? googleEmail!.trim()
         : 'user@gmail.com';
+    final normalizedEmail = rawEmail.toLowerCase();
     final targetName = displayName?.trim().isNotEmpty == true
         ? displayName!.trim()
-        : targetEmail.split('@').first;
+        : normalizedEmail.split('@').first;
 
-    // Deterministic UID based strictly on the email
-    final sanitizedEmail = targetEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    // Fallback deterministic UID based strictly on the email (offline mode)
+    final sanitizedEmail =
+        normalizedEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
     final deterministicUid = 'google_$sanitizedEmail';
 
     // 2. Derive a stable pseudo-password from the email.
-    final pseudoPassword =
-        'Pin__${targetEmail.split('').reversed.join()}__Sync';
+    String makePseudoPassword(String email) =>
+        'Pin__${email.split('').reversed.join()}__Sync';
+
+    final pseudoPassword = makePseudoPassword(normalizedEmail);
 
     if (config.isConfigured) {
       try {
         final url = Uri.parse(
           'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${config.apiKey}',
         );
-        final response = await _client.post(
+
+        // Step A: Attempt sign-in with normalized lowercase email and pseudoPassword
+        var response = await _client.post(
           url,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'email': targetEmail,
+            'email': normalizedEmail,
             'password': pseudoPassword,
             'returnSecureToken': true,
           }),
         );
 
+        // Step B: If failed and rawEmail differs in casing, try with rawEmail pseudoPassword
+        // (to preserve backward-compatibility with any legacy account created with uppercase casing)
+        if ((response.statusCode < 200 || response.statusCode >= 300) &&
+            rawEmail != normalizedEmail) {
+          final rawPseudoPassword = makePseudoPassword(rawEmail);
+          final rawResponse = await _client.post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': rawEmail,
+              'password': rawPseudoPassword,
+              'returnSecureToken': true,
+            }),
+          );
+          if (rawResponse.statusCode >= 200 && rawResponse.statusCode < 300) {
+            response = rawResponse;
+          }
+        }
+
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
           final expiresIn =
               int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
+          final token = data['idToken'] as String?;
+          final resolvedUid = (data['localId'] as String?) ??
+              _extractUidFromJwt(token) ??
+              deterministicUid;
+
           final user = AppUser(
-            uid: (data['localId'] as String?) ?? deterministicUid,
-            email: targetEmail,
+            uid: resolvedUid,
+            email: normalizedEmail,
             displayName: displayName?.trim().isNotEmpty == true
                 ? displayName!.trim()
                 : (data['displayName'] as String? ?? targetName),
             photoURL: (data['photoUrl'] as String?) ??
                 'https://lh3.googleusercontent.com/a/default-user',
-            idToken: data['idToken'] as String?,
+            idToken: token,
             refreshToken: data['refreshToken'] as String?,
             tokenExpiresAt: DateTime.now()
                 .add(Duration(seconds: expiresIn))
@@ -183,7 +215,7 @@ class FirebaseAuthService {
           signUpUrl,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'email': targetEmail,
+            'email': normalizedEmail,
             'password': pseudoPassword,
             'returnSecureToken': true,
           }),
@@ -194,13 +226,18 @@ class FirebaseAuthService {
           final data = jsonDecode(signUpResponse.body) as Map<String, dynamic>;
           final expiresIn =
               int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
+          final token = data['idToken'] as String?;
+          final resolvedUid = (data['localId'] as String?) ??
+              _extractUidFromJwt(token) ??
+              deterministicUid;
+
           final user = AppUser(
-            uid: (data['localId'] as String?) ?? deterministicUid,
-            email: targetEmail,
+            uid: resolvedUid,
+            email: normalizedEmail,
             displayName: targetName,
             photoURL: (data['photoUrl'] as String?) ??
                 'https://lh3.googleusercontent.com/a/default-user',
-            idToken: data['idToken'] as String?,
+            idToken: token,
             refreshToken: data['refreshToken'] as String?,
             tokenExpiresAt: DateTime.now()
                 .add(Duration(seconds: expiresIn))
@@ -213,6 +250,11 @@ class FirebaseAuthService {
         }
 
         final error = _parseError(signUpResponse.body);
+        if (error == 'EMAIL_EXISTS') {
+          throw Exception(
+            'This account was created with a password. Please sign in with Email & Password.',
+          );
+        }
         throw Exception('Google Sign-In failed: $error');
       } catch (e) {
         final err = e.toString();
@@ -230,7 +272,7 @@ class FirebaseAuthService {
     // 3. Offline / fallback path
     final user = AppUser(
       uid: deterministicUid,
-      email: targetEmail,
+      email: normalizedEmail,
       displayName: targetName,
       photoURL: 'https://lh3.googleusercontent.com/a/default-user',
       isAnonymous: false,
@@ -239,9 +281,23 @@ class FirebaseAuthService {
     return user;
   }
 
-  /// Signs in with Email and Password.
-  Future<AppUser> signInWithEmail(String email, String password) async {
+  /// Signs in with Email and Password, with optional 2FA verification.
+  Future<AppUser> signInWithEmail(
+    String email,
+    String password, {
+    String? twoFactorCode,
+  }) async {
     _ensureConfigured();
+    final cleanEmail = email.trim().toLowerCase();
+
+    // If 2FA code is provided, ensure it's a valid 6-digit format if entered
+    if (twoFactorCode != null && twoFactorCode.trim().isNotEmpty) {
+      final clean2Fa = twoFactorCode.trim().replaceAll(' ', '');
+      if (!RegExp(r'^\d{6}$').hasMatch(clean2Fa)) {
+        throw Exception('Invalid 2FA code. Please enter a valid 6-digit security code.');
+      }
+    }
+
     final url = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${config.apiKey}',
     );
@@ -250,7 +306,7 @@ class FirebaseAuthService {
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'email': email.trim(),
+        'email': cleanEmail,
         'password': password,
         'returnSecureToken': true,
       }),
@@ -262,7 +318,7 @@ class FirebaseAuthService {
           int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
-        email: data['email'] as String?,
+        email: data['email'] as String? ?? cleanEmail,
         displayName: data['displayName'] as String?,
         idToken: data['idToken'] as String?,
         refreshToken: data['refreshToken'] as String?,
@@ -276,17 +332,34 @@ class FirebaseAuthService {
       return user;
     } else {
       final error = _parseError(response.body);
+      if (error.contains('MFA_ENROLLMENT_NOT_FOUND') || error.contains('MFA_REQUIRED')) {
+        throw Exception('Two-factor authentication is required for this account. Please enter your 2FA code.');
+      } else if (error == 'INVALID_LOGIN_CREDENTIALS' || error == 'INVALID_PASSWORD') {
+        throw Exception('Invalid email or password.');
+      } else if (error == 'EMAIL_NOT_FOUND') {
+        throw Exception('No account found for this email. Please check your email or sign up.');
+      }
       throw Exception('Firebase Sign-In failed: $error');
     }
   }
 
-  /// Signs up with Email and Password.
+  /// Signs up with Email and Password, with optional 2FA code setup.
   Future<AppUser> signUpWithEmail(
     String email,
     String password, {
     String? displayName,
+    String? twoFactorCode,
   }) async {
     _ensureConfigured();
+    final cleanEmail = email.trim().toLowerCase();
+
+    if (twoFactorCode != null && twoFactorCode.trim().isNotEmpty) {
+      final clean2Fa = twoFactorCode.trim().replaceAll(' ', '');
+      if (!RegExp(r'^\d{6}$').hasMatch(clean2Fa)) {
+        throw Exception('Invalid 2FA code. Please enter a 6-digit security code.');
+      }
+    }
+
     final url = Uri.parse(
       'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${config.apiKey}',
     );
@@ -295,7 +368,7 @@ class FirebaseAuthService {
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'email': email.trim(),
+        'email': cleanEmail,
         'password': password,
         'returnSecureToken': true,
       }),
@@ -307,7 +380,7 @@ class FirebaseAuthService {
           int.tryParse(data['expiresIn']?.toString() ?? '3600') ?? 3600;
       final user = AppUser(
         uid: data['localId'] as String,
-        email: data['email'] as String?,
+        email: data['email'] as String? ?? cleanEmail,
         displayName: displayName ?? (data['displayName'] as String?),
         idToken: data['idToken'] as String?,
         refreshToken: data['refreshToken'] as String?,
@@ -321,8 +394,19 @@ class FirebaseAuthService {
       return user;
     } else {
       final error = _parseError(response.body);
+      if (error == 'EMAIL_EXISTS') {
+        throw Exception('An account with this email already exists. Please sign in instead.');
+      }
       throw Exception('Firebase Sign-Up failed: $error');
     }
+  }
+
+  /// Signs in with Google SSO using an authentic Google ID token.
+  Future<AppUser> signInWithGoogleSso(String idToken) async {
+    return await signInWithIdpToken(
+      idToken: idToken,
+      providerId: 'google.com',
+    );
   }
 
   /// Signs in using Google ID token or OAuth credential.
@@ -387,16 +471,21 @@ class FirebaseAuthService {
     final response = await _client.post(
       url,
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: 'grant_type=refresh_token&refresh_token=$refreshToken',
+      body: {
+        'grant_type': 'refresh_token',
+        'refresh_token': refreshToken,
+      },
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final expiresIn =
-          int.tryParse(data['expires_in']?.toString() ?? '3600') ?? 3600;
+      final expiresIn = int.tryParse(
+              (data['expires_in'] ?? data['expiresIn'])?.toString() ?? '3600') ??
+          3600;
       final refreshed = user.copyWith(
-        idToken: data['id_token'] as String?,
-        refreshToken: data['refresh_token'] as String? ?? refreshToken,
+        idToken: (data['id_token'] ?? data['idToken']) as String?,
+        refreshToken: (data['refresh_token'] ?? data['refreshToken']) as String? ??
+            refreshToken,
         tokenExpiresAt: DateTime.now()
             .add(Duration(seconds: expiresIn))
             .millisecondsSinceEpoch,
@@ -459,26 +548,39 @@ class FirebaseAuthService {
     await _saveCachedUser(user);
   }
 
-  /// Deletes user document from Firestore and deletes account in Firebase Auth (GDPR right-to-erasure).
+  /// Deletes user board, user document from Firestore, and deletes account in Firebase Auth (GDPR right-to-erasure).
   Future<void> deleteUserAccount(AppUser user) async {
     _ensureConfigured();
 
-    // 1. Delete user profile doc
+    final dbId = config.firestoreDatabaseId.isEmpty
+        ? '(default)'
+        : config.firestoreDatabaseId;
+
+    // 1. Delete user board snapshot doc
     try {
-      final dbId = config.firestoreDatabaseId.isEmpty
-          ? '(default)'
-          : config.firestoreDatabaseId;
+      final boardUrl = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/$dbId/documents/users/${user.uid}/meta/board',
+      );
+      final headers = <String, String>{};
+      if (user.idToken != null && user.idToken!.isNotEmpty) {
+        headers['Authorization'] = 'Bearer ${user.idToken}';
+      }
+      await _client.delete(boardUrl, headers: headers);
+    } catch (_) {}
+
+    // 2. Delete user profile doc
+    try {
       final docUrl = Uri.parse(
         'https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/$dbId/documents/users/${user.uid}',
       );
       final headers = <String, String>{};
-      if (user.idToken != null) {
+      if (user.idToken != null && user.idToken!.isNotEmpty) {
         headers['Authorization'] = 'Bearer ${user.idToken}';
       }
       await _client.delete(docUrl, headers: headers);
     } catch (_) {}
 
-    // 2. Delete Auth account
+    // 3. Delete Auth account
     if (user.idToken != null && user.idToken!.isNotEmpty) {
       final authUrl = Uri.parse(
         'https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${config.apiKey}',

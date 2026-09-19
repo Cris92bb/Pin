@@ -63,10 +63,17 @@ class _PinButtonState extends State<PinButton> {
 
     switch (widget.variant) {
       case PinButtonVariant.primary:
-        bg = _isHovered
-            ? PinTokens.accentEmerald.withValues(alpha: 0.85)
-            : PinTokens.accentEmerald;
-        fg = PinTokens.textInverse;
+        if (isDark) {
+          bg = _isHovered
+              ? PinTokens.accentEmerald.withValues(alpha: 0.85)
+              : PinTokens.accentEmerald;
+          fg = PinTokens.textInverse;
+        } else {
+          bg = _isHovered
+              ? const Color(0xFF223028)
+              : PinTokens.lightFabBg;
+          fg = PinTokens.textInverse;
+        }
         border = Colors.transparent;
         break;
       case PinButtonVariant.secondary:
@@ -75,7 +82,7 @@ class _PinButtonState extends State<PinButton> {
           fg = PinTokens.darkTextPrimary;
           border = _isHovered ? PinTokens.borderFocus : PinTokens.borderDefault;
         } else {
-          bg = _isHovered ? const Color(0xFFE5E7EB) : const Color(0xFFF3F4F6);
+          bg = _isHovered ? PinTokens.lightStackedTabBg : PinTokens.lightTagBg;
           fg = PinTokens.lightTextPrimary;
           border = _isHovered ? PinTokens.lightBorder : PinTokens.lightBorderSubtle;
         }
@@ -89,7 +96,7 @@ class _PinButtonState extends State<PinButton> {
           border = Colors.transparent;
         } else {
           bg = _isHovered
-              ? const Color(0xFFE5E7EB).withValues(alpha: 0.6)
+              ? PinTokens.lightTagBg.withValues(alpha: 0.6)
               : Colors.transparent;
           fg = _isHovered ? PinTokens.lightTextPrimary : PinTokens.lightTextSecondary;
           border = Colors.transparent;
@@ -104,10 +111,10 @@ class _PinButtonState extends State<PinButton> {
           border = PinTokens.accentRose.withValues(alpha: 0.4);
         } else {
           bg = _isHovered
-              ? const Color(0xFFFEE2E2)
-              : const Color(0xFFFEF2F2);
-          fg = PinTokens.accentRose;
-          border = PinTokens.accentRose.withValues(alpha: 0.3);
+              ? const Color(0xFFFDE8E8)
+              : const Color(0xFFFDF2F2);
+          fg = const Color(0xFFB91C1C);
+          border = const Color(0xFFFCA5A5).withValues(alpha: 0.5);
         }
         break;
     }
@@ -126,6 +133,7 @@ class _PinButtonState extends State<PinButton> {
           ? SystemMouseCursors.click
           : SystemMouseCursors.basic,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: widget.onPressed,
         child: AnimatedContainer(
           duration: PinTokens.animFast,

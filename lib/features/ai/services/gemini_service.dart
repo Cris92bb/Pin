@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
-import '../../../entities/atomic_step/model/atomic_step.dart';
+import '../../../entities/task/model/atomic_step.dart';
 import '../../../entities/task/model/pin_task.dart';
 
 class GeminiApiException implements Exception {
