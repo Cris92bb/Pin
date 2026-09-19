@@ -272,8 +272,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify initial active drawer is Today
-    expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.today)), findsOneWidget);
-    expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.backlog)), findsNothing);
+    // Capture initial rested drawer top position
+    final initialRestingTop = tester.getTopLeft(find.byKey(const ValueKey<TaskStatus>(TaskStatus.today))).dy;
 
     // Tap Backlog tab to trigger tab transition
     await tester.tap(find.text('Backlog'));
@@ -288,25 +288,23 @@ void main() {
     expect(outgoingFinder, findsOneWidget);
     expect(incomingFinder, findsOneWidget);
 
-    // Verify incoming drawer is sliding down from top tab deck (position.dy < 0.0)
-    final incomingSlide = tester.widget<SlideTransition>(
-      find.ancestor(of: incomingFinder, matching: find.byType(SlideTransition)).first,
-    );
-    expect(incomingSlide.position.value.dy, lessThan(0.0));
-    expect(incomingSlide.position.value.dy, greaterThanOrEqualTo(-0.22));
+    // Verify incoming drawer is midway down from tab slot (-72px) towards resting position
+    final incomingTop = tester.getTopLeft(incomingFinder).dy;
+    expect(incomingTop, lessThan(initialRestingTop));
+    expect(incomingTop, greaterThan(initialRestingTop - 72.0));
 
     // Verify outgoing drawer has started shrinking (< 1.0)
     final outgoingScale = tester.widget<ScaleTransition>(
       find.ancestor(of: outgoingFinder, matching: find.byType(ScaleTransition)).first,
     );
     expect(outgoingScale.scale.value, lessThan(1.0));
-    expect(outgoingScale.scale.value, greaterThanOrEqualTo(0.82));
+    expect(outgoingScale.scale.value, greaterThanOrEqualTo(0.88));
 
     // Verify incoming drawer has started expanding towards 1.0
     final incomingScale = tester.widget<ScaleTransition>(
       find.ancestor(of: incomingFinder, matching: find.byType(ScaleTransition)).first,
     );
-    expect(incomingScale.scale.value, greaterThan(0.82));
+    expect(incomingScale.scale.value, greaterThan(0.88));
     expect(incomingScale.scale.value, lessThanOrEqualTo(1.0));
 
     // Verify incoming tab is fading in
@@ -323,15 +321,15 @@ void main() {
     expect(outgoingFade.opacity.value, greaterThan(0.0));
     expect(outgoingFade.opacity.value, lessThan(1.0));
 
-
-
-
     // Complete transition
     await tester.pumpAndSettle();
 
-    // Only Backlog is active and displayed
-    expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.backlog)), findsOneWidget);
+    // Only Backlog is active and resting at the standard drawer top position
+    final finalFinder = find.byKey(const ValueKey<TaskStatus>(TaskStatus.backlog));
+    expect(finalFinder, findsOneWidget);
     expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.today)), findsNothing);
+    expect(tester.getTopLeft(finalFinder).dy, equals(initialRestingTop));
+
   });
 
   testWidgets('themeModeProvider defaults to ThemeMode.system', (tester) async {

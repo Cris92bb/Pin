@@ -20,6 +20,7 @@ class LayeredDeckView extends ConsumerStatefulWidget {
 
 class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     with SingleTickerProviderStateMixin {
+  TaskStatus _currentDeck = TaskStatus.today;
   late final AnimationController _horizontalEdgeNudgeController;
   Animation<double>? _horizontalNudgeAnimation;
   double _horizontalNudge = 0.0;
@@ -96,6 +97,15 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     final allTabs = [TaskStatus.backlog, TaskStatus.done, TaskStatus.today];
     final inactiveTabs = allTabs.where((status) => status != activeDeck).toList();
 
+    // Compute exact vertical origin of newly active deck directly from its tab slot
+    double targetYOffset = -72.0;
+    if (activeDeck != _currentDeck) {
+      final prevInactiveTabs = allTabs.where((status) => status != _currentDeck).toList();
+      final slotIndex = prevInactiveTabs.indexOf(activeDeck);
+      targetYOffset = slotIndex == 1 ? -36.0 : -72.0;
+      _currentDeck = activeDeck;
+    }
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -168,37 +178,36 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                 reverseCurve: Curves.easeInOutCubic,
               );
 
-              // Substantial, prominent fractional slide:
-              // Incoming child: slides DOWN from top tab deck (-22% height ~ 150px) into foreground.
-              // Outgoing child: slides UP from foreground towards top tab deck.
+              // Exact pixel slide matching the clicked tab's slot:
+              // Incoming child: slides DOWN from its exact tab slot (-72px or -36px) into foreground (0px).
+              // Outgoing child: slides UP from foreground directly towards the tab slot.
               final slideAnimation = Tween<Offset>(
-                begin: const Offset(0.0, -0.22),
+                begin: Offset(0.0, targetYOffset),
                 end: Offset.zero,
               ).animate(curved);
 
               // Tactile scale transition:
-              // Incoming child: expands from 0.82 up to 1.0 (becomes larger into foreground).
-              // Outgoing child: shrinks from 1.0 down to 0.82 (recedes into background).
+              // Incoming child: expands from 0.88 up to 1.0 (becomes larger into foreground).
+              // Outgoing child: shrinks from 1.0 down to 0.88 (recedes into background).
               final scaleAnimation = Tween<double>(
-                begin: 0.82,
+                begin: 0.88,
                 end: 1.0,
               ).animate(curved);
 
               // Synchronized opacity fade:
-              // Incoming child: starts fading in smoothly across the first 75% of travel.
+              // Incoming child: starts fading in smoothly across the first 70% of travel.
               // Outgoing child: holds presence as it starts sliding back, then dissolves into stack.
               final fadeAnimation = CurvedAnimation(
                 parent: animation,
-                curve: const Interval(0.0, 0.75, curve: Curves.easeInOut),
-                reverseCurve: const Interval(0.25, 1.0, curve: Curves.easeInOut),
+                curve: const Interval(0.0, 0.70, curve: Curves.easeInOut),
+                reverseCurve: const Interval(0.30, 1.0, curve: Curves.easeInOut),
               );
 
               // 3D perspective depth tilt
               final tiltAnimation = Tween<double>(
-                begin: -0.04,
+                begin: -0.025,
                 end: 0.0,
               ).animate(curved);
-
 
               return AnimatedBuilder(
                 animation: curved,
@@ -211,8 +220,8 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                     child: childWidget,
                   );
                 },
-                child: SlideTransition(
-                  position: slideAnimation,
+                child: _PixelSlideTransition(
+                  offset: slideAnimation,
                   child: ScaleTransition(
                     alignment: Alignment.topCenter,
                     scale: scaleAnimation,
@@ -844,6 +853,26 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Animated widget translating child by explicit logical pixel offset.
+class _PixelSlideTransition extends AnimatedWidget {
+  final Widget child;
+
+  const _PixelSlideTransition({
+    required Animation<Offset> offset,
+    required this.child,
+  }) : super(listenable: offset);
+
+  Animation<Offset> get offset => listenable as Animation<Offset>;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: offset.value,
+      child: child,
     );
   }
 }
