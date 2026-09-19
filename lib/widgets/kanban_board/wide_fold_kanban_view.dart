@@ -15,7 +15,9 @@ import 'task_card.dart';
 /// Displays 3 drawers (Backlog, Today, Done):
 /// - The focused/active drawer is wider (in primary section) with 100% opacity.
 /// - The 2 inactive drawers are displayed side-by-side with subtle opacity.
-/// - Tapping an inactive drawer smoothly switches places with the active one.
+/// - Tapping an inactive drawer smoothly glides from its position on the right across to the
+///   active position on the left, expanding into full width, while the active drawer glides
+///   into the vacated slot and docks cleanly.
 /// - When entering Focus Mode or creating/editing a task, the overlay panel slides
 ///   over the 2 inactive drawers, keeping the active queue visible beside it.
 class WideFoldKanbanView extends ConsumerStatefulWidget {
@@ -25,14 +27,71 @@ class WideFoldKanbanView extends ConsumerStatefulWidget {
   ConsumerState<WideFoldKanbanView> createState() => _WideFoldKanbanViewState();
 }
 
-class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
+class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
+    with SingleTickerProviderStateMixin {
   TaskStatus? _hoveredStatus;
   final ScrollController _activeScrollController = ScrollController();
 
+  late final AnimationController _transitionController;
+  late final CurvedAnimation _transitionCurve;
+
+  TaskStatus _activeStatus = TaskStatus.today;
+  TaskStatus? _departingStatus;
+  TaskStatus? _arrivingStatus;
+  int _swappingSlotIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeStatus = ref.read(activeDeckProvider);
+    _transitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _transitionCurve = CurvedAnimation(
+      parent: _transitionController,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   void dispose() {
+    _transitionController.dispose();
     _activeScrollController.dispose();
     super.dispose();
+  }
+
+  void _selectInactiveDrawer(TaskStatus status, int slotIndex) {
+    if (_transitionController.isAnimating) return;
+    ref.read(activeDeckProvider.notifier).state = status;
+    _startDrawerTransition(status, slotIndex);
+  }
+
+  void _startDrawerTransition(TaskStatus newActiveStatus, [int? preferredSlotIndex]) {
+    if (newActiveStatus == _activeStatus) return;
+    const allStatuses = [TaskStatus.backlog, TaskStatus.today, TaskStatus.done];
+    final currentInactive = allStatuses.where((s) => s != _activeStatus).toList();
+    final slotIdx = preferredSlotIndex ?? currentInactive.indexOf(newActiveStatus);
+    if (slotIdx == -1) {
+      setState(() => _activeStatus = newActiveStatus);
+      return;
+    }
+
+    _transitionController.value = 0.0;
+    setState(() {
+      _departingStatus = _activeStatus;
+      _arrivingStatus = newActiveStatus;
+      _swappingSlotIndex = slotIdx;
+    });
+
+    _transitionController.forward(from: 0.0).then((_) {
+      if (!mounted) return;
+      setState(() {
+        _activeStatus = newActiveStatus;
+        _departingStatus = null;
+        _arrivingStatus = null;
+      });
+    });
   }
 
   String _statusTitle(TaskStatus status) {
@@ -75,119 +134,284 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
     final activeFocusTask = ref.watch(activeFocusTaskProvider);
     final activeTaskEditor = ref.watch(activeTaskEditorProvider);
 
+    // Keep _activeStatus in sync if activeDeckProvider was changed externally while idle
+    if (activeDeck != _activeStatus && _arrivingStatus == null && !_transitionController.isAnimating) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && activeDeck != _activeStatus && _arrivingStatus == null) {
+          _startDrawerTransition(activeDeck);
+        }
+      });
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     const allStatuses = [TaskStatus.backlog, TaskStatus.today, TaskStatus.done];
     final inactiveStatuses =
-        allStatuses.where((s) => s != activeDeck).toList();
+        allStatuses.where((s) => s != _activeStatus).toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Primary / Focused Drawer (a bit wider, e.g. flex 4)
-          Expanded(
-            flex: 4,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(-0.04, 0.0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableWidth = constraints.maxWidth;
+          const gap = 14.0;
+
+          // Flex allocation: flex 4 for active, flex 6 for inactive section
+          final flexUnit = (availableWidth - gap) / 10.0;
+          final activeWidth = flexUnit * 4.0;
+          final inactiveSectionWidth = flexUnit * 6.0;
+          final inactiveCardWidth = (inactiveSectionWidth - gap) / 2.0;
+
+          final slot0Left = activeWidth + gap;
+          final slot1Left = activeWidth + 2 * gap + inactiveCardWidth;
+
+          return AnimatedBuilder(
+            animation: _transitionCurve,
+            builder: (context, _) {
+              final isAnimating =
+                  _transitionController.isAnimating || _arrivingStatus != null;
+              final t = _transitionCurve.value;
+
+              final List<Widget> children = [];
+
+              if (!isAnimating) {
+                // Idle state: 3 drawers stably side-by-side
+                children.addAll([
+                  // Active Drawer on the left
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    width: activeWidth,
+                    bottom: 0,
+                    child: _buildActiveDrawer(
+                      context,
+                      status: _activeStatus,
+                      taskState: taskState,
+                      isDark: isDark,
+                    ),
+                  ),
+
+                  // Inactive Drawer Slot 0
+                  Positioned(
+                    left: slot0Left,
+                    top: 0,
+                    width: inactiveCardWidth,
+                    bottom: 0,
+                    child: _buildInactiveDrawer(
+                      context,
+                      status: inactiveStatuses[0],
+                      taskState: taskState,
+                      isDark: isDark,
+                      onSelect: () =>
+                          _selectInactiveDrawer(inactiveStatuses[0], 0),
+                    ),
+                  ),
+
+                  // Inactive Drawer Slot 1
+                  Positioned(
+                    left: slot1Left,
+                    top: 0,
+                    width: inactiveCardWidth,
+                    bottom: 0,
+                    child: _buildInactiveDrawer(
+                      context,
+                      status: inactiveStatuses[1],
+                      taskState: taskState,
+                      isDark: isDark,
+                      onSelect: () =>
+                          _selectInactiveDrawer(inactiveStatuses[1], 1),
+                    ),
+                  ),
+                ]);
+              } else {
+                // Active drawer swap in motion
+                final targetSlotLeft =
+                    _swappingSlotIndex == 0 ? slot0Left : slot1Left;
+                final otherSlotIndex = _swappingSlotIndex == 0 ? 1 : 0;
+                final otherSlotLeft =
+                    _swappingSlotIndex == 0 ? slot1Left : slot0Left;
+                final otherSlotStatus = inactiveStatuses[otherSlotIndex];
+
+                // 1. Untouched Inactive Drawer stays rock solid
+                children.add(
+                  Positioned(
+                    left: otherSlotLeft,
+                    top: 0,
+                    width: inactiveCardWidth,
+                    bottom: 0,
+                    child: _buildInactiveDrawer(
+                      context,
+                      status: otherSlotStatus,
+                      taskState: taskState,
+                      isDark: isDark,
+                      onSelect: () =>
+                          _selectInactiveDrawer(otherSlotStatus, otherSlotIndex),
+                    ),
                   ),
                 );
-              },
-              child: KeyedSubtree(
-                key: ValueKey<TaskStatus>(activeDeck),
-                child: _buildActiveDrawer(
-                  context,
-                  status: activeDeck,
-                  taskState: taskState,
-                  isDark: isDark,
-                ),
-              ),
-            ),
-          ),
 
-          const SizedBox(width: 14),
+                // 2. Docking Tray in swapped slot
+                children.add(
+                  Positioned(
+                    left: targetSlotLeft,
+                    top: 0,
+                    width: inactiveCardWidth,
+                    bottom: 0,
+                    child: _buildDockingTray(isDark),
+                  ),
+                );
 
-          // Secondary Section: 2 Inactive Drawers with Overlay for Focus/Editor (flex 6)
-          Expanded(
-            flex: 6,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Underneath: 2 Inactive Drawers side-by-side
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
-                  switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: child,
-                    );
-                  },
-                  child: KeyedSubtree(
-                    key: ValueKey<String>(
-                      '${inactiveStatuses[0].name}_${inactiveStatuses[1].name}',
+                // 3. Departing Drawer (glides right into target slot)
+                children.add(
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    width: inactiveCardWidth,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      child: Transform.translate(
+                        offset: Offset(targetSlotLeft * t, 0),
+                        child: _buildInactiveDrawer(
+                          context,
+                          status: _departingStatus!,
+                          taskState: taskState,
+                          isDark: isDark,
+                        ),
+                      ),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: _buildInactiveDrawer(
+                  ),
+                );
+
+                // 4. Arriving Drawer (glides left into active column, elevated ON TOP)
+                children.add(
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    width: activeWidth,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      child: Transform.translate(
+                        offset: Offset(targetSlotLeft * (1.0 - t), 0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: PinTokens.radiusDeck,
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isDark
+                                        ? Colors.black
+                                        : const Color(0xFF0F172A))
+                                    .withValues(alpha: 0.25),
+                                blurRadius: 20,
+                                offset: const Offset(-6, 8),
+                              ),
+                            ],
+                          ),
+                          child: _buildActiveDrawer(
                             context,
-                            status: inactiveStatuses[0],
+                            status: _arrivingStatus!,
                             taskState: taskState,
                             isDark: isDark,
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: _buildInactiveDrawer(
-                            context,
-                            status: inactiveStatuses[1],
-                            taskState: taskState,
-                            isDark: isDark,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
+                  ),
+                );
+              }
+
+              // 5. Overlay Panel for Focus Mode or Task Editor (placed above inactive section)
+              children.add(
+                Positioned(
+                  left: activeWidth + gap,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 360),
+                    switchInCurve: Curves.linear,
+                    switchOutCurve: Curves.linear,
+                    layoutBuilder:
+                        (Widget? currentChild, List<Widget> previousChildren) {
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          ...previousChildren,
+                          if (currentChild != null) currentChild,
+                        ],
+                      );
+                    },
+                    transitionBuilder: (child, animation) {
+                      final curved = CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeInOutCubic,
+                        reverseCurve: Curves.easeInOutCubic,
+                      );
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0.0, 0.04),
+                          end: Offset.zero,
+                        ).animate(curved),
+                        child: FadeTransition(
+                          opacity: CurvedAnimation(
+                            parent: animation,
+                            curve: const Interval(0.0, 0.85,
+                                curve: Curves.easeOut),
+                            reverseCurve: const Interval(0.0, 0.85,
+                                curve: Curves.easeIn),
+                          ),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: activeTaskEditor != null
+                        ? KeyedSubtree(
+                            key: const ValueKey<String>('editor_overlay'),
+                            child: _buildEditorOverlay(
+                              context,
+                              args: activeTaskEditor,
+                              isDark: isDark,
+                            ),
+                          )
+                        : (activeFocusTask != null
+                            ? KeyedSubtree(
+                                key: ValueKey<String>(
+                                    'focus_overlay_${activeFocusTask.id}'),
+                                child: _buildFocusOverlay(
+                                  context,
+                                  task: activeFocusTask,
+                                  isDark: isDark,
+                                ),
+                              )
+                            : const SizedBox.shrink()),
                   ),
                 ),
+              );
 
-                // Overlay Panel: at max 1 instance of an overlay at a time.
-                // Editing/creating a pin goes on top of focus mode!
-                if (activeTaskEditor != null)
-                  Positioned.fill(
-                    child: _buildEditorOverlay(
-                      context,
-                      args: activeTaskEditor,
-                      isDark: isDark,
-                    ),
-                  )
-                else if (activeFocusTask != null)
-                  Positioned.fill(
-                    child: _buildFocusOverlay(
-                      context,
-                      task: activeFocusTask,
-                      isDark: isDark,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
+              return Stack(
+                clipBehavior: Clip.none,
+                children: children,
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  /// Builds a soft docking tray outline underneath a transitioning card slot
+  Widget _buildDockingTray(bool isDark) {
+    final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
+    final cardBg =
+        isDark ? PinTokens.darkStackedTabBg : PinTokens.lightStackedTabBg;
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg.withValues(alpha: 0.35),
+        borderRadius: PinTokens.radiusDeck,
+        border: Border.all(
+          color: borderColor.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
       ),
     );
   }
@@ -230,81 +454,88 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Drawer Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 14, 12),
-            child: Row(
-              children: [
-                Icon(
-                  _statusIcon(status),
-                  size: 20,
-                  color: isToday
-                      ? (isDark
-                          ? PinTokens.darkActiveFocus
-                          : PinTokens.lightActiveFocus)
-                      : textPrimary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          _statusTitle(status),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Count Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? PinTokens.darkCardBg
-                              : PinTokens.lightTagBg,
-                          borderRadius: PinTokens.radiusFull,
-                          border: Border.all(color: borderColor, width: 1),
-                        ),
-                        child: Text(
-                          '${tasks.length}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
+          // Drawer Header - unified 56px height with perfect baseline alignment
+          SizedBox(
+            height: 56,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    _statusIcon(status),
+                    size: 19,
+                    color: isToday
+                        ? (isDark
+                            ? PinTokens.darkActiveFocus
+                            : PinTokens.lightActiveFocus)
+                        : textPrimary,
                   ),
-                ),
-
-                // If Today: Show WIP tracker
-                if (isToday) ...[
-                  _buildWipSlots(taskState, isDark),
                   const SizedBox(width: 8),
-                ],
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _statusTitle(status),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Count Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? PinTokens.darkCardBg
+                                : PinTokens.lightTagBg,
+                            borderRadius: PinTokens.radiusFull,
+                            border: Border.all(color: borderColor, width: 1),
+                          ),
+                          child: Text(
+                            '${tasks.length}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                // Quick Add button for this drawer
-                IconButton(
-                  icon: const Icon(Icons.add_rounded, size: 20),
-                  color: isDark
-                      ? PinTokens.darkTextSecondary
-                      : PinTokens.lightFabBg,
-                  splashRadius: 18,
-                  tooltip: 'Capture Pin in ${_statusTitle(status)}',
-                  onPressed: () {
-                    ref.read(activeTaskEditorProvider.notifier).state =
-                        TaskEditorArgs(defaultStatus: status);
-                  },
-                ),
-              ],
+                  // If Today: Show WIP tracker
+                  if (isToday) ...[
+                    _buildWipSlots(taskState, isDark),
+                    const SizedBox(width: 8),
+                  ],
+
+                  // Quick Add button for this drawer
+                  IconButton(
+                    icon: const Icon(Icons.add_rounded, size: 20),
+                    color: isDark
+                        ? PinTokens.darkTextSecondary
+                        : PinTokens.lightFabBg,
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
+                    tooltip: 'Capture Pin in ${_statusTitle(status)}',
+                    onPressed: () {
+                      ref.read(activeTaskEditorProvider.notifier).state =
+                          TaskEditorArgs(defaultStatus: status);
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -326,7 +557,8 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                             constraints: BoxConstraints(
                               minHeight: constraints.maxHeight,
                             ),
-                            child: _buildEmptyState(status, isDark, textSecondary),
+                            child:
+                                _buildEmptyState(status, isDark, textSecondary),
                           ),
                         );
                       },
@@ -336,7 +568,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                     controller: _activeScrollController,
                     child: ListView.builder(
                       controller: _activeScrollController,
-                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 80),
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
                       itemCount: tasks.length,
                       itemBuilder: (context, index) {
                         final t = tasks[index];
@@ -362,6 +594,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
     required TaskStatus status,
     required TaskListState taskState,
     required bool isDark,
+    VoidCallback? onSelect,
   }) {
     final tasks = _tasksForStatus(taskState, status);
     final isHovered = _hoveredStatus == status;
@@ -381,8 +614,11 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          // Switch places with the active drawer!
-          ref.read(activeDeckProvider.notifier).state = status;
+          if (onSelect != null) {
+            onSelect();
+          } else {
+            ref.read(activeDeckProvider.notifier).state = status;
+          }
         },
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 180),
@@ -395,7 +631,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                 color: isHovered
                     ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
                     : borderColor,
-                width: isHovered ? 1.4 : 1.0,
+                width: isHovered ? 1.4 : 1.2,
               ),
               boxShadow: isHovered
                   ? [
@@ -410,65 +646,84 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Inactive Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 10, 10),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _statusIcon(status),
-                        size: 17,
-                        color: textSecondary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _statusTitle(status),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: textPrimary,
-                            letterSpacing: -0.2,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Count Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? PinTokens.darkCardBg
-                              : PinTokens.lightTagBg,
-                          borderRadius: PinTokens.radiusFull,
-                          border: Border.all(color: borderColor, width: 1),
-                        ),
-                        child: Text(
-                          '${tasks.length}',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ),
-                      if (status == TaskStatus.done && tasks.isNotEmpty) ...[
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                // Inactive Header - unified 56px height perfectly matching active drawer
+                SizedBox(
+                  height: 56,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _statusIcon(status),
+                          size: 19,
                           color: textSecondary,
-                          splashRadius: 14,
-                          padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 24, minHeight: 24),
-                          tooltip: 'Clear Done Tasks',
-                          onPressed: () {
-                            ref.read(taskStateProvider.notifier).clearDoneTasks();
-                          },
                         ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _statusTitle(status),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: textPrimary,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              // Count Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? PinTokens.darkCardBg
+                                      : PinTokens.lightTagBg,
+                                  borderRadius: PinTokens.radiusFull,
+                                  border:
+                                      Border.all(color: borderColor, width: 1),
+                                ),
+                                child: Text(
+                                  '${tasks.length}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (status == TaskStatus.today) ...[
+                          _buildWipSlots(taskState, isDark),
+                          const SizedBox(width: 8),
+                        ],
+                        if (status == TaskStatus.done && tasks.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.delete_sweep_outlined,
+                                size: 17),
+                            color: textSecondary,
+                            splashRadius: 16,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                                minWidth: 32, minHeight: 32),
+                            tooltip: 'Clear Done Tasks',
+                            onPressed: () {
+                              ref
+                                  .read(taskStateProvider.notifier)
+                                  .clearDoneTasks();
+                            },
+                          )
+                        else
+                          const SizedBox(width: 32, height: 32),
                       ],
-                    ],
+                    ),
                   ),
                 ),
 
@@ -492,7 +747,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                       : AbsorbPointer(
                           absorbing: true, // Click anywhere activates drawer
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
                             itemCount: tasks.length,
                             itemBuilder: (context, index) {
                               return TaskCard(task: tasks[index]);
