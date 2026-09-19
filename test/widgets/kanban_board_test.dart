@@ -279,8 +279,8 @@ void main() {
     await tester.tap(find.text('Backlog'));
     await tester.pump(); // Advance to start animation frame
 
-    // Advance 150ms into the 520ms transition
-    await tester.pump(const Duration(milliseconds: 150));
+    // Advance 240ms into the 480ms transition (midpoint)
+    await tester.pump(const Duration(milliseconds: 240));
 
     // Both sheets are present during the transition
     final outgoingFinder = find.byKey(const ValueKey<TaskStatus>(TaskStatus.today));
@@ -288,25 +288,43 @@ void main() {
     expect(outgoingFinder, findsOneWidget);
     expect(incomingFinder, findsOneWidget);
 
-    // Verify outgoing drawer has started shrinking (< 1.0)
-    final outgoingScaleTransition = tester.widget<ScaleTransition>(
-      find.ancestor(
-        of: outgoingFinder,
-        matching: find.byType(ScaleTransition),
-      ).first,
+    // Verify incoming drawer is sliding down from top tab deck (position.dy < 0.0)
+    final incomingSlide = tester.widget<SlideTransition>(
+      find.ancestor(of: incomingFinder, matching: find.byType(SlideTransition)).first,
     );
-    expect(outgoingScaleTransition.scale.value, lessThan(1.0));
-    expect(outgoingScaleTransition.scale.value, greaterThanOrEqualTo(0.78));
+    expect(incomingSlide.position.value.dy, lessThan(0.0));
+    expect(incomingSlide.position.value.dy, greaterThanOrEqualTo(-0.22));
 
-    // Verify incoming tab has started fading in (> 0.0)
-    final incomingFadeTransition = tester.widget<FadeTransition>(
-      find.ancestor(
-        of: incomingFinder,
-        matching: find.byType(FadeTransition),
-      ).first,
+    // Verify outgoing drawer has started shrinking (< 1.0)
+    final outgoingScale = tester.widget<ScaleTransition>(
+      find.ancestor(of: outgoingFinder, matching: find.byType(ScaleTransition)).first,
     );
-    expect(incomingFadeTransition.opacity.value, greaterThan(0.0));
-    expect(incomingFadeTransition.opacity.value, lessThanOrEqualTo(1.0));
+    expect(outgoingScale.scale.value, lessThan(1.0));
+    expect(outgoingScale.scale.value, greaterThanOrEqualTo(0.82));
+
+    // Verify incoming drawer has started expanding towards 1.0
+    final incomingScale = tester.widget<ScaleTransition>(
+      find.ancestor(of: incomingFinder, matching: find.byType(ScaleTransition)).first,
+    );
+    expect(incomingScale.scale.value, greaterThan(0.82));
+    expect(incomingScale.scale.value, lessThanOrEqualTo(1.0));
+
+    // Verify incoming tab is fading in
+    final incomingFade = tester.widget<FadeTransition>(
+      find.ancestor(of: incomingFinder, matching: find.byType(FadeTransition)).first,
+    );
+    expect(incomingFade.opacity.value, greaterThan(0.0));
+    expect(incomingFade.opacity.value, lessThanOrEqualTo(1.0));
+
+    // Verify outgoing drawer is fading out
+    final outgoingFade = tester.widget<FadeTransition>(
+      find.ancestor(of: outgoingFinder, matching: find.byType(FadeTransition)).first,
+    );
+    expect(outgoingFade.opacity.value, greaterThan(0.0));
+    expect(outgoingFade.opacity.value, lessThan(1.0));
+
+
+
 
     // Complete transition
     await tester.pumpAndSettle();

@@ -20,8 +20,6 @@ class LayeredDeckView extends ConsumerStatefulWidget {
 
 class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     with SingleTickerProviderStateMixin {
-  TaskStatus _currentDeck = TaskStatus.today;
-  TaskStatus _previousDeck = TaskStatus.today;
   late final AnimationController _horizontalEdgeNudgeController;
   Animation<double>? _horizontalNudgeAnimation;
   double _horizontalNudge = 0.0;
@@ -47,16 +45,6 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     super.dispose();
   }
 
-  int _deckIndex(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.backlog:
-        return 0;
-      case TaskStatus.today:
-        return 1;
-      case TaskStatus.done:
-        return 2;
-    }
-  }
 
   void _triggerHorizontalEdgeNudge(int delta) {
     // delta < 0: attempted swipe right past Backlog
@@ -103,11 +91,6 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     final textSecondary =
         isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
-    // Synchronously track previous deck to compute accurate tab displacements
-    if (activeDeck != _currentDeck) {
-      _previousDeck = _currentDeck;
-      _currentDeck = activeDeck;
-    }
 
     // Determine the order of stacked background tabs vs active sheet
     final allTabs = [TaskStatus.backlog, TaskStatus.done, TaskStatus.today];
@@ -165,9 +148,9 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
           child: Transform.translate(
             offset: Offset(_horizontalNudge, 0),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 520),
-              switchInCurve: const Cubic(0.2, 0.9, 0.3, 1.0),
-              switchOutCurve: const Cubic(0.2, 0.9, 0.3, 1.0),
+              duration: const Duration(milliseconds: 480),
+              switchInCurve: Curves.linear,
+              switchOutCurve: Curves.linear,
             layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
               return Stack(
                 fit: StackFit.expand,
@@ -178,134 +161,68 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
               );
             },
             transitionBuilder: (child, animation) {
-              final isIncoming = child.key == ValueKey<TaskStatus>(activeDeck);
-              final isForward = _deckIndex(activeDeck) >= _deckIndex(_previousDeck);
+              // Fluid ease-in-out curve for natural physical drawer motion
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeInOutCubic,
+                reverseCurve: Curves.easeInOutCubic,
+              );
 
-              // Identify which inactive tab slot the incoming deck came from
-              final prevInactive = allTabs.where((s) => s != _previousDeck).toList();
-              final prevSlot = prevInactive.indexOf(activeDeck);
-              // Slot 0 sits at top: 0 (72px above active sheet); Slot 1 sits at top: 36 (36px above active sheet)
-              final double targetYOffset = prevSlot == 0
-                  ? -72.0
-                  : (prevSlot == 1 ? -36.0 : -54.0);
+              // Substantial, prominent fractional slide:
+              // Incoming child: slides DOWN from top tab deck (-22% height ~ 150px) into foreground.
+              // Outgoing child: slides UP from foreground towards top tab deck.
+              final slideAnimation = Tween<Offset>(
+                begin: const Offset(0.0, -0.22),
+                end: Offset.zero,
+              ).animate(curved);
 
-              if (isIncoming) {
-                // Incoming selected tab: becomes larger, fades in foreground, and slides into place from the tab
-                final springCurve = CurvedAnimation(
-                  parent: animation,
-                  curve: const Cubic(0.2, 0.9, 0.3, 1.0),
-                  reverseCurve: Curves.easeInCubic,
-                );
+              // Tactile scale transition:
+              // Incoming child: expands from 0.82 up to 1.0 (becomes larger into foreground).
+              // Outgoing child: shrinks from 1.0 down to 0.82 (recedes into background).
+              final scaleAnimation = Tween<double>(
+                begin: 0.82,
+                end: 1.0,
+              ).animate(curved);
 
-                // Smooth fade-in starts immediately and settles in the foreground
-                final fadeIn = CurvedAnimation(
-                  parent: animation,
-                  curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
-                );
+              // Synchronized opacity fade:
+              // Incoming child: starts fading in smoothly across the first 75% of travel.
+              // Outgoing child: holds presence as it starts sliding back, then dissolves into stack.
+              final fadeAnimation = CurvedAnimation(
+                parent: animation,
+                curve: const Interval(0.0, 0.75, curve: Curves.easeInOut),
+                reverseCurve: const Interval(0.25, 1.0, curve: Curves.easeInOut),
+              );
 
-                // Scales from 0.78 up to 1.0 (becomes larger)
-                final scaleIn = Tween<double>(
-                  begin: 0.78,
-                  end: 1.0,
-                ).animate(springCurve);
+              // 3D perspective depth tilt
+              final tiltAnimation = Tween<double>(
+                begin: -0.04,
+                end: 0.0,
+              ).animate(curved);
 
-                // Slides down into place from the tab slot position
-                final slideIn = Tween<Offset>(
-                  begin: Offset(0.0, targetYOffset),
-                  end: Offset.zero,
-                ).animate(springCurve);
 
-                return AnimatedBuilder(
-                  animation: springCurve,
-                  builder: (context, childWidget) {
-                    final progress = springCurve.value;
-                    // Dynamic 3D perspective tilt that flattens out smoothly as the drawer docks
-                    final tiltAngle = (1.0 - progress) * (isForward ? 0.03 : -0.03);
-
-                    return Transform(
-                      alignment: Alignment.topCenter,
-                      transform: Matrix4.identity()
-                        ..setEntry(3, 2, 0.001) // perspective
-                        ..rotateX(tiltAngle),
-                      child: childWidget,
-                    );
-                  },
-                  child: AnimatedBuilder(
-                    animation: slideIn,
-                    builder: (context, childWidget) {
-                      return Transform.translate(
-                        offset: slideIn.value,
-                        child: childWidget,
-                      );
-                    },
-                    child: ScaleTransition(
-                      alignment: Alignment.topCenter,
-                      scale: scaleIn,
-                      child: FadeTransition(
-                        opacity: fadeIn,
-                        child: child,
-                      ),
+              return AnimatedBuilder(
+                animation: curved,
+                builder: (context, childWidget) {
+                  return Transform(
+                    alignment: Alignment.topCenter,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.001) // perspective
+                      ..rotateX(tiltAnimation.value),
+                    child: childWidget,
+                  );
+                },
+                child: SlideTransition(
+                  position: slideAnimation,
+                  child: ScaleTransition(
+                    alignment: Alignment.topCenter,
+                    scale: scaleAnimation,
+                    child: FadeTransition(
+                      opacity: fadeAnimation,
+                      child: child,
                     ),
                   ),
-                );
-              } else {
-                // Outgoing foreground drawer: fades out, becomes smaller, and moves toward the selected tab
-                final outgoingCurve = CurvedAnimation(
-                  parent: animation,
-                  curve: const Cubic(0.2, 0.9, 0.3, 1.0),
-                );
-
-                // Shrinks from 1.0 down to 0.78 toward the tab slot
-                final scaleOut = Tween<double>(
-                  begin: 0.78,
-                  end: 1.0,
-                ).animate(outgoingCurve);
-
-                // Stays visibly present throughout the slide and shrinks before dissolving
-                final fadeOut = CurvedAnimation(
-                  parent: animation,
-                  curve: const Interval(0.25, 1.0, curve: Curves.easeOut),
-                );
-
-                // Moves upward directly toward the selected tab slot
-                final slideOut = Tween<Offset>(
-                  begin: Offset(0.0, targetYOffset),
-                  end: Offset.zero,
-                ).animate(outgoingCurve);
-
-                return AnimatedBuilder(
-                  animation: outgoingCurve,
-                  builder: (context, childWidget) {
-                    final progress = outgoingCurve.value;
-                    final depthTilt = (1.0 - progress) * 0.03;
-
-                    return Transform(
-                      alignment: Alignment.topCenter,
-                      transform: Matrix4.identity()
-                        ..setEntry(3, 2, 0.001) // perspective
-                        ..rotateX(-depthTilt),
-                      child: childWidget,
-                    );
-                  },
-                  child: AnimatedBuilder(
-                    animation: slideOut,
-                    builder: (context, childWidget) {
-                      return Transform.translate(
-                        offset: slideOut.value,
-                        child: childWidget,
-                      );
-                    },
-                    child: ScaleTransition(
-                      alignment: Alignment.topCenter,
-                      scale: scaleOut,
-                      child: FadeTransition(
-                        opacity: fadeOut,
-                        child: child,
-                      ),
-                    ),
-                  ),
-                );
-              }
+                ),
+              );
             },
             child: KeyedSubtree(
               key: ValueKey<TaskStatus>(activeDeck),
