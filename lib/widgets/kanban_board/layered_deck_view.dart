@@ -109,12 +109,12 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Background Tab 0 (e.g. Backlog - stacked background tray)
+        // Background Tab 0 (full height card stacked behind)
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          height: 52,
+          bottom: 0,
           child: _InactiveTabCard(
             status: inactiveTabs[0],
             state: state,
@@ -129,12 +129,12 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
           ),
         ),
 
-        // Background Tab 1 (e.g. Done - stacked background tray)
+        // Background Tab 1 (full height card stacked behind)
         Positioned(
           top: 36,
           left: 0,
           right: 0,
-          height: 52,
+          bottom: 0,
           child: _InactiveTabCard(
             status: inactiveTabs[1],
             state: state,
@@ -760,11 +760,13 @@ class _InactiveTabCardState extends State<_InactiveTabCard> {
         },
         onTapCancel: () => setState(() => _isPressed = false),
         child: AnimatedScale(
-          scale: _isPressed ? 0.985 : (_isHovered ? 1.01 : 1.0),
+          alignment: Alignment.topCenter,
+          scale: _isPressed ? 0.985 : (_isHovered ? 1.008 : 1.0),
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
+            alignment: Alignment.topLeft,
             padding: const EdgeInsets.fromLTRB(18, 8, 16, 12),
             decoration: BoxDecoration(
               color: widget.isDark
