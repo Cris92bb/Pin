@@ -96,8 +96,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     final isWide = screenTier == PinScreenTier.wide;
 
     final frameBg = isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightPhoneFrameBg;
@@ -210,49 +208,20 @@ class _HomePageState extends ConsumerState<HomePage> {
         return KeyEventResult.ignored;
       },
       child: Scaffold(
-        backgroundColor: isWide
-            ? (isDark ? PinTokens.darkCanvasBg : PinTokens.lightCanvasBg)
-            : frameBg,
+        backgroundColor: frameBg,
         body: Center(
           child: Container(
-            width: isWide
-                ? (screenWidth > PinBreakpoints.wideMaxWidth
-                    ? PinBreakpoints.wideMaxWidth
-                    : screenWidth - 32)
-                : double.infinity,
-            height: isWide
-                ? (screenHeight > 540 ? screenHeight - 32 : screenHeight)
-                : double.infinity,
+            width: double.infinity,
+            height: double.infinity,
             constraints: isWide
-                ? BoxConstraints(
+                ? const BoxConstraints(
                     maxWidth: PinBreakpoints.wideMaxWidth,
-                    maxHeight: screenHeight > 540 ? screenHeight - 20 : screenHeight,
-                    minHeight: 480,
                   )
                 : null,
             decoration: BoxDecoration(
               color: frameBg,
-              borderRadius: isWide ? BorderRadius.circular(32) : BorderRadius.zero,
-              border: isWide
-                  ? Border.all(
-                      color: isDark ? borderColor : const Color(0x1F0F172A),
-                      width: 1.0,
-                    )
-                  : null,
-              boxShadow: isWide
-                  ? [
-                      BoxShadow(
-                        color: (isDark ? Colors.black : const Color(0xFF0F172A))
-                            .withValues(alpha: isDark ? 0.45 : 0.12),
-                        blurRadius: 28,
-                        offset: const Offset(0, 14),
-                      ),
-                    ]
-                  : null,
             ),
-            child: ClipRRect(
-              borderRadius: isWide ? BorderRadius.circular(30) : BorderRadius.zero,
-              child: SafeArea(
+            child: SafeArea(
                 child: Stack(
                   children: [
                     Column(
@@ -275,15 +244,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                     ),
 
-                    // Floating Action Button (+) centered at bottom
-                    Positioned(
-                      bottom: 14,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: _buildFloatingActionButton(isDark, borderColor),
+                    // Floating Action Button (+) centered at bottom — hidden on wide (per-column + buttons are used)
+                    if (!isWide)
+                      Positioned(
+                        bottom: 14,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: _buildFloatingActionButton(isDark, borderColor),
+                        ),
                       ),
-                    ),
 
                     // Top window height resize handle
                     Positioned(
@@ -330,8 +300,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildCompanionHeader(

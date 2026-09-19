@@ -261,7 +261,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
         },
         child: Scaffold(
           backgroundColor:
-              isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCanvasBg,
+              isDark ? PinTokens.darkSheetBg : PinTokens.lightPhoneFrameBg,
           body: SafeArea(
             child: AnimatedSwitcher(
               duration: PinTokens.animNormal,
@@ -430,7 +430,7 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 680;
+        final isNarrow = constraints.maxWidth < 780;
         final isVeryNarrow = constraints.maxWidth < 360;
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -704,8 +704,8 @@ class _FocusModeViewState extends ConsumerState<FocusModeView> {
                         ),
                         decoration: BoxDecoration(
                           color: subtasksBg,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(24),
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(24),
                           ),
                         ),
                         child: Align(
