@@ -244,15 +244,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                     ),
 
-                    // Floating Action Button (+) centered at bottom
-                    Positioned(
-                      bottom: 14,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: _buildFloatingActionButton(isDark, borderColor),
+                    // Floating Action Button (+) centered at bottom — hidden on wide (per-column + buttons are used)
+                    if (!isWide)
+                      Positioned(
+                        bottom: 14,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: _buildFloatingActionButton(isDark, borderColor),
+                        ),
                       ),
-                    ),
 
                     // Top window height resize handle
                     Positioned(

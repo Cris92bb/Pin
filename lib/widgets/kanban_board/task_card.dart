@@ -146,66 +146,52 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                   const SizedBox(width: 10),
 
                   // ACTIVE FOCUS status badge
-                  Text(
-                    isFocused
-                        ? 'ACTIVE FOCUS'
-                        : (isToday
-                            ? 'TODAY'
-                            : (isDone ? 'COMPLETED' : 'BACKLOG')),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      color: isFocused
-                          ? activeFocusColor
+                  Flexible(
+                    child: Text(
+                      isFocused
+                          ? 'ACTIVE FOCUS'
                           : (isToday
-                              ? (isDark
-                                  ? PinTokens.darkActiveFocus.withValues(alpha: 0.75)
-                                  : PinTokens.lightActiveFocus.withValues(alpha: 0.85))
-                              : (isDone
-                                  ? PinTokens.accentEmerald
-                                  : (isDark
-                                      ? PinTokens.darkTextMuted
-                                      : PinTokens.lightTextSecondary))),
+                              ? 'TODAY'
+                              : (isDone ? 'COMPLETED' : 'BACKLOG')),
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: isFocused
+                            ? activeFocusColor
+                            : (isToday
+                                ? (isDark
+                                    ? PinTokens.darkActiveFocus.withValues(alpha: 0.75)
+                                    : PinTokens.lightActiveFocus.withValues(alpha: 0.85))
+                                : (isDone
+                                    ? PinTokens.accentEmerald
+                                    : (isDark
+                                        ? PinTokens.darkTextMuted
+                                        : PinTokens.lightTextSecondary))),
+                      ),
                     ),
                   ),
 
                   const Spacer(),
 
-                  // UNPIN / PIN Action
-                  InkWell(
-                    borderRadius: PinTokens.radiusSm,
-                    onTap: () {
+                  // UNPIN / PIN Action (compact icon only)
+                  IconButton(
+                    icon: Icon(
+                      isToday ? Icons.push_pin_outlined : Icons.push_pin_rounded,
+                      size: 16,
+                      color: isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary,
+                    ),
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    tooltip: isToday ? 'Unpin' : 'Pin to Today',
+                    onPressed: () {
                       ref.read(taskStateProvider.notifier).togglePin(task.id);
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isToday ? Icons.push_pin_outlined : Icons.push_pin_rounded,
-                            size: 14,
-                            color: isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isToday ? 'UNPIN' : 'PIN',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
-                              color: isDark
-                                  ? PinTokens.darkTextTertiary
-                                  : PinTokens.lightTextTertiary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
 
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 2),
 
                   // Delete trash icon
                   IconButton(
@@ -234,7 +220,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: isDone
-                      ? (isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary)
+                      ? (isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary)
                       : textPrimary,
                   decoration: isDone ? TextDecoration.lineThrough : null,
                   decorationColor: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,

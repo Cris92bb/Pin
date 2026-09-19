@@ -6,6 +6,7 @@ import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/focus_mode/ui/focus_mode_view.dart';
 import '../../features/task_crud/state/task_editor_state.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
+import 'package:pin/shared/lib/date_helpers.dart';
 import '../../shared/ui/pin_tokens.dart';
 import 'bouncy_drawer_scroll_wrapper.dart';
 import 'task_card.dart';
@@ -38,7 +39,6 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
   TaskStatus _activeStatus = TaskStatus.today;
   TaskStatus? _departingStatus;
   TaskStatus? _arrivingStatus;
-  int _swappingSlotIndex = 0;
 
   @override
   void initState() {
@@ -61,27 +61,19 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
     super.dispose();
   }
 
-  void _selectInactiveDrawer(TaskStatus status, int slotIndex) {
+  void _selectInactiveDrawer(TaskStatus status) {
     if (_transitionController.isAnimating) return;
     ref.read(activeDeckProvider.notifier).state = status;
-    _startDrawerTransition(status, slotIndex);
+    _startDrawerTransition(status);
   }
 
-  void _startDrawerTransition(TaskStatus newActiveStatus, [int? preferredSlotIndex]) {
+  void _startDrawerTransition(TaskStatus newActiveStatus) {
     if (newActiveStatus == _activeStatus) return;
-    const allStatuses = [TaskStatus.backlog, TaskStatus.today, TaskStatus.done];
-    final currentInactive = allStatuses.where((s) => s != _activeStatus).toList();
-    final slotIdx = preferredSlotIndex ?? currentInactive.indexOf(newActiveStatus);
-    if (slotIdx == -1) {
-      setState(() => _activeStatus = newActiveStatus);
-      return;
-    }
 
     _transitionController.value = 0.0;
     setState(() {
       _departingStatus = _activeStatus;
       _arrivingStatus = newActiveStatus;
-      _swappingSlotIndex = slotIdx;
     });
 
     _transitionController.forward(from: 0.0).then((_) {
@@ -150,269 +142,205 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
     final inactiveStatuses =
         allStatuses.where((s) => s != _activeStatus).toList();
 
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final availableWidth = constraints.maxWidth;
-          const gap = 14.0;
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ─── Left Pane: Persistent Active Column (flex: 3) ───
+          Expanded(
+            flex: 3,
+            child: _buildActiveDrawerPane(
+              context,
+              taskState: taskState,
+              isDark: isDark,
+              inactiveStatuses: inactiveStatuses,
+            ),
+          ),
 
-          // Flex allocation: flex 4 for active, flex 6 for inactive section
-          final flexUnit = (availableWidth - gap) / 10.0;
-          final activeWidth = flexUnit * 4.0;
-          final inactiveSectionWidth = flexUnit * 6.0;
-          final inactiveCardWidth = (inactiveSectionWidth - gap) / 2.0;
+          const SizedBox(width: 14),
 
-          final slot0Left = activeWidth + gap;
-          final slot1Left = activeWidth + 2 * gap + inactiveCardWidth;
-
-          return AnimatedBuilder(
-            animation: _transitionCurve,
-            builder: (context, _) {
-              final isAnimating =
-                  _transitionController.isAnimating || _arrivingStatus != null;
-              final t = _transitionCurve.value;
-
-              final List<Widget> children = [];
-
-              if (!isAnimating) {
-                // Idle state: 3 drawers stably side-by-side
-                children.addAll([
-                  // Active Drawer on the left
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    width: activeWidth,
-                    bottom: 0,
-                    child: _buildActiveDrawer(
-                      context,
-                      status: _activeStatus,
-                      taskState: taskState,
-                      isDark: isDark,
+          // ─── Right Pane: Dynamic Content (flex: 5) ───
+          Expanded(
+            flex: 5,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeOutCubic,
+              layoutBuilder:
+                  (Widget? currentChild, List<Widget> previousChildren) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
+              transitionBuilder: (child, animation) {
+                final curved = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeInOutCubic,
+                  reverseCurve: Curves.easeInOutCubic,
+                );
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.04, 0.0),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: animation,
+                      curve:
+                          const Interval(0.0, 0.85, curve: Curves.easeOut),
+                      reverseCurve:
+                          const Interval(0.0, 0.85, curve: Curves.easeIn),
                     ),
-                  ),
-
-                  // Inactive Drawer Slot 0
-                  Positioned(
-                    left: slot0Left,
-                    top: 0,
-                    width: inactiveCardWidth,
-                    bottom: 0,
-                    child: _buildInactiveDrawer(
-                      context,
-                      status: inactiveStatuses[0],
-                      taskState: taskState,
-                      isDark: isDark,
-                      onSelect: () =>
-                          _selectInactiveDrawer(inactiveStatuses[0], 0),
-                    ),
-                  ),
-
-                  // Inactive Drawer Slot 1
-                  Positioned(
-                    left: slot1Left,
-                    top: 0,
-                    width: inactiveCardWidth,
-                    bottom: 0,
-                    child: _buildInactiveDrawer(
-                      context,
-                      status: inactiveStatuses[1],
-                      taskState: taskState,
-                      isDark: isDark,
-                      onSelect: () =>
-                          _selectInactiveDrawer(inactiveStatuses[1], 1),
-                    ),
-                  ),
-                ]);
-              } else {
-                // Active drawer swap in motion
-                final targetSlotLeft =
-                    _swappingSlotIndex == 0 ? slot0Left : slot1Left;
-                final otherSlotIndex = _swappingSlotIndex == 0 ? 1 : 0;
-                final otherSlotLeft =
-                    _swappingSlotIndex == 0 ? slot1Left : slot0Left;
-                final otherSlotStatus = inactiveStatuses[otherSlotIndex];
-
-                // 1. Untouched Inactive Drawer stays rock solid
-                children.add(
-                  Positioned(
-                    left: otherSlotLeft,
-                    top: 0,
-                    width: inactiveCardWidth,
-                    bottom: 0,
-                    child: _buildInactiveDrawer(
-                      context,
-                      status: otherSlotStatus,
-                      taskState: taskState,
-                      isDark: isDark,
-                      onSelect: () =>
-                          _selectInactiveDrawer(otherSlotStatus, otherSlotIndex),
-                    ),
+                    child: child,
                   ),
                 );
-
-                // 2. Docking Tray in swapped slot
-                children.add(
-                  Positioned(
-                    left: targetSlotLeft,
-                    top: 0,
-                    width: inactiveCardWidth,
-                    bottom: 0,
-                    child: _buildDockingTray(isDark),
-                  ),
-                );
-
-                // 3. Departing Drawer (glides right into target slot)
-                children.add(
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    width: inactiveCardWidth,
-                    bottom: 0,
-                    child: IgnorePointer(
-                      child: Transform.translate(
-                        offset: Offset(targetSlotLeft * t, 0),
-                        child: _buildInactiveDrawer(
-                          context,
-                          status: _departingStatus!,
-                          taskState: taskState,
-                          isDark: isDark,
-                        ),
+              },
+              child: activeTaskEditor != null
+                  ? KeyedSubtree(
+                      key: const ValueKey<String>('editor_overlay'),
+                      child: _buildEditorOverlay(
+                        context,
+                        args: activeTaskEditor,
+                        isDark: isDark,
                       ),
-                    ),
-                  ),
-                );
-
-                // 4. Arriving Drawer (glides left into active column, elevated ON TOP)
-                children.add(
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    width: activeWidth,
-                    bottom: 0,
-                    child: IgnorePointer(
-                      child: Transform.translate(
-                        offset: Offset(targetSlotLeft * (1.0 - t), 0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: PinTokens.radiusDeck,
-                            boxShadow: [
-                              BoxShadow(
-                                color: (isDark
-                                        ? Colors.black
-                                        : const Color(0xFF0F172A))
-                                    .withValues(alpha: 0.25),
-                                blurRadius: 20,
-                                offset: const Offset(-6, 8),
-                              ),
-                            ],
-                          ),
-                          child: _buildActiveDrawer(
+                    )
+                  : (activeFocusTask != null
+                      ? KeyedSubtree(
+                          key: ValueKey<String>(
+                              'focus_overlay_${activeFocusTask.id}'),
+                          child: _buildFocusOverlay(
                             context,
-                            status: _arrivingStatus!,
-                            taskState: taskState,
+                            task: activeFocusTask,
                             isDark: isDark,
                           ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              // 5. Overlay Panel for Focus Mode or Task Editor (placed above inactive section)
-              children.add(
-                Positioned(
-                  left: activeWidth + gap,
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 360),
-                    switchInCurve: Curves.linear,
-                    switchOutCurve: Curves.linear,
-                    layoutBuilder:
-                        (Widget? currentChild, List<Widget> previousChildren) {
-                      return Stack(
-                        fit: StackFit.expand,
-                        children: <Widget>[
-                          ...previousChildren,
-                          if (currentChild != null) currentChild,
-                        ],
-                      );
-                    },
-                    transitionBuilder: (child, animation) {
-                      final curved = CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeInOutCubic,
-                        reverseCurve: Curves.easeInOutCubic,
-                      );
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0.0, 0.04),
-                          end: Offset.zero,
-                        ).animate(curved),
-                        child: FadeTransition(
-                          opacity: CurvedAnimation(
-                            parent: animation,
-                            curve: const Interval(0.0, 0.85,
-                                curve: Curves.easeOut),
-                            reverseCurve: const Interval(0.0, 0.85,
-                                curve: Curves.easeIn),
+                        )
+                      : KeyedSubtree(
+                          key: const ValueKey<String>('inactive_drawers'),
+                          child: _buildInactiveDrawersPane(
+                            context,
+                            taskState: taskState,
+                            isDark: isDark,
+                            inactiveStatuses: inactiveStatuses,
                           ),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: activeTaskEditor != null
-                        ? KeyedSubtree(
-                            key: const ValueKey<String>('editor_overlay'),
-                            child: _buildEditorOverlay(
-                              context,
-                              args: activeTaskEditor,
-                              isDark: isDark,
-                            ),
-                          )
-                        : (activeFocusTask != null
-                            ? KeyedSubtree(
-                                key: ValueKey<String>(
-                                    'focus_overlay_${activeFocusTask.id}'),
-                                child: _buildFocusOverlay(
-                                  context,
-                                  task: activeFocusTask,
-                                  isDark: isDark,
-                                ),
-                              )
-                            : const SizedBox.shrink()),
-                  ),
-                ),
-              );
-
-              return Stack(
-                clipBehavior: Clip.none,
-                children: children,
-              );
-            },
-          );
-        },
+                        )),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// Builds a soft docking tray outline underneath a transitioning card slot
-  Widget _buildDockingTray(bool isDark) {
-    final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
-    final cardBg =
-        isDark ? PinTokens.darkStackedTabBg : PinTokens.lightStackedTabBg;
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg.withValues(alpha: 0.35),
-        borderRadius: PinTokens.radiusDeck,
-        border: Border.all(
-          color: borderColor.withValues(alpha: 0.4),
-          width: 1.2,
+  /// Builds the left pane containing the active drawer with swap animation support.
+  Widget _buildActiveDrawerPane(
+    BuildContext context, {
+    required TaskListState taskState,
+    required bool isDark,
+    required List<TaskStatus> inactiveStatuses,
+  }) {
+    return AnimatedBuilder(
+      animation: _transitionCurve,
+      builder: (context, _) {
+        final isAnimating =
+            _transitionController.isAnimating || _arrivingStatus != null;
+        final t = _transitionCurve.value;
+
+        if (!isAnimating) {
+          return _buildActiveDrawer(
+            context,
+            status: _activeStatus,
+            taskState: taskState,
+            isDark: isDark,
+          );
+        }
+
+        // During swap: stack departing (fading out) and arriving (sliding in)
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // Departing drawer (shrinks and fades out to the right)
+            Opacity(
+              opacity: (1.0 - t).clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(40.0 * t, 0),
+                child: _buildActiveDrawer(
+                  context,
+                  status: _departingStatus!,
+                  taskState: taskState,
+                  isDark: isDark,
+                ),
+              ),
+            ),
+
+            // Arriving drawer (slides in from the right with elevation)
+            Transform.translate(
+              offset: Offset(60.0 * (1.0 - t), 0),
+              child: Opacity(
+                opacity: t.clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: PinTokens.radiusDeck,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isDark
+                                ? Colors.black
+                                : const Color(0xFF0F172A))
+                            .withValues(alpha: 0.25 * (1.0 - t)),
+                        blurRadius: 20,
+                        offset: const Offset(-6, 8),
+                      ),
+                    ],
+                  ),
+                  child: _buildActiveDrawer(
+                    context,
+                    status: _arrivingStatus!,
+                    taskState: taskState,
+                    isDark: isDark,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Builds the right pane showing two inactive drawers side-by-side.
+  Widget _buildInactiveDrawersPane(
+    BuildContext context, {
+    required TaskListState taskState,
+    required bool isDark,
+    required List<TaskStatus> inactiveStatuses,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: _buildInactiveDrawer(
+            context,
+            status: inactiveStatuses[0],
+            taskState: taskState,
+            isDark: isDark,
+            onSelect: () => _selectInactiveDrawer(inactiveStatuses[0]),
+          ),
         ),
-      ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _buildInactiveDrawer(
+            context,
+            status: inactiveStatuses[1],
+            taskState: taskState,
+            isDark: isDark,
+            onSelect: () => _selectInactiveDrawer(inactiveStatuses[1]),
+          ),
+        ),
+      ],
     );
   }
 
@@ -626,7 +554,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
         },
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 180),
-          opacity: isHovered ? 0.90 : 0.65,
+          opacity: isHovered ? 0.85 : 0.50,
           child: Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
@@ -755,10 +683,10 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
                       : AbsorbPointer(
                           absorbing: true, // Click anywhere activates drawer
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 36),
+                            padding: const EdgeInsets.fromLTRB(10, 10, 10, 36),
                             itemCount: tasks.length,
                             itemBuilder: (context, index) {
-                              return TaskCard(task: tasks[index]);
+                              return _buildCompactCard(tasks[index], isDark);
                             },
                           ),
                         ),
@@ -828,6 +756,123 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Lightweight compact card for inactive drawers — read-only, no interactive buttons.
+  Widget _buildCompactCard(PinTask task, bool isDark) {
+    final isDone = task.status == TaskStatus.done;
+    final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
+    final cardBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
+    final textPrimary =
+        isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
+    final textSecondary =
+        isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
+
+    // Primary tag color pip
+    Color? tagPipColor;
+    if (task.tags.isNotEmpty) {
+      final firstTag = task.tags.first.toLowerCase().trim();
+      if (firstTag.contains('dev') || firstTag.contains('code')) {
+        tagPipColor = isDark ? PinTokens.darkActiveFocus : PinTokens.accentViolet;
+      } else if (firstTag.contains('design') || firstTag.contains('ui')) {
+        tagPipColor = PinTokens.accentSky;
+      } else if (firstTag.contains('bug') || firstTag.contains('fix')) {
+        tagPipColor = PinTokens.accentRose;
+      } else if (firstTag.contains('doc') || firstTag.contains('write')) {
+        tagPipColor = PinTokens.accentAmber;
+      } else {
+        tagPipColor = PinTokens.accentEmerald;
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: PinTokens.radiusCard,
+        border: isDark ? Border.all(color: borderColor, width: 1.0) : null,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF1A241E).withValues(alpha: 0.03),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title — 2 lines max, no interactive controls
+          Text(
+            task.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDone
+                  ? (isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary)
+                  : textPrimary,
+              decoration: isDone ? TextDecoration.lineThrough : null,
+              decorationColor:
+                  isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
+              height: 1.3,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // Minimal metadata: energy pip + tag pip
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // Energy label as small text
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDark ? PinTokens.darkSheetBg : PinTokens.lightTagBg,
+                  borderRadius: PinTokens.radiusFull,
+                ),
+                child: Text(
+                  task.energyDisplayLabel,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                  ),
+                ),
+              ),
+
+              // Duration
+              Text(
+                DateHelpers.formatMinutes(task.estimatedMinutes),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: textSecondary,
+                ),
+              ),
+
+              // Tag pip (colored dot for the first tag category)
+              if (tagPipColor != null)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: tagPipColor,
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
