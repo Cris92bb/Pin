@@ -20,6 +20,7 @@ class LayeredDeckView extends ConsumerStatefulWidget {
 
 class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     with SingleTickerProviderStateMixin {
+  TaskStatus _currentDeck = TaskStatus.today;
   TaskStatus _previousDeck = TaskStatus.today;
   late final AnimationController _horizontalEdgeNudgeController;
   Animation<double>? _horizontalNudgeAnimation;
@@ -102,14 +103,11 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     final textSecondary =
         isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
-    // Track previous drawer to compute directional slide & 3D tilt animation
-    ref.listen<TaskStatus>(activeDeckProvider, (previous, next) {
-      if (previous != null && previous != next) {
-        setState(() {
-          _previousDeck = previous;
-        });
-      }
-    });
+    // Synchronously track previous deck to compute accurate tab displacements
+    if (activeDeck != _currentDeck) {
+      _previousDeck = _currentDeck;
+      _currentDeck = activeDeck;
+    }
 
     // Determine the order of stacked background tabs vs active sheet
     final allTabs = [TaskStatus.backlog, TaskStatus.done, TaskStatus.today];
@@ -167,9 +165,9 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
           child: Transform.translate(
             offset: Offset(_horizontalNudge, 0),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 380),
-              switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
-              switchOutCurve: Curves.easeInOutCubic,
+              duration: const Duration(milliseconds: 520),
+              switchInCurve: const Cubic(0.2, 0.9, 0.3, 1.0),
+              switchOutCurve: const Cubic(0.2, 0.9, 0.3, 1.0),
             layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
               return Stack(
                 fit: StackFit.expand,
@@ -195,19 +193,19 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                 // Incoming selected tab: becomes larger, fades in foreground, and slides into place from the tab
                 final springCurve = CurvedAnimation(
                   parent: animation,
-                  curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+                  curve: const Cubic(0.2, 0.9, 0.3, 1.0),
                   reverseCurve: Curves.easeInCubic,
                 );
 
-                // Smooth fade-in starts immediately and reaches 100% by 70% of transition
+                // Smooth fade-in starts immediately and settles in the foreground
                 final fadeIn = CurvedAnimation(
                   parent: animation,
-                  curve: const Interval(0.0, 0.70, curve: Curves.easeOut),
+                  curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
                 );
 
-                // Scales from 0.84 up to 1.0 (becomes larger)
+                // Scales from 0.78 up to 1.0 (becomes larger)
                 final scaleIn = Tween<double>(
-                  begin: 0.84,
+                  begin: 0.78,
                   end: 1.0,
                 ).animate(springCurve);
 
@@ -254,19 +252,19 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                 // Outgoing foreground drawer: fades out, becomes smaller, and moves toward the selected tab
                 final outgoingCurve = CurvedAnimation(
                   parent: animation,
-                  curve: Curves.easeInOutCubic,
+                  curve: const Cubic(0.2, 0.9, 0.3, 1.0),
                 );
 
-                // Shrinks from 1.0 down to 0.84 toward the tab slot
+                // Shrinks from 1.0 down to 0.78 toward the tab slot
                 final scaleOut = Tween<double>(
-                  begin: 0.84,
+                  begin: 0.78,
                   end: 1.0,
                 ).animate(outgoingCurve);
 
-                // Fades out from 1.0 down to 0.0 as it moves toward the tab slot
+                // Stays visibly present throughout the slide and shrinks before dissolving
                 final fadeOut = CurvedAnimation(
                   parent: animation,
-                  curve: const Interval(0.12, 1.0, curve: Curves.easeIn),
+                  curve: const Interval(0.25, 1.0, curve: Curves.easeOut),
                 );
 
                 // Moves upward directly toward the selected tab slot

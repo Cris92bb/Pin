@@ -279,8 +279,8 @@ void main() {
     await tester.tap(find.text('Backlog'));
     await tester.pump(); // Advance to start animation frame
 
-    // Advance 100ms into the 360ms transition
-    await tester.pump(const Duration(milliseconds: 100));
+    // Advance 150ms into the 520ms transition
+    await tester.pump(const Duration(milliseconds: 150));
 
     // Both sheets are present during the transition
     final outgoingFinder = find.byKey(const ValueKey<TaskStatus>(TaskStatus.today));
@@ -296,7 +296,7 @@ void main() {
       ).first,
     );
     expect(outgoingScaleTransition.scale.value, lessThan(1.0));
-    expect(outgoingScaleTransition.scale.value, greaterThanOrEqualTo(0.84));
+    expect(outgoingScaleTransition.scale.value, greaterThanOrEqualTo(0.78));
 
     // Verify incoming tab has started fading in (> 0.0)
     final incomingFadeTransition = tester.widget<FadeTransition>(
