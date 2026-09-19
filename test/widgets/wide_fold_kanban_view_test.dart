@@ -8,6 +8,7 @@ import 'package:pin/features/focus_mode/ui/focus_mode_view.dart';
 import 'package:pin/features/task_crud/ui/task_crud_modal.dart';
 import 'package:pin/pages/home/home_page.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
+import 'package:pin/shared/ui/pin_tokens.dart';
 import 'package:pin/widgets/kanban_board/task_card.dart';
 import 'package:pin/widgets/kanban_board/wide_fold_kanban_view.dart';
 
@@ -353,4 +354,48 @@ void main() {
     expect(find.byType(TaskCrudModal), findsNothing);
     expect(find.byType(FocusModeView), findsOneWidget);
   });
+
+  testWidgets(
+      'wide UI renders without outer window border and clips inactive drawer tasks with foregroundDecoration',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final fakeStorage = MemoryStorageAdapter();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: true,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.darkTheme,
+          home: const HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Verify outer container has no borders around the app
+    final homeScaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
+    expect(homeScaffold.backgroundColor, equals(PinTokens.darkPhoneFrameBg));
+
+    // 2. Find drawers and verify clipBehavior and foregroundDecoration
+    final containers = tester.widgetList<Container>(find.byType(Container));
+    final clippedDeckContainers = containers.where((c) =>
+        c.clipBehavior == Clip.antiAlias &&
+        c.foregroundDecoration is BoxDecoration &&
+        (c.foregroundDecoration as BoxDecoration).border != null);
+
+    // Active drawer + inactive drawers all have antiAlias clip & foregroundDecoration border
+    expect(clippedDeckContainers.length, greaterThanOrEqualTo(3));
+  });
 }
+

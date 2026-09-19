@@ -434,13 +434,10 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
         isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: PinTokens.radiusDeck,
-        border: Border.all(
-          color: borderColor,
-          width: isDark ? 1.6 : 1.2,
-        ),
         boxShadow: isDark
             ? PinTokens.darkCardShadow
             : [
@@ -450,6 +447,13 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
                   offset: const Offset(0, 8),
                 ),
               ],
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: PinTokens.radiusDeck,
+        border: Border.all(
+          color: borderColor,
+          width: isDark ? 1.6 : 1.2,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -624,15 +628,10 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
           duration: const Duration(milliseconds: 180),
           opacity: isHovered ? 0.90 : 0.65,
           child: Container(
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: cardBg,
               borderRadius: PinTokens.radiusDeck,
-              border: Border.all(
-                color: isHovered
-                    ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
-                    : borderColor,
-                width: isHovered ? 1.4 : 1.2,
-              ),
               boxShadow: isHovered
                   ? [
                       BoxShadow(
@@ -642,6 +641,15 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
                       ),
                     ]
                   : null,
+            ),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: PinTokens.radiusDeck,
+              border: Border.all(
+                color: isHovered
+                    ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
+                    : borderColor,
+                width: isHovered ? 1.4 : 1.2,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -747,7 +755,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
                       : AbsorbPointer(
                           absorbing: true, // Click anywhere activates drawer
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 36),
                             itemCount: tasks.length,
                             itemBuilder: (context, index) {
                               return TaskCard(task: tasks[index]);
@@ -834,13 +842,10 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
     final sheetBg = isDark ? PinTokens.darkSheetBg : PinTokens.lightSheetBg;
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: sheetBg,
         borderRadius: PinTokens.radiusDeck,
-        border: Border.all(
-          color: borderColor,
-          width: isDark ? 1.6 : 1.2,
-        ),
         boxShadow: isDark
             ? PinTokens.darkCardShadow
             : [
@@ -851,7 +856,13 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
                 ),
               ],
       ),
-      clipBehavior: Clip.antiAlias,
+      foregroundDecoration: BoxDecoration(
+        borderRadius: PinTokens.radiusDeck,
+        border: Border.all(
+          color: borderColor,
+          width: isDark ? 1.6 : 1.2,
+        ),
+      ),
       child: FocusModeView(
         key: ValueKey<String>('focus_${task.id}'),
         task: task,
@@ -882,13 +893,10 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
         isDark ? PinTokens.darkPhoneFrameBg : PinTokens.lightCardBg;
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: frameBg,
         borderRadius: PinTokens.radiusDeck,
-        border: Border.all(
-          color: borderColor,
-          width: isDark ? 1.6 : 1.2,
-        ),
         boxShadow: isDark
             ? PinTokens.darkCardShadow
             : [
@@ -899,7 +907,13 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
                 ),
               ],
       ),
-      clipBehavior: Clip.antiAlias,
+      foregroundDecoration: BoxDecoration(
+        borderRadius: PinTokens.radiusDeck,
+        border: Border.all(
+          color: borderColor,
+          width: isDark ? 1.6 : 1.2,
+        ),
+      ),
       child: TaskCrudModal(
         initialTask: args.task,
         defaultStatus: args.defaultStatus,
