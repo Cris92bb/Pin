@@ -116,6 +116,7 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
     final inactiveTabs = allTabs.where((status) => status != activeDeck).toList();
 
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         // Background Tab 0 (e.g. Backlog - stacked background tray)
         Positioned(
@@ -166,9 +167,9 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
           child: Transform.translate(
             offset: Offset(_horizontalNudge, 0),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 360),
+              duration: const Duration(milliseconds: 380),
               switchInCurve: const Cubic(0.16, 1.0, 0.3, 1.0),
-              switchOutCurve: Curves.easeInCubic,
+              switchOutCurve: Curves.easeInOutCubic,
             layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
               return Stack(
                 fit: StackFit.expand,
@@ -182,29 +183,37 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
               final isIncoming = child.key == ValueKey<TaskStatus>(activeDeck);
               final isForward = _deckIndex(activeDeck) >= _deckIndex(_previousDeck);
 
+              // Identify which inactive tab slot the incoming deck came from
+              final prevInactive = allTabs.where((s) => s != _previousDeck).toList();
+              final prevSlot = prevInactive.indexOf(activeDeck);
+              // Slot 0 sits at top: 0 (72px above active sheet); Slot 1 sits at top: 36 (36px above active sheet)
+              final double targetYOffset = prevSlot == 0
+                  ? -72.0
+                  : (prevSlot == 1 ? -36.0 : -54.0);
+
               if (isIncoming) {
-                // Incoming selected tab: starts fading in immediately and springs forward to dock
+                // Incoming selected tab: becomes larger, fades in foreground, and slides into place from the tab
                 final springCurve = CurvedAnimation(
                   parent: animation,
                   curve: const Cubic(0.16, 1.0, 0.3, 1.0),
                   reverseCurve: Curves.easeInCubic,
                 );
 
-                // Smooth fade-in starts right away
+                // Smooth fade-in starts immediately and reaches 100% by 70% of transition
                 final fadeIn = CurvedAnimation(
                   parent: animation,
-                  curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
+                  curve: const Interval(0.0, 0.70, curve: Curves.easeOut),
                 );
 
-                // Scale grows forward into the primary foreground position
+                // Scales from 0.84 up to 1.0 (becomes larger)
                 final scaleIn = Tween<double>(
-                  begin: 0.94,
+                  begin: 0.84,
                   end: 1.0,
                 ).animate(springCurve);
 
-                // Directional vertical travel
+                // Slides down into place from the tab slot position
                 final slideIn = Tween<Offset>(
-                  begin: isForward ? const Offset(0.0, 0.06) : const Offset(0.0, -0.06),
+                  begin: Offset(0.0, targetYOffset),
                   end: Offset.zero,
                 ).animate(springCurve);
 
@@ -213,18 +222,24 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                   builder: (context, childWidget) {
                     final progress = springCurve.value;
                     // Dynamic 3D perspective tilt that flattens out smoothly as the drawer docks
-                    final tiltAngle = (1.0 - progress) * (isForward ? 0.035 : -0.035);
+                    final tiltAngle = (1.0 - progress) * (isForward ? 0.03 : -0.03);
 
                     return Transform(
-                      alignment: isForward ? Alignment.bottomCenter : Alignment.topCenter,
+                      alignment: Alignment.topCenter,
                       transform: Matrix4.identity()
                         ..setEntry(3, 2, 0.001) // perspective
                         ..rotateX(tiltAngle),
                       child: childWidget,
                     );
                   },
-                  child: SlideTransition(
-                    position: slideIn,
+                  child: AnimatedBuilder(
+                    animation: slideIn,
+                    builder: (context, childWidget) {
+                      return Transform.translate(
+                        offset: slideIn.value,
+                        child: childWidget,
+                      );
+                    },
                     child: ScaleTransition(
                       alignment: Alignment.topCenter,
                       scale: scaleIn,
@@ -236,27 +251,27 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                   ),
                 );
               } else {
-                // Outgoing foreground drawer: fades back and becomes smaller, receding toward stacked tabs
+                // Outgoing foreground drawer: fades out, becomes smaller, and moves toward the selected tab
                 final outgoingCurve = CurvedAnimation(
                   parent: animation,
-                  curve: Curves.easeInCubic,
+                  curve: Curves.easeInOutCubic,
                 );
 
-                // Shrinks from 1.0 down to 0.88 toward the top stack
+                // Shrinks from 1.0 down to 0.84 toward the tab slot
                 final scaleOut = Tween<double>(
-                  begin: 0.88,
+                  begin: 0.84,
                   end: 1.0,
                 ).animate(outgoingCurve);
 
-                // Fades back: drops opacity smoothly from 1.0 down to 0.0
+                // Fades out from 1.0 down to 0.0 as it moves toward the tab slot
                 final fadeOut = CurvedAnimation(
                   parent: animation,
-                  curve: const Interval(0.15, 1.0, curve: Curves.easeIn),
+                  curve: const Interval(0.12, 1.0, curve: Curves.easeIn),
                 );
 
-                // Tucks slightly upward toward the background tab tray
+                // Moves upward directly toward the selected tab slot
                 final slideOut = Tween<Offset>(
-                  begin: const Offset(0.0, -0.05),
+                  begin: Offset(0.0, targetYOffset),
                   end: Offset.zero,
                 ).animate(outgoingCurve);
 
@@ -274,8 +289,14 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
                       child: childWidget,
                     );
                   },
-                  child: SlideTransition(
-                    position: slideOut,
+                  child: AnimatedBuilder(
+                    animation: slideOut,
+                    builder: (context, childWidget) {
+                      return Transform.translate(
+                        offset: slideOut.value,
+                        child: childWidget,
+                      );
+                    },
                     child: ScaleTransition(
                       alignment: Alignment.topCenter,
                       scale: scaleOut,

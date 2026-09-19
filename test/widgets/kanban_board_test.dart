@@ -296,7 +296,7 @@ void main() {
       ).first,
     );
     expect(outgoingScaleTransition.scale.value, lessThan(1.0));
-    expect(outgoingScaleTransition.scale.value, greaterThanOrEqualTo(0.88));
+    expect(outgoingScaleTransition.scale.value, greaterThanOrEqualTo(0.84));
 
     // Verify incoming tab has started fading in (> 0.0)
     final incomingFadeTransition = tester.widget<FadeTransition>(
