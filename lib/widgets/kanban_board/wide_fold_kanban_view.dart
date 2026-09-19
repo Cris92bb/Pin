@@ -27,6 +27,8 @@ class WideFoldKanbanView extends ConsumerStatefulWidget {
 
 class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
   TaskStatus? _hoveredStatus;
+  TaskStatus _currentDeck = TaskStatus.today;
+  int _lastSlotIndex = 0;
   final ScrollController _activeScrollController = ScrollController();
 
   @override
@@ -82,143 +84,154 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
     final inactiveStatuses =
         allStatuses.where((s) => s != activeDeck).toList();
 
+    // Track which inactive slot (0 or 1) the newly active deck originated from
+    if (activeDeck != _currentDeck) {
+      final prevInactive =
+          allStatuses.where((s) => s != _currentDeck).toList();
+      final slotIdx = prevInactive.indexOf(activeDeck);
+      if (slotIdx >= 0) {
+        _lastSlotIndex = slotIdx;
+      }
+      _currentDeck = activeDeck;
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Primary / Focused Drawer (a bit wider, e.g. flex 4)
-          Expanded(
-            flex: 4,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              switchInCurve: Curves.linear,
-              switchOutCurve: Curves.linear,
-              layoutBuilder:
-                  (Widget? currentChild, List<Widget> previousChildren) {
-                return Stack(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableWidth = constraints.maxWidth;
+          const gap = 14.0;
+
+          // Flex allocation: flex 4 for active, flex 6 for inactive section
+          final flexUnit = (availableWidth - gap) / 10.0;
+          final activeWidth = flexUnit * 4.0;
+          final inactiveSectionWidth = flexUnit * 6.0;
+          final inactiveCardWidth = (inactiveSectionWidth - gap) / 2.0;
+
+          // Center-to-center horizontal travel distance from active drawer to clicked inactive slot:
+          final deltaXCenter0 =
+              (activeWidth + inactiveCardWidth) / 2.0 + gap;
+          final deltaXCenter1 = activeWidth / 2.0 +
+              gap * 2.0 +
+              1.5 * inactiveCardWidth;
+
+          final targetPixelX =
+              _lastSlotIndex == 1 ? deltaXCenter1 : deltaXCenter0;
+
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // 1. Inactive Drawers Section (rendered underneath so active drawer glides on top)
+              Positioned(
+                left: activeWidth + gap,
+                top: 0,
+                right: 0,
+                bottom: 0,
+                child: Stack(
                   clipBehavior: Clip.none,
                   fit: StackFit.expand,
-                  children: <Widget>[
-                    ...previousChildren,
-                    if (currentChild != null) currentChild,
-                  ],
-                );
-              },
-              transitionBuilder: (child, animation) {
-                final curved = CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeInOutCubic,
-                  reverseCurve: Curves.easeInOutCubic,
-                );
-
-                // Prominent physical directional slide:
-                // Incoming active drawer slides from right (inactive section) to foreground (~80px).
-                // Outgoing active drawer slides to the right towards inactive section.
-                final slideAnimation = Tween<Offset>(
-                  begin: const Offset(0.20, 0.0),
-                  end: Offset.zero,
-                ).animate(curved);
-
-                // Tactile 3D scale: expands into foreground (0.85 -> 1.0)
-                // Outgoing shrinks into background (1.0 -> 0.85)
-                final scaleAnimation = Tween<double>(
-                  begin: 0.85,
-                  end: 1.0,
-                ).animate(curved);
-
-                // 3D perspective depth tilt as card enters from right
-                final tiltAnimation = Tween<double>(
-                  begin: -0.035,
-                  end: 0.0,
-                ).animate(curved);
-
-                // Synchronized opacity fade: keeps both cards visibly interacting across travel
-                final fadeAnimation = CurvedAnimation(
-                  parent: animation,
-                  curve: const Interval(0.0, 0.70, curve: Curves.easeInOut),
-                  reverseCurve:
-                      const Interval(0.30, 1.0, curve: Curves.easeInOut),
-                );
-
-                return AnimatedBuilder(
-                  animation: curved,
-                  builder: (context, childWidget) {
-                    return Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()
-                        ..setEntry(3, 2, 0.001) // perspective
-                        ..rotateY(tiltAnimation.value),
-                      child: childWidget,
-                    );
-                  },
-                  child: SlideTransition(
-                    position: slideAnimation,
-                    child: ScaleTransition(
-                      scale: scaleAnimation,
-                      alignment: Alignment.center,
-                      child: FadeTransition(
-                        opacity: fadeAnimation,
-                        child: child,
-                      ),
+                  children: [
+                    // Two inactive drawers side-by-side
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _buildInactiveSlot(
+                            context,
+                            status: inactiveStatuses[0],
+                            taskState: taskState,
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(width: gap),
+                        Expanded(
+                          child: _buildInactiveSlot(
+                            context,
+                            status: inactiveStatuses[1],
+                            taskState: taskState,
+                            isDark: isDark,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                );
-              },
-              child: KeyedSubtree(
-                key: ValueKey<TaskStatus>(activeDeck),
-                child: _buildActiveDrawer(
-                  context,
-                  status: activeDeck,
-                  taskState: taskState,
-                  isDark: isDark,
+
+                    // Overlay Panel for Focus Mode or Task Editor
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 360),
+                      switchInCurve: Curves.linear,
+                      switchOutCurve: Curves.linear,
+                      layoutBuilder:
+                          (Widget? currentChild, List<Widget> previousChildren) {
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            ...previousChildren,
+                            if (currentChild != null) currentChild,
+                          ],
+                        );
+                      },
+                      transitionBuilder: (child, animation) {
+                        final curved = CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeInOutCubic,
+                          reverseCurve: Curves.easeInOutCubic,
+                        );
+                        return SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.0, 0.04),
+                            end: Offset.zero,
+                          ).animate(curved),
+                          child: FadeTransition(
+                            opacity: CurvedAnimation(
+                              parent: animation,
+                              curve: const Interval(0.0, 0.85,
+                                  curve: Curves.easeOut),
+                              reverseCurve: const Interval(0.0, 0.85,
+                                  curve: Curves.easeIn),
+                            ),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: activeTaskEditor != null
+                          ? KeyedSubtree(
+                              key: const ValueKey<String>('editor_overlay'),
+                              child: _buildEditorOverlay(
+                                context,
+                                args: activeTaskEditor,
+                                isDark: isDark,
+                              ),
+                            )
+                          : (activeFocusTask != null
+                              ? KeyedSubtree(
+                                  key: ValueKey<String>(
+                                      'focus_overlay_${activeFocusTask.id}'),
+                                  child: _buildFocusOverlay(
+                                    context,
+                                    task: activeFocusTask,
+                                    isDark: isDark,
+                                  ),
+                                )
+                              : const SizedBox.shrink()),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
 
-          const SizedBox(width: 14),
-
-          // Secondary Section: 2 Inactive Drawers with Overlay for Focus/Editor (flex 6)
-          Expanded(
-            flex: 6,
-            child: Stack(
-              clipBehavior: Clip.none,
-              fit: StackFit.expand,
-              children: [
-                // Underneath: 2 Inactive Drawers side-by-side with independent tactile slot switchers
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _buildInactiveSlotSwitcher(
-                        context,
-                        status: inactiveStatuses[0],
-                        taskState: taskState,
-                        isDark: isDark,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: _buildInactiveSlotSwitcher(
-                        context,
-                        status: inactiveStatuses[1],
-                        taskState: taskState,
-                        isDark: isDark,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Overlay Panel: at max 1 instance of an overlay at a time.
-                // Editing/creating a pin goes on top of focus mode with smooth entrance/exit!
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 360),
+              // 2. Active Drawer on the left (rendered on top so it glides across the screen from right to left!)
+              Positioned(
+                left: 0,
+                top: 0,
+                width: activeWidth,
+                bottom: 0,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 650),
                   switchInCurve: Curves.linear,
                   switchOutCurve: Curves.linear,
                   layoutBuilder:
                       (Widget? currentChild, List<Widget> previousChildren) {
                     return Stack(
+                      clipBehavior: Clip.none,
                       fit: StackFit.expand,
                       children: <Widget>[
                         ...previousChildren,
@@ -232,142 +245,146 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                       curve: Curves.easeInOutCubic,
                       reverseCurve: Curves.easeInOutCubic,
                     );
-                    return SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.0, 0.04),
-                        end: Offset.zero,
-                      ).animate(curved),
-                      child: FadeTransition(
-                        opacity: CurvedAnimation(
-                          parent: animation,
-                          curve:
-                              const Interval(0.0, 0.85, curve: Curves.easeOut),
-                          reverseCurve:
-                              const Interval(0.0, 0.85, curve: Curves.easeIn),
+
+                    // Cross-screen physical pixel slide:
+                    // Incoming: starts at exact pixel position of clicked slot (targetPixelX) and slides left to 0.0!
+                    // Outgoing: starts at 0.0 and slides right to targetPixelX!
+                    final slideAnimation = Tween<Offset>(
+                      begin: Offset(targetPixelX, 0.0),
+                      end: Offset.zero,
+                    ).animate(curved);
+
+                    // Tactile 3D scale:
+                    // Incoming: starts at 0.88 and expands into active foreground (1.0).
+                    // Outgoing: shrinks from 1.0 down to 0.88 into inactive slot.
+                    final scaleAnimation = Tween<double>(
+                      begin: 0.88,
+                      end: 1.0,
+                    ).animate(curved);
+
+                    // Subtle 3D perspective depth tilt during transit
+                    final tiltAnimation = Tween<double>(
+                      begin: -0.035,
+                      end: 0.0,
+                    ).animate(curved);
+
+                    // Both cards remain fully visible throughout their cross-screen transit:
+                    // Incoming starts at 0.85 (inactive opacity) and brightens to 1.0.
+                    // Outgoing starts at 1.0 and smoothly eases to 0.85.
+                    final opacityAnimation = Tween<double>(
+                      begin: 0.85,
+                      end: 1.0,
+                    ).animate(curved);
+
+                    return AnimatedBuilder(
+                      animation: curved,
+                      builder: (context, childWidget) {
+                        return Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.identity()
+                            ..setEntry(3, 2, 0.001) // perspective
+                            ..rotateY(tiltAnimation.value),
+                          child: childWidget,
+                        );
+                      },
+                      child: _PixelSlideTransition(
+                        offset: slideAnimation,
+                        child: ScaleTransition(
+                          scale: scaleAnimation,
+                          alignment: Alignment.center,
+                          child: FadeTransition(
+                            opacity: opacityAnimation,
+                            child: child,
+                          ),
                         ),
-                        child: child,
                       ),
                     );
                   },
-                  child: activeTaskEditor != null
-                      ? KeyedSubtree(
-                          key: const ValueKey<String>('editor_overlay'),
-                          child: _buildEditorOverlay(
-                            context,
-                            args: activeTaskEditor,
-                            isDark: isDark,
-                          ),
-                        )
-                      : (activeFocusTask != null
-                          ? KeyedSubtree(
-                              key: ValueKey<String>(
-                                  'focus_overlay_${activeFocusTask.id}'),
-                              child: _buildFocusOverlay(
-                                context,
-                                task: activeFocusTask,
-                                isDark: isDark,
-                              ),
-                            )
-                          : const SizedBox.shrink()),
+                  child: KeyedSubtree(
+                    key: ValueKey<TaskStatus>(activeDeck),
+                    child: _buildActiveDrawer(
+                      context,
+                      status: activeDeck,
+                      taskState: taskState,
+                      isDark: isDark,
+                    ),
+                  ),
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  /// Builds an independently animated switcher slot for an inactive drawer column.
-  Widget _buildInactiveSlotSwitcher(
+  /// Builds an inactive drawer slot with a subtle docking outline, smoothly receiving the arriving card.
+  Widget _buildInactiveSlot(
     BuildContext context, {
     required TaskStatus status,
     required TaskListState taskState,
     required bool isDark,
   }) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
-      switchInCurve: Curves.linear,
-      switchOutCurve: Curves.linear,
-      layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
-        return Stack(
-          clipBehavior: Clip.none,
-          fit: StackFit.expand,
-          children: <Widget>[
-            ...previousChildren,
-            if (currentChild != null) currentChild,
-          ],
-        );
-      },
-      transitionBuilder: (child, animation) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeInOutCubic,
-          reverseCurve: Curves.easeInOutCubic,
-        );
+    final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
+    final cardBg =
+        isDark ? PinTokens.darkStackedTabBg : PinTokens.lightStackedTabBg;
 
-        // Prominent physical directional slide:
-        // Incoming: was active on the left, so slides in from the left (-0.20 -> 0.0, ~80px).
-        // Outgoing: promoted to active on the left, so slides to the left (0.0 -> -0.20).
-        final slideAnimation = Tween<Offset>(
-          begin: const Offset(-0.20, 0.0),
-          end: Offset.zero,
-        ).animate(curved);
-
-        // Tactile 3D scale: expands into inactive slot (0.85 -> 1.0)
-        // Outgoing shrinks as it departs towards active column (1.0 -> 0.85)
-        final scaleAnimation = Tween<double>(
-          begin: 0.85,
-          end: 1.0,
-        ).animate(curved);
-
-        // 3D perspective depth tilt as card enters from left
-        final tiltAnimation = Tween<double>(
-          begin: 0.035,
-          end: 0.0,
-        ).animate(curved);
-
-        // Synchronized opacity fade matching mobile fluidity
-        final fadeAnimation = CurvedAnimation(
-          parent: animation,
-          curve: const Interval(0.0, 0.70, curve: Curves.easeInOut),
-          reverseCurve:
-              const Interval(0.30, 1.0, curve: Curves.easeInOut),
-        );
-
-        return AnimatedBuilder(
-          animation: curved,
-          builder: (context, childWidget) {
-            return Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.001) // perspective
-                ..rotateY(tiltAnimation.value),
-              child: childWidget,
-            );
-          },
-          child: SlideTransition(
-            position: slideAnimation,
-            child: ScaleTransition(
-              scale: scaleAnimation,
-              alignment: Alignment.center,
-              child: FadeTransition(
-                opacity: fadeAnimation,
-                child: child,
-              ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Soft docking tray outline underneath the card
+        Container(
+          decoration: BoxDecoration(
+            color: cardBg.withValues(alpha: 0.35),
+            borderRadius: PinTokens.radiusDeck,
+            border: Border.all(
+              color: borderColor.withValues(alpha: 0.4),
+              width: 1.2,
             ),
           ),
-        );
-      },
-      child: KeyedSubtree(
-        key: ValueKey<TaskStatus>(status),
-        child: _buildInactiveDrawer(
-          context,
-          status: status,
-          taskState: taskState,
-          isDark: isDark,
         ),
-      ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 650),
+          switchInCurve: Curves.linear,
+          switchOutCurve: Curves.linear,
+          layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                ...previousChildren,
+                if (currentChild != null) currentChild,
+              ],
+            );
+          },
+          transitionBuilder: (child, animation) {
+            // The outgoing drawer has lifted off and is sliding across the board in the top layer;
+            // hide it from this slot to prevent any duplicate rendering.
+            // The incoming drawer docks smoothly into place as the flight arrives.
+            final isIncoming = child.key == ValueKey<TaskStatus>(status);
+            if (isIncoming) {
+              final fade = CurvedAnimation(
+                parent: animation,
+                curve: const Interval(0.65, 1.0, curve: Curves.easeIn),
+              );
+              return FadeTransition(
+                opacity: fade,
+                child: child,
+              );
+            } else {
+              return const SizedBox.shrink();
+            }
+          },
+          child: KeyedSubtree(
+            key: ValueKey<TaskStatus>(status),
+            child: _buildInactiveDrawer(
+              context,
+              status: status,
+              taskState: taskState,
+              isDark: isDark,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -860,6 +877,26 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
           ref.read(activeTaskEditorProvider.notifier).state = null;
         },
       ),
+    );
+  }
+}
+
+/// Animated widget translating child by explicit logical pixel offset.
+class _PixelSlideTransition extends AnimatedWidget {
+  final Widget child;
+
+  const _PixelSlideTransition({
+    required Animation<Offset> offset,
+    required this.child,
+  }) : super(listenable: offset);
+
+  Animation<Offset> get offset => listenable as Animation<Offset>;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: offset.value,
+      child: child,
     );
   }
 }
