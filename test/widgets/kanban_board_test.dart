@@ -244,6 +244,78 @@ void main() {
     expect(find.text('Exit'), findsOneWidget);
   });
 
+  testWidgets('animates tab change with outgoing drawer shrinking/fading back and incoming tab fading in',
+      (tester) async {
+    tester.view.physicalSize = const Size(430, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final fakeStorage = MemoryStorageAdapter();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.lightTheme,
+          home: const HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify initial active drawer is Today
+    expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.today)), findsOneWidget);
+    expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.backlog)), findsNothing);
+
+    // Tap Backlog tab to trigger tab transition
+    await tester.tap(find.text('Backlog'));
+    await tester.pump(); // Advance to start animation frame
+
+    // Advance 100ms into the 360ms transition
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Both sheets are present during the transition
+    final outgoingFinder = find.byKey(const ValueKey<TaskStatus>(TaskStatus.today));
+    final incomingFinder = find.byKey(const ValueKey<TaskStatus>(TaskStatus.backlog));
+    expect(outgoingFinder, findsOneWidget);
+    expect(incomingFinder, findsOneWidget);
+
+    // Verify outgoing drawer has started shrinking (< 1.0)
+    final outgoingScaleTransition = tester.widget<ScaleTransition>(
+      find.ancestor(
+        of: outgoingFinder,
+        matching: find.byType(ScaleTransition),
+      ).first,
+    );
+    expect(outgoingScaleTransition.scale.value, lessThan(1.0));
+    expect(outgoingScaleTransition.scale.value, greaterThanOrEqualTo(0.88));
+
+    // Verify incoming tab has started fading in (> 0.0)
+    final incomingFadeTransition = tester.widget<FadeTransition>(
+      find.ancestor(
+        of: incomingFinder,
+        matching: find.byType(FadeTransition),
+      ).first,
+    );
+    expect(incomingFadeTransition.opacity.value, greaterThan(0.0));
+    expect(incomingFadeTransition.opacity.value, lessThanOrEqualTo(1.0));
+
+    // Complete transition
+    await tester.pumpAndSettle();
+
+    // Only Backlog is active and displayed
+    expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.backlog)), findsOneWidget);
+    expect(find.byKey(const ValueKey<TaskStatus>(TaskStatus.today)), findsNothing);
+  });
+
   testWidgets('themeModeProvider defaults to ThemeMode.system', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -251,3 +323,4 @@ void main() {
     expect(container.read(themeModeProvider), ThemeMode.system);
   });
 }
+

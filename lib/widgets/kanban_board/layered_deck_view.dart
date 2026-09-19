@@ -179,60 +179,114 @@ class _LayeredDeckViewState extends ConsumerState<LayeredDeckView>
               );
             },
             transitionBuilder: (child, animation) {
+              final isIncoming = child.key == ValueKey<TaskStatus>(activeDeck);
               final isForward = _deckIndex(activeDeck) >= _deckIndex(_previousDeck);
 
-              // Apple-style fluid spring timing curve
-              final springCurve = CurvedAnimation(
-                parent: animation,
-                curve: const Cubic(0.16, 1.0, 0.3, 1.0),
-                reverseCurve: Curves.easeInCubic,
-              );
+              if (isIncoming) {
+                // Incoming selected tab: starts fading in immediately and springs forward to dock
+                final springCurve = CurvedAnimation(
+                  parent: animation,
+                  curve: const Cubic(0.16, 1.0, 0.3, 1.0),
+                  reverseCurve: Curves.easeInCubic,
+                );
 
-              // Directional vertical travel: pulls down from above or slides up from below
-              final slideAnimation = Tween<Offset>(
-                begin: isForward ? const Offset(0.0, 0.12) : const Offset(0.0, -0.12),
-                end: Offset.zero,
-              ).animate(springCurve);
+                // Smooth fade-in starts right away
+                final fadeIn = CurvedAnimation(
+                  parent: animation,
+                  curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
+                );
 
-              // 3D perspective depth scale: drawer starts recessed in stack and glides forward
-              final scaleAnimation = Tween<double>(
-                begin: 0.935,
-                end: 1.0,
-              ).animate(springCurve);
+                // Scale grows forward into the primary foreground position
+                final scaleIn = Tween<double>(
+                  begin: 0.94,
+                  end: 1.0,
+                ).animate(springCurve);
 
-              // Opacity ramp to prevent visual ghosting
-              final fadeAnimation = CurvedAnimation(
-                parent: animation,
-                curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
-                reverseCurve: const Interval(0.2, 1.0, curve: Curves.easeIn),
-              );
+                // Directional vertical travel
+                final slideIn = Tween<Offset>(
+                  begin: isForward ? const Offset(0.0, 0.06) : const Offset(0.0, -0.06),
+                  end: Offset.zero,
+                ).animate(springCurve);
 
-              return AnimatedBuilder(
-                animation: springCurve,
-                builder: (context, childWidget) {
-                  final progress = springCurve.value;
-                  // Dynamic 3D perspective tilt that flattens out smoothly as the drawer docks
-                  final tiltAngle = (1.0 - progress) * (isForward ? 0.045 : -0.045);
+                return AnimatedBuilder(
+                  animation: springCurve,
+                  builder: (context, childWidget) {
+                    final progress = springCurve.value;
+                    // Dynamic 3D perspective tilt that flattens out smoothly as the drawer docks
+                    final tiltAngle = (1.0 - progress) * (isForward ? 0.035 : -0.035);
 
-                  return Transform(
-                    alignment: isForward ? Alignment.bottomCenter : Alignment.topCenter,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.001) // perspective
-                      ..rotateX(tiltAngle),
-                    child: childWidget,
-                  );
-                },
-                child: SlideTransition(
-                  position: slideAnimation,
-                  child: ScaleTransition(
-                    scale: scaleAnimation,
-                    child: FadeTransition(
-                      opacity: fadeAnimation,
-                      child: child,
+                    return Transform(
+                      alignment: isForward ? Alignment.bottomCenter : Alignment.topCenter,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001) // perspective
+                        ..rotateX(tiltAngle),
+                      child: childWidget,
+                    );
+                  },
+                  child: SlideTransition(
+                    position: slideIn,
+                    child: ScaleTransition(
+                      alignment: Alignment.topCenter,
+                      scale: scaleIn,
+                      child: FadeTransition(
+                        opacity: fadeIn,
+                        child: child,
+                      ),
                     ),
                   ),
-                ),
-              );
+                );
+              } else {
+                // Outgoing foreground drawer: fades back and becomes smaller, receding toward stacked tabs
+                final outgoingCurve = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeInCubic,
+                );
+
+                // Shrinks from 1.0 down to 0.88 toward the top stack
+                final scaleOut = Tween<double>(
+                  begin: 0.88,
+                  end: 1.0,
+                ).animate(outgoingCurve);
+
+                // Fades back: drops opacity smoothly from 1.0 down to 0.0
+                final fadeOut = CurvedAnimation(
+                  parent: animation,
+                  curve: const Interval(0.15, 1.0, curve: Curves.easeIn),
+                );
+
+                // Tucks slightly upward toward the background tab tray
+                final slideOut = Tween<Offset>(
+                  begin: const Offset(0.0, -0.05),
+                  end: Offset.zero,
+                ).animate(outgoingCurve);
+
+                return AnimatedBuilder(
+                  animation: outgoingCurve,
+                  builder: (context, childWidget) {
+                    final progress = outgoingCurve.value;
+                    final depthTilt = (1.0 - progress) * 0.03;
+
+                    return Transform(
+                      alignment: Alignment.topCenter,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001) // perspective
+                        ..rotateX(-depthTilt),
+                      child: childWidget,
+                    );
+                  },
+                  child: SlideTransition(
+                    position: slideOut,
+                    child: ScaleTransition(
+                      alignment: Alignment.topCenter,
+                      scale: scaleOut,
+                      child: FadeTransition(
+                        opacity: fadeOut,
+                        child: child,
+                      ),
+                    ),
+                  ),
+                );
+              }
             },
             child: KeyedSubtree(
               key: ValueKey<TaskStatus>(activeDeck),
