@@ -91,12 +91,13 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
           Expanded(
             flex: 4,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 460),
+              duration: const Duration(milliseconds: 500),
               switchInCurve: Curves.linear,
               switchOutCurve: Curves.linear,
               layoutBuilder:
                   (Widget? currentChild, List<Widget> previousChildren) {
                 return Stack(
+                  clipBehavior: Clip.none,
                   fit: StackFit.expand,
                   children: <Widget>[
                     ...previousChildren,
@@ -111,36 +112,55 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                   reverseCurve: Curves.easeInOutCubic,
                 );
 
-                // Physical directional slide:
-                // Incoming active drawer slides from right (inactive section) to foreground.
+                // Prominent physical directional slide:
+                // Incoming active drawer slides from right (inactive section) to foreground (~80px).
                 // Outgoing active drawer slides to the right towards inactive section.
                 final slideAnimation = Tween<Offset>(
-                  begin: const Offset(0.06, 0.0),
+                  begin: const Offset(0.20, 0.0),
                   end: Offset.zero,
                 ).animate(curved);
 
-                // Tactile scale: expands into foreground (0.93 -> 1.0)
-                // Outgoing shrinks into background (1.0 -> 0.93)
+                // Tactile 3D scale: expands into foreground (0.85 -> 1.0)
+                // Outgoing shrinks into background (1.0 -> 0.85)
                 final scaleAnimation = Tween<double>(
-                  begin: 0.93,
+                  begin: 0.85,
                   end: 1.0,
                 ).animate(curved);
 
-                // Synchronized opacity fade
+                // 3D perspective depth tilt as card enters from right
+                final tiltAnimation = Tween<double>(
+                  begin: -0.035,
+                  end: 0.0,
+                ).animate(curved);
+
+                // Synchronized opacity fade: keeps both cards visibly interacting across travel
                 final fadeAnimation = CurvedAnimation(
                   parent: animation,
-                  curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
-                  reverseCurve: const Interval(0.0, 0.85, curve: Curves.easeIn),
+                  curve: const Interval(0.0, 0.70, curve: Curves.easeInOut),
+                  reverseCurve:
+                      const Interval(0.30, 1.0, curve: Curves.easeInOut),
                 );
 
-                return SlideTransition(
-                  position: slideAnimation,
-                  child: ScaleTransition(
-                    scale: scaleAnimation,
-                    alignment: Alignment.centerLeft,
-                    child: FadeTransition(
-                      opacity: fadeAnimation,
-                      child: child,
+                return AnimatedBuilder(
+                  animation: curved,
+                  builder: (context, childWidget) {
+                    return Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001) // perspective
+                        ..rotateY(tiltAnimation.value),
+                      child: childWidget,
+                    );
+                  },
+                  child: SlideTransition(
+                    position: slideAnimation,
+                    child: ScaleTransition(
+                      scale: scaleAnimation,
+                      alignment: Alignment.center,
+                      child: FadeTransition(
+                        opacity: fadeAnimation,
+                        child: child,
+                      ),
                     ),
                   ),
                 );
@@ -163,6 +183,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
           Expanded(
             flex: 6,
             child: Stack(
+              clipBehavior: Clip.none,
               fit: StackFit.expand,
               children: [
                 // Underneath: 2 Inactive Drawers side-by-side with independent tactile slot switchers
@@ -265,11 +286,12 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
     required bool isDark,
   }) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 460),
+      duration: const Duration(milliseconds: 500),
       switchInCurve: Curves.linear,
       switchOutCurve: Curves.linear,
       layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
         return Stack(
+          clipBehavior: Clip.none,
           fit: StackFit.expand,
           children: <Widget>[
             ...previousChildren,
@@ -284,33 +306,55 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
           reverseCurve: Curves.easeInOutCubic,
         );
 
-        // Incoming: was active on the left, so slides in from the left (-0.06 -> 0.0).
-        // Outgoing: promoted to active on the left, so slides to the left (0.0 -> -0.06).
+        // Prominent physical directional slide:
+        // Incoming: was active on the left, so slides in from the left (-0.20 -> 0.0, ~80px).
+        // Outgoing: promoted to active on the left, so slides to the left (0.0 -> -0.20).
         final slideAnimation = Tween<Offset>(
-          begin: const Offset(-0.06, 0.0),
+          begin: const Offset(-0.20, 0.0),
           end: Offset.zero,
         ).animate(curved);
 
-        // Tactile scale: incoming settles into inactive perspective; outgoing promotes
+        // Tactile 3D scale: expands into inactive slot (0.85 -> 1.0)
+        // Outgoing shrinks as it departs towards active column (1.0 -> 0.85)
         final scaleAnimation = Tween<double>(
-          begin: 1.04,
+          begin: 0.85,
           end: 1.0,
         ).animate(curved);
 
+        // 3D perspective depth tilt as card enters from left
+        final tiltAnimation = Tween<double>(
+          begin: 0.035,
+          end: 0.0,
+        ).animate(curved);
+
+        // Synchronized opacity fade matching mobile fluidity
         final fadeAnimation = CurvedAnimation(
           parent: animation,
-          curve: const Interval(0.0, 0.85, curve: Curves.easeOut),
-          reverseCurve: const Interval(0.0, 0.85, curve: Curves.easeIn),
+          curve: const Interval(0.0, 0.70, curve: Curves.easeInOut),
+          reverseCurve:
+              const Interval(0.30, 1.0, curve: Curves.easeInOut),
         );
 
-        return SlideTransition(
-          position: slideAnimation,
-          child: ScaleTransition(
-            scale: scaleAnimation,
-            alignment: Alignment.centerRight,
-            child: FadeTransition(
-              opacity: fadeAnimation,
-              child: child,
+        return AnimatedBuilder(
+          animation: curved,
+          builder: (context, childWidget) {
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001) // perspective
+                ..rotateY(tiltAnimation.value),
+              child: childWidget,
+            );
+          },
+          child: SlideTransition(
+            position: slideAnimation,
+            child: ScaleTransition(
+              scale: scaleAnimation,
+              alignment: Alignment.center,
+              child: FadeTransition(
+                opacity: fadeAnimation,
+                child: child,
+              ),
             ),
           ),
         );
