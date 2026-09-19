@@ -365,81 +365,88 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Drawer Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 14, 12),
-            child: Row(
-              children: [
-                Icon(
-                  _statusIcon(status),
-                  size: 20,
-                  color: isToday
-                      ? (isDark
-                          ? PinTokens.darkActiveFocus
-                          : PinTokens.lightActiveFocus)
-                      : textPrimary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          _statusTitle(status),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      // Count Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? PinTokens.darkCardBg
-                              : PinTokens.lightTagBg,
-                          borderRadius: PinTokens.radiusFull,
-                          border: Border.all(color: borderColor, width: 1),
-                        ),
-                        child: Text(
-                          '${tasks.length}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
+          // Drawer Header - unified 56px height with perfect baseline alignment
+          SizedBox(
+            height: 56,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(
+                    _statusIcon(status),
+                    size: 19,
+                    color: isToday
+                        ? (isDark
+                            ? PinTokens.darkActiveFocus
+                            : PinTokens.lightActiveFocus)
+                        : textPrimary,
                   ),
-                ),
-
-                // If Today: Show WIP tracker
-                if (isToday) ...[
-                  _buildWipSlots(taskState, isDark),
                   const SizedBox(width: 8),
-                ],
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _statusTitle(status),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Count Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? PinTokens.darkCardBg
+                                : PinTokens.lightTagBg,
+                            borderRadius: PinTokens.radiusFull,
+                            border: Border.all(color: borderColor, width: 1),
+                          ),
+                          child: Text(
+                            '${tasks.length}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                // Quick Add button for this drawer
-                IconButton(
-                  icon: const Icon(Icons.add_rounded, size: 20),
-                  color: isDark
-                      ? PinTokens.darkTextSecondary
-                      : PinTokens.lightFabBg,
-                  splashRadius: 18,
-                  tooltip: 'Capture Pin in ${_statusTitle(status)}',
-                  onPressed: () {
-                    ref.read(activeTaskEditorProvider.notifier).state =
-                        TaskEditorArgs(defaultStatus: status);
-                  },
-                ),
-              ],
+                  // If Today: Show WIP tracker
+                  if (isToday) ...[
+                    _buildWipSlots(taskState, isDark),
+                    const SizedBox(width: 8),
+                  ],
+
+                  // Quick Add button for this drawer
+                  IconButton(
+                    icon: const Icon(Icons.add_rounded, size: 20),
+                    color: isDark
+                        ? PinTokens.darkTextSecondary
+                        : PinTokens.lightFabBg,
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
+                    tooltip: 'Capture Pin in ${_statusTitle(status)}',
+                    onPressed: () {
+                      ref.read(activeTaskEditorProvider.notifier).state =
+                          TaskEditorArgs(defaultStatus: status);
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -461,7 +468,8 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                             constraints: BoxConstraints(
                               minHeight: constraints.maxHeight,
                             ),
-                            child: _buildEmptyState(status, isDark, textSecondary),
+                            child:
+                                _buildEmptyState(status, isDark, textSecondary),
                           ),
                         );
                       },
@@ -471,7 +479,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                     controller: _activeScrollController,
                     child: ListView.builder(
                       controller: _activeScrollController,
-                      padding: const EdgeInsets.fromLTRB(14, 14, 14, 80),
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
                       itemCount: tasks.length,
                       itemBuilder: (context, index) {
                         final t = tasks[index];
@@ -530,7 +538,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                 color: isHovered
                     ? (isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg)
                     : borderColor,
-                width: isHovered ? 1.4 : 1.0,
+                width: isHovered ? 1.4 : 1.2,
               ),
               boxShadow: isHovered
                   ? [
@@ -545,65 +553,84 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Inactive Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 10, 10),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _statusIcon(status),
-                        size: 17,
-                        color: textSecondary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _statusTitle(status),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: textPrimary,
-                            letterSpacing: -0.2,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Count Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? PinTokens.darkCardBg
-                              : PinTokens.lightTagBg,
-                          borderRadius: PinTokens.radiusFull,
-                          border: Border.all(color: borderColor, width: 1),
-                        ),
-                        child: Text(
-                          '${tasks.length}',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ),
-                      if (status == TaskStatus.done && tasks.isNotEmpty) ...[
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                // Inactive Header - unified 56px height perfectly matching active drawer
+                SizedBox(
+                  height: 56,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _statusIcon(status),
+                          size: 19,
                           color: textSecondary,
-                          splashRadius: 14,
-                          padding: EdgeInsets.zero,
-                          constraints:
-                              const BoxConstraints(minWidth: 24, minHeight: 24),
-                          tooltip: 'Clear Done Tasks',
-                          onPressed: () {
-                            ref.read(taskStateProvider.notifier).clearDoneTasks();
-                          },
                         ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _statusTitle(status),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: textPrimary,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              // Count Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? PinTokens.darkCardBg
+                                      : PinTokens.lightTagBg,
+                                  borderRadius: PinTokens.radiusFull,
+                                  border:
+                                      Border.all(color: borderColor, width: 1),
+                                ),
+                                child: Text(
+                                  '${tasks.length}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (status == TaskStatus.today) ...[
+                          _buildWipSlots(taskState, isDark),
+                          const SizedBox(width: 8),
+                        ],
+                        if (status == TaskStatus.done && tasks.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.delete_sweep_outlined,
+                                size: 17),
+                            color: textSecondary,
+                            splashRadius: 16,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                                minWidth: 32, minHeight: 32),
+                            tooltip: 'Clear Done Tasks',
+                            onPressed: () {
+                              ref
+                                  .read(taskStateProvider.notifier)
+                                  .clearDoneTasks();
+                            },
+                          )
+                        else
+                          const SizedBox(width: 32, height: 32),
                       ],
-                    ],
+                    ),
                   ),
                 ),
 
@@ -627,7 +654,7 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView> {
                       : AbsorbPointer(
                           absorbing: true, // Click anywhere activates drawer
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
                             itemCount: tasks.length,
                             itemBuilder: (context, index) {
                               return TaskCard(task: tasks[index]);
