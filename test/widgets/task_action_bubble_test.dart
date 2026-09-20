@@ -254,4 +254,48 @@ void main() {
     // Bubble is dismissed
     expect(find.byType(TaskActionBubble), findsNothing);
   });
+
+  testWidgets('Tapping green checkmark on TaskCard moves task to done', (tester) async {
+    final fakeStorage = MemoryStorageAdapter([testTask.toJson()]);
+    late WidgetRef capturedRef;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: Consumer(
+          builder: (context, ref, child) {
+            capturedRef = ref;
+            final tasks = ref.watch(taskStateProvider).tasks;
+            final currentTask = tasks.isNotEmpty ? tasks.first : testTask;
+            return MaterialApp(
+              theme: PinTheme.darkTheme,
+              home: Scaffold(
+                body: TaskCard(task: currentTask),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Find the green checkmark icon button
+    final checkmark = find.byTooltip('Move to Done');
+    expect(checkmark, findsOneWidget);
+
+    await tester.tap(checkmark);
+    await tester.pumpAndSettle();
+
+    // Verify task is now moved to Done
+    expect(capturedRef.read(taskStateProvider).doneTasks.length, 1);
+    expect(capturedRef.read(taskStateProvider).doneTasks.first.id, testTask.id);
+  });
 }

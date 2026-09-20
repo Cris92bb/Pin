@@ -136,6 +136,31 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       ref.read(taskStateProvider.notifier).togglePin(task.id);
                     },
                   ),
+                  const SizedBox(width: 4),
+
+                  // Move to Done Action (green checkmark)
+                  IconButton(
+                    icon: Icon(
+                      isDone
+                          ? Icons.check_circle_rounded
+                          : Icons.check_rounded,
+                      size: 18,
+                      color: PinTokens.accentEmerald,
+                    ),
+                    splashRadius: 16,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 26, minHeight: 26),
+                    tooltip: isDone ? 'Move back to Today' : 'Move to Done',
+                    onPressed: () {
+                      final notifier = ref.read(taskStateProvider.notifier);
+                      if (isDone) {
+                        notifier.moveToToday(task.id);
+                      } else {
+                        notifier.moveToDone(task.id);
+                      }
+                    },
+                  ),
                   // ACTIVE FOCUS status badge (only shown when task is currently focused)
                   if (isFocused) ...[
                     const SizedBox(width: 8),
