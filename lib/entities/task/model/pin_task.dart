@@ -10,7 +10,7 @@ enum TaskStatus {
       case TaskStatus.backlog:
         return 'Backlog';
       case TaskStatus.today:
-        return 'To do';
+        return 'Today';
       case TaskStatus.done:
         return 'Done';
     }

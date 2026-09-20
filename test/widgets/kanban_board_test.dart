@@ -42,7 +42,7 @@ void main() {
     expect(find.text('Pin'), findsOneWidget);
 
     // Verify Stacked Deck tabs
-    expect(find.text('To do'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
     expect(find.text('Backlog'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
 
