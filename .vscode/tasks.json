@@ -1,12 +1,5 @@
 {
   "version": "2.0.0",
-  "options": {
-    "env": {
-      "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
-      "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
-      "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
-    }
-  },
   "tasks": [
     {
       "label": "Flutter: Run Tests",

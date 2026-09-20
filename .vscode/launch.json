@@ -7,12 +7,7 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "linux",
-      "flutterMode": "debug",
-      "env": {
-        "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
-        "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
-        "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
-      }
+      "flutterMode": "debug"
     },
     {
       "name": "Pin (Web - Server)",
@@ -21,7 +16,7 @@
       "program": "lib/main.dart",
       "deviceId": "web-server",
       "flutterMode": "debug",
-      "args": ["--web-port", "8080", "--web-hostname", "0.0.0.0"]
+      "args": ["--web-port", "5000", "--web-hostname", "0.0.0.0"]
     },
     {
       "name": "Pin (Web - Chrome)",
@@ -29,7 +24,8 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "chrome",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "args": ["--web-port", "5000"]
     },
     {
       "name": "Pin (Smartphone / Connected Device)",
@@ -44,12 +40,7 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "android",
-      "flutterMode": "debug",
-      "env": {
-        "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
-        "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
-        "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
-      }
+      "flutterMode": "debug"
     },
     {
       "name": "Pin (Desktop Release)",
@@ -57,12 +48,7 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "linux",
-      "flutterMode": "release",
-      "env": {
-        "PATH": "/home/cris92bb/flutter/bin:/home/cris92bb/.local/bin:/home/cris92bb/.local/usr/bin:/home/cris92bb/.local/usr/lib/git-core:${env:PATH}",
-        "PKG_CONFIG_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu/pkgconfig:/home/cris92bb/.local/usr/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig",
-        "LD_LIBRARY_PATH": "/home/cris92bb/.local/usr/lib/x86_64-linux-gnu:/home/cris92bb/.local/usr/lib:${env:LD_LIBRARY_PATH}"
-      }
+      "flutterMode": "release"
     }
   ]
 }
