@@ -57,6 +57,10 @@
                     android:pathPrefix="/pin" />
             </intent-filter>
         </service>
+        <!-- Gemini Nano on-device AI integration via Android AICore -->
+        <uses-library
+            android:name="com.google.android.aicore"
+            android:required="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -64,6 +68,7 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <package android:name="com.google.android.aicore" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />

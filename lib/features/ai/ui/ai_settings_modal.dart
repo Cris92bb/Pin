@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
 import '../services/ai_config_service.dart';
 import '../services/gemini_service.dart';
+import '../services/on_device_ai_service.dart';
+import 'components/ai_settings_feedback_banner.dart';
+import 'components/ai_settings_footer_actions.dart';
+import 'components/cloud_gemini_config_section.dart';
+import 'components/execution_mode_selector.dart';
+import 'components/on_device_ai_status_card.dart';
 
-/// Modal dialog for managing the Gemini API key and model selection.
+/// Modal dialog for configuring On-Device Gemini Nano and Cloud Gemini settings.
 class AiSettingsModal extends ConsumerStatefulWidget {
   const AiSettingsModal({super.key});
 
@@ -24,8 +29,10 @@ class AiSettingsModal extends ConsumerStatefulWidget {
 class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
   late final TextEditingController _keyController;
   late String _selectedModel;
+  late AiExecutionMode _executionMode;
   bool _obscureKey = true;
   bool _isTesting = false;
+  bool _isCheckingCapability = false;
   String? _testResultSuccess;
   String? _testResultError;
 
@@ -35,6 +42,11 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
     final config = ref.read(aiConfigProvider);
     _keyController = TextEditingController(text: config.apiKey);
     _selectedModel = config.selectedModel;
+    _executionMode = config.executionMode;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshCapability();
+    });
   }
 
   @override
@@ -43,7 +55,65 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
     super.dispose();
   }
 
-  Future<void> _testConnection() async {
+  Future<void> _refreshCapability() async {
+    setState(() => _isCheckingCapability = true);
+    await ref.read(aiConfigProvider.notifier).refreshCapability();
+    if (mounted) {
+      setState(() => _isCheckingCapability = false);
+    }
+  }
+
+  Future<void> _downloadModel() async {
+    setState(() => _isCheckingCapability = true);
+    final success = await OnDeviceAiService().downloadModel();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Gemini Nano download initiated via AICore.'
+                : 'Could not initiate download.',
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      await _refreshCapability();
+    }
+  }
+
+  Future<void> _testOnDevice() async {
+    setState(() {
+      _isTesting = true;
+      _testResultError = null;
+      _testResultSuccess = null;
+    });
+
+    try {
+      final breakdown = await OnDeviceAiService().breakdownTaskOnDevice(
+        prompt: 'Test Gemini Nano on-device connection',
+      );
+      if (mounted) {
+        setState(() {
+          _testResultSuccess =
+              '⚡ On-device Gemini Nano responded in real-time! (${breakdown.atomicSteps.length} steps generated)';
+          _testResultError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _testResultError = e.toString();
+          _testResultSuccess = null;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isTesting = false);
+      }
+    }
+  }
+
+  Future<void> _testCloudConnection() async {
     final key = _keyController.text.trim();
     if (key.isEmpty) {
       setState(() {
@@ -64,7 +134,7 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
       await service.testConnection(key, model: _selectedModel);
       if (mounted) {
         setState(() {
-          _testResultSuccess = 'Successfully connected to Gemini ($_selectedModel)!';
+          _testResultSuccess = 'Successfully connected to Gemini Cloud ($_selectedModel)!';
           _testResultError = null;
         });
       }
@@ -77,9 +147,7 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isTesting = false;
-        });
+        setState(() => _isTesting = false);
       }
     }
   }
@@ -88,16 +156,14 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
     final key = _keyController.text.trim();
     await ref.read(aiConfigProvider.notifier).setApiKey(key);
     await ref.read(aiConfigProvider.notifier).setModel(_selectedModel);
+    await ref.read(aiConfigProvider.notifier).setExecutionMode(_executionMode);
+
     if (mounted) {
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            key.isEmpty
-                ? 'Gemini API key cleared.'
-                : 'Gemini settings saved successfully.',
-          ),
-          duration: const Duration(seconds: 2),
+        const SnackBar(
+          content: Text('Gemini settings saved successfully.'),
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -105,12 +171,14 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
     final cardBg = isDark ? PinTokens.darkCardBg : PinTokens.lightCardBg;
     final borderColor = isDark ? PinTokens.darkBorder : PinTokens.lightBorder;
-    final surfaceBg = isDark ? Colors.white.withValues(alpha: 0.04) : PinTokens.lightCanvasBg;
+
+    final config = ref.watch(aiConfigProvider);
 
     return Dialog(
       backgroundColor: cardBg,
@@ -120,341 +188,105 @@ class _AiSettingsModalState extends ConsumerState<AiSettingsModal> {
       ),
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 780),
         child: Padding(
           padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? PinTokens.accentEmerald.withValues(alpha: 0.15)
-                          : PinTokens.headerSyncBgLight,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF1F3D2E) : PinTokens.headerSyncBorderLight,
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 18,
-                      color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Gemini AI Settings',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: textPrimary,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Task decomposition & auto-fill',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      size: 20,
-                      color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 18),
-
-              // API Key field label & link
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Text(
-                      'GEMINI API KEY',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: textSecondary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'aistudio.google.com',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // API Key text input
-              TextField(
-                controller: _keyController,
-                obscureText: _obscureKey,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  color: textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'AIzaSy...',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: textSecondary.withValues(alpha: 0.5),
-                  ),
-                  filled: true,
-                  fillColor: surfaceBg,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: PinTokens.radiusMd,
-                    borderSide: BorderSide(color: borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: PinTokens.radiusMd,
-                    borderSide: BorderSide(
-                      color: isDark ? PinTokens.darkActiveFocus : PinTokens.lightFabBg,
-                      width: 1.2,
-                    ),
-                  ),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _obscureKey
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          size: 18,
-                        ),
-                        color: textSecondary,
-                        onPressed: () {
-                          setState(() {
-                            _obscureKey = !_obscureKey;
-                          });
-                        },
-                      ),
-                      if (_keyController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18),
-                          color: textSecondary,
-                          onPressed: () {
-                            setState(() {
-                              _keyController.clear();
-                              _testResultError = null;
-                              _testResultSuccess = null;
-                            });
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-                onChanged: (_) {
-                  if (_testResultError != null || _testResultSuccess != null) {
-                    setState(() {
-                      _testResultError = null;
-                      _testResultSuccess = null;
-                    });
-                  }
-                },
-              ),
-
+              _buildHeader(context, textPrimary, textSecondary, isDark),
               const SizedBox(height: 16),
-
-              // Model selector
-              Text(
-                'MODEL',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: surfaceBg,
-                  borderRadius: PinTokens.radiusMd,
-                  border: Border.all(color: borderColor),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedModel,
-                    isExpanded: true,
-                    dropdownColor: cardBg,
-                    style: TextStyle(fontSize: 13, color: textPrimary),
-                    items: AiConfigNotifier.availableModels.map((m) {
-                      final label = m == 'gemini-3.6-flash'
-                          ? '$m (Recommended)'
-                          : m;
-                      return DropdownMenuItem<String>(
-                        value: m,
-                        child: Text(label),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _selectedModel = val;
-                          _testResultError = null;
-                          _testResultSuccess = null;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-
-              // Status messages (success or error)
-              if (_testResultSuccess != null) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.12),
-                    borderRadius: PinTokens.radiusMd,
-                    border: Border.all(
-                      color: Colors.green.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        color: Colors.green,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _testResultSuccess!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.green,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              if (_testResultError != null) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.12),
-                    borderRadius: PinTokens.radiusMd,
-                    border: Border.all(
-                      color: Colors.red.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Row(
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Colors.redAccent,
-                        size: 16,
+                      OnDeviceAiStatusCard(
+                        capability: config.onDeviceCapability,
+                        isChecking: _isCheckingCapability,
+                        onRefresh: _refreshCapability,
+                        onDownload: _downloadModel,
+                        onTest: _testOnDevice,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _testResultError!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.redAccent,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      const SizedBox(height: 16),
+                      ExecutionModeSelector(
+                        currentMode: _executionMode,
+                        onModeChanged: (mode) => setState(() => _executionMode = mode),
+                      ),
+                      const SizedBox(height: 16),
+                      CloudGeminiConfigSection(
+                        controller: _keyController,
+                        obscureKey: _obscureKey,
+                        onToggleObscure: () => setState(() => _obscureKey = !_obscureKey),
+                        selectedModel: _selectedModel,
+                        availableModels: AiConfigNotifier.availableModels,
+                        onModelChanged: (model) => setState(() => _selectedModel = model),
+                      ),
+                      if (_testResultSuccess != null || _testResultError != null) ...[
+                        const SizedBox(height: 12),
+                        AiSettingsFeedbackBanner(
+                          successMessage: _testResultSuccess,
+                          errorMessage: _testResultError,
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
-              ],
-
-              const SizedBox(height: 20),
-
-              // Actions
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _isTesting ? null : _testConnection,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: textPrimary,
-                      side: BorderSide(color: borderColor),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: PinTokens.radiusMd,
-                      ),
-                    ),
-                    icon: _isTesting
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(PinTokens.primary),
-                            ),
-                          )
-                        : const Icon(Icons.bolt_rounded, size: 16),
-                    label: Text(
-                      _isTesting ? 'Testing...' : 'Test',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const Spacer(),
-                  PinButton.primary(
-                    text: 'Save',
-                    icon: Icons.check_rounded,
-                    onPressed: _saveSettings,
-                  ),
-                ],
+              ),
+              const SizedBox(height: 16),
+              AiSettingsFooterActions(
+                isTesting: _isTesting,
+                onTestCloud: _testCloudConnection,
+                onCancel: () => Navigator.of(context).pop(),
+                onSave: _saveSettings,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, Color primary, Color secondary, bool isDark) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isDark ? PinTokens.darkEnergyLowBg : PinTokens.lightSheetBg,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.auto_awesome_rounded,
+            size: 18,
+            color: isDark ? PinTokens.darkEnergyLowText : PinTokens.lightActiveFocus,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Gemini AI Settings',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: primary),
+              ),
+              Text(
+                'On-Device Nano & Cloud Gemini breakdown',
+                style: TextStyle(fontSize: 12, color: secondary),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.close_rounded, size: 20, color: secondary),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 }
