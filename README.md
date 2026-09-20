@@ -63,6 +63,7 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
   - 100% functional without an account or internet connection.
   - Zero required cloud dependencies or telemetry; guest mode works entirely offline.
 - **📤 Transfer, Sharing & Calendar Integration**:
+  - **🔗 Deep Link Sharing & Instant In-App Import**: Generate `pin://import?blueprint=...` links to share with friends or teammates. Tapping a shared link in messages, email, or browser automatically launches Pin, displays a tactile preview of the pin with checklist, and imports it directly to Today or Backlog with one tap.
   - **Formatted Text & Markdown Export**: One-tap copy of single pins or entire decks into beautifully formatted Markdown with energy badges, tags, and checklist checkboxes for sharing into Slack, email, or notes.
   - **📅 Direct Calendar Integration**: One-tap "Add to Calendar" triggers Google Calendar on Android / mobile or web calendar on desktop with pre-filled title, duration, and details. Full RFC 5545 `.ics` event export supported.
   - **Portable Blueprints**: Offline Base64 blueprints for instant cross-device transfer without cloud dependencies.

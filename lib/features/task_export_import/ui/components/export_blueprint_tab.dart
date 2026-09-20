@@ -6,6 +6,7 @@ import '../../../../entities/task/state/task_state_notifier.dart';
 import 'package:pin/shared/lib/blueprint_codec.dart';
 import '../../../../shared/ui/pin_button.dart';
 import '../../../../shared/ui/pin_tokens.dart';
+import '../../services/deep_link_service.dart';
 
 /// Tab for exporting portable base64 / JSON blueprints for offline cross-device sync.
 class ExportBlueprintTab extends ConsumerStatefulWidget {
@@ -18,6 +19,7 @@ class ExportBlueprintTab extends ConsumerStatefulWidget {
 class _ExportBlueprintTabState extends ConsumerState<ExportBlueprintTab> {
   String _selectedScope = 'all'; // 'all' | 'today' | 'backlog'
   bool _copied = false;
+  bool _copiedLink = false;
 
   List<PinTask> _filterTasks(List<PinTask> allTasks) {
     switch (_selectedScope) {
@@ -36,6 +38,14 @@ class _ExportBlueprintTabState extends ConsumerState<ExportBlueprintTab> {
     setState(() => _copied = true);
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  Future<void> _copyLink(String link) async {
+    await Clipboard.setData(ClipboardData(text: link));
+    setState(() => _copiedLink = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copiedLink = false);
     });
   }
 
@@ -107,17 +117,35 @@ class _ExportBlueprintTabState extends ConsumerState<ExportBlueprintTab> {
         const SizedBox(height: 14),
 
         // Footer Actions
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             Text(
               '${filtered.length} task${filtered.length == 1 ? '' : 's'} in blueprint',
               style: TextStyle(fontSize: 12, color: textSecondary),
             ),
-            PinButton.primary(
-              icon: _copied ? Icons.check_rounded : Icons.copy_rounded,
-              text: _copied ? 'Copied Blueprint!' : 'Copy Blueprint Code',
-              onPressed: blueprint.isNotEmpty ? () => _copyToClipboard(blueprint) : null,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PinButton(
+                  icon: _copiedLink ? Icons.check_rounded : Icons.link_rounded,
+                  text: _copiedLink ? 'Copied Link!' : 'Copy Link',
+                  isCompact: true,
+                  onPressed: filtered.isNotEmpty
+                      ? () => _copyLink(DeepLinkService.generateBoardShareLink(filtered))
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                PinButton.primary(
+                  icon: _copied ? Icons.check_rounded : Icons.copy_rounded,
+                  text: _copied ? 'Copied Blueprint!' : 'Copy Blueprint Code',
+                  isCompact: true,
+                  onPressed: blueprint.isNotEmpty ? () => _copyToClipboard(blueprint) : null,
+                ),
+              ],
             ),
           ],
         ),

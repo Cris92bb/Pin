@@ -34,11 +34,18 @@ void main() {
 
     // Verify Title and Tabs
     expect(find.text('Share Pin: Deploy microservice to staging'), findsOneWidget);
-    expect(find.text('As Text'), findsOneWidget);
+    expect(find.text('Link'), findsOneWidget);
+    expect(find.text('Text'), findsOneWidget);
     expect(find.text('Calendar'), findsOneWidget);
     expect(find.text('Blueprint'), findsOneWidget);
 
-    // Initial tab: As Text
+    // Initial tab: Link
+    expect(find.text('Copy Share Link'), findsOneWidget);
+    expect(find.textContaining('pin://import?blueprint='), findsOneWidget);
+
+    // Switch to Text tab
+    await tester.tap(find.text('Text'));
+    await tester.pumpAndSettle();
     expect(find.text('Copy Formatted Text'), findsOneWidget);
     expect(find.textContaining('📌 Deploy microservice to staging'), findsOneWidget);
 

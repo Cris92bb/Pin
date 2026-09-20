@@ -4,6 +4,7 @@ import '../../../shared/ui/pin_button.dart';
 import '../../../shared/ui/pin_tokens.dart';
 import 'components/single_task_blueprint_tab.dart';
 import 'components/single_task_calendar_tab.dart';
+import 'components/single_task_link_tab.dart';
 import 'components/single_task_text_tab.dart';
 
 /// Tactile modal dialog for sharing an individual Pin via Text, Calendar, or Blueprint code.
@@ -32,7 +33,7 @@ class _SingleTaskShareModalState extends State<SingleTaskShareModal>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -117,7 +118,8 @@ class _SingleTaskShareModalState extends State<SingleTaskShareModal>
                   unselectedLabelColor: textSecondary,
                   labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   tabs: const [
-                    Tab(icon: Icon(Icons.notes_rounded, size: 15), text: 'As Text'),
+                    Tab(icon: Icon(Icons.link_rounded, size: 15), text: 'Link'),
+                    Tab(icon: Icon(Icons.notes_rounded, size: 15), text: 'Text'),
                     Tab(icon: Icon(Icons.event_available_rounded, size: 15), text: 'Calendar'),
                     Tab(icon: Icon(Icons.qr_code_2_rounded, size: 15), text: 'Blueprint'),
                   ],
@@ -130,6 +132,7 @@ class _SingleTaskShareModalState extends State<SingleTaskShareModal>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
+                    SingleTaskLinkTab(task: widget.task),
                     SingleTaskTextTab(task: widget.task),
                     SingleTaskCalendarTab(task: widget.task),
                     SingleTaskBlueprintTab(task: widget.task),
