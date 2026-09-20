@@ -6,10 +6,20 @@ import 'package:url_launcher/url_launcher.dart';
 import '../google_sso_desktop_html.dart';
 import '../google_sso_result.dart';
 import 'google_sso_runner.dart';
+import 'google_sso_runner_mobile.dart';
 
-/// Instantiates the native desktop loopback SSO runner.
-GoogleSsoPlatformRunner createPlatformRunner({http.Client? httpClient}) =>
-    GoogleSsoDesktopRunner(httpClient: httpClient);
+/// Instantiates the appropriate SSO runner for the active platform.
+///
+/// On Android and iOS, returns [GoogleSsoMobileRunner] which uses the
+/// `google_sign_in` plugin for native credential management.
+/// On desktop (Linux, macOS, Windows), returns [GoogleSsoDesktopRunner]
+/// which uses an RFC 8252 loopback redirect via a local HTTP server.
+GoogleSsoPlatformRunner createPlatformRunner({http.Client? httpClient}) {
+  if (Platform.isAndroid || Platform.isIOS) {
+    return GoogleSsoMobileRunner();
+  }
+  return GoogleSsoDesktopRunner(httpClient: httpClient);
+}
 
 /// Native desktop implementation of Google SSO via RFC 8252 loopback redirect.
 class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
