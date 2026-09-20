@@ -94,7 +94,7 @@ extension SyncAuthCoordinator on SyncController {
       final ssoService = GoogleSsoService();
       activeSsoService = ssoService;
       final result = await ssoService.signIn(
-        clientId: state.config.oAuthClientId,
+        clientId: state.config.activeOAuthClientId,
         clientSecret: state.config.oAuthClientSecret,
       );
       activeSsoService = null;
@@ -112,7 +112,10 @@ extension SyncAuthCoordinator on SyncController {
         );
         return false;
       }
-      final user = await authService.signInWithGoogleSso(result.idToken!);
+      final user = await authService.signInWithGoogleSso(
+        idToken: result.idToken,
+        accessToken: result.accessToken,
+      );
       await onUserAuthenticated(user);
       return true;
     } catch (e) {

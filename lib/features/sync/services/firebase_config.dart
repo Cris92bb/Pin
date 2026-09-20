@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,7 @@ class FirebaseConfig {
   static const String _keyStorageBucket = 'firebase_storage_bucket';
   static const String _keyOAuthClientId = 'firebase_oauth_client_id';
   static const String _keyOAuthClientSecret = 'firebase_oauth_client_secret';
+  static const String _keyWebOAuthClientId = 'firebase_web_oauth_client_id';
 
   final String apiKey;
   final String projectId;
@@ -20,6 +22,7 @@ class FirebaseConfig {
   final String storageBucket;
   final String oAuthClientId;
   final String oAuthClientSecret;
+  final String webOAuthClientId;
 
   const FirebaseConfig({
     this.apiKey = '',
@@ -29,7 +32,16 @@ class FirebaseConfig {
     this.storageBucket = '',
     this.oAuthClientId = '',
     this.oAuthClientSecret = '',
+    this.webOAuthClientId = '',
   });
+
+  /// Automatically resolves the correct OAuth Client ID for the active runtime platform.
+  String get activeOAuthClientId {
+    if (kIsWeb && webOAuthClientId.trim().isNotEmpty) {
+      return webOAuthClientId.trim();
+    }
+    return oAuthClientId.trim();
+  }
 
   bool get isConfigured => apiKey.trim().isNotEmpty && projectId.trim().isNotEmpty;
 
@@ -41,6 +53,7 @@ class FirebaseConfig {
     String? storageBucket,
     String? oAuthClientId,
     String? oAuthClientSecret,
+    String? webOAuthClientId,
   }) {
     return FirebaseConfig(
       apiKey: apiKey ?? this.apiKey,
@@ -50,6 +63,7 @@ class FirebaseConfig {
       storageBucket: storageBucket ?? this.storageBucket,
       oAuthClientId: oAuthClientId ?? this.oAuthClientId,
       oAuthClientSecret: oAuthClientSecret ?? this.oAuthClientSecret,
+      webOAuthClientId: webOAuthClientId ?? this.webOAuthClientId,
     );
   }
 
@@ -61,6 +75,7 @@ class FirebaseConfig {
         'storageBucket': storageBucket,
         'oAuthClientId': oAuthClientId,
         'oAuthClientSecret': oAuthClientSecret,
+        'webOAuthClientId': webOAuthClientId,
       };
 
   factory FirebaseConfig.fromJson(Map<String, dynamic> json) => FirebaseConfig(
@@ -73,6 +88,7 @@ class FirebaseConfig {
         oAuthClientSecret: json['oAuthClientSecret'] as String? ??
             json['clientSecret'] as String? ??
             '',
+        webOAuthClientId: json['webOAuthClientId'] as String? ?? '',
       );
 
   /// Loads Firebase configuration.
@@ -120,6 +136,7 @@ class FirebaseConfig {
       final storageBucket = prefs.getString(_keyStorageBucket) ?? '';
       final oAuthClientId = prefs.getString(_keyOAuthClientId) ?? '';
       final oAuthClientSecret = prefs.getString(_keyOAuthClientSecret) ?? '';
+      final webOAuthClientId = prefs.getString(_keyWebOAuthClientId) ?? '';
       return FirebaseConfig(
         apiKey: apiKey,
         projectId: projectId,
@@ -128,6 +145,7 @@ class FirebaseConfig {
         storageBucket: storageBucket,
         oAuthClientId: oAuthClientId,
         oAuthClientSecret: oAuthClientSecret,
+        webOAuthClientId: webOAuthClientId,
       );
     } catch (_) {
       return const FirebaseConfig();
@@ -144,6 +162,7 @@ class FirebaseConfig {
       await prefs.setString(_keyStorageBucket, storageBucket.trim());
       await prefs.setString(_keyOAuthClientId, oAuthClientId.trim());
       await prefs.setString(_keyOAuthClientSecret, oAuthClientSecret.trim());
+      await prefs.setString(_keyWebOAuthClientId, webOAuthClientId.trim());
     } catch (_) {}
   }
 
@@ -157,6 +176,7 @@ class FirebaseConfig {
       await prefs.remove(_keyStorageBucket);
       await prefs.remove(_keyOAuthClientId);
       await prefs.remove(_keyOAuthClientSecret);
+      await prefs.remove(_keyWebOAuthClientId);
     } catch (_) {}
   }
 }
