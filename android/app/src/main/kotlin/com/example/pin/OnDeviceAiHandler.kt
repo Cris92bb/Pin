@@ -3,19 +3,26 @@ package com.example.pin
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import com.google.mlkit.genai.prompt.FeatureStatus
+import com.google.mlkit.genai.common.DownloadStatus
+import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
-import com.google.mlkit.genai.prompt.generateContentRequest
+import com.google.mlkit.genai.prompt.GenerativeModel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * Handles On-Device Gemini Nano AI inference and capability checks via Android AICore
  * and Google ML Kit GenAI Prompt API for supported devices (Pixel 9+, Samsung flagships).
+ *
+ * Methods exposed through [MethodChannel]:
+ * - `checkCapability`: Reports device hardware support and AICore model readiness.
+ * - `downloadModel`: Triggers Gemini Nano model download via AICore.
+ * - `generatePrompt`: Runs on-device text inference using Gemini Nano.
  */
 class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCallHandler {
 
@@ -35,13 +42,22 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
         }
     }
 
+    /**
+     * Checks whether the current device supports on-device Gemini Nano.
+     *
+     * Reports hardware match (Pixel 9+, Samsung S24/S25, Z Fold/Flip 6),
+     * AICore app installation status, and ML Kit feature availability
+     * ([FeatureStatus.AVAILABLE], [FeatureStatus.DOWNLOADABLE], etc.).
+     */
     private fun checkCapability(result: MethodChannel.Result) {
         val manufacturer = Build.MANUFACTURER ?: "Unknown"
         val model = Build.MODEL ?: "Unknown"
         val sdkInt = Build.VERSION.SDK_INT
 
         val isKnownGoogle = manufacturer.contains("Google", ignoreCase = true) &&
-                (model.contains("Pixel 9", ignoreCase = true) || model.contains("Pixel 8 Pro", ignoreCase = true))
+                (model.contains("Pixel 9", ignoreCase = true) ||
+                 model.contains("Pixel 10", ignoreCase = true) ||
+                 model.contains("Pixel 8 Pro", ignoreCase = true))
 
         val isKnownSamsung = manufacturer.contains("samsung", ignoreCase = true) &&
                 (model.contains("SM-S92", ignoreCase = true) || // Galaxy S24 series
@@ -80,7 +96,8 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = Generation.getClient()
-                val featureStatus = client.checkStatus()
+                // checkStatus() returns an @FeatureStatus Int constant.
+                val featureStatus: Int = client.checkStatus()
 
                 val statusString = when (featureStatus) {
                     FeatureStatus.AVAILABLE -> "available"
@@ -103,6 +120,9 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
                         "Device does not support on-device Gemini Nano."
                     }
                 }
+
+                // Close the client after the status check.
+                client.close()
 
                 withContext(Dispatchers.Main) {
                     result.success(
@@ -137,22 +157,58 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
         }
     }
 
+    /**
+     * Triggers the Gemini Nano model download via AICore.
+     *
+     * [Generation.getClient] download returns a [Flow] of [DownloadStatus].
+     * This collects the flow and reports success when [DownloadStatus.DownloadCompleted]
+     * is emitted, or error on [DownloadStatus.DownloadFailed].
+     */
     private fun downloadModel(result: MethodChannel.Result) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = Generation.getClient()
-                client.download()
-                withContext(Dispatchers.Main) {
-                    result.success(true)
+                // download() returns Flow<DownloadStatus>; collect until terminal state.
+                client.download().collectLatest { status ->
+                    when (status) {
+                        is DownloadStatus.DownloadCompleted -> {
+                            client.close()
+                            withContext(Dispatchers.Main) {
+                                result.success(true)
+                            }
+                        }
+                        is DownloadStatus.DownloadFailed -> {
+                            client.close()
+                            withContext(Dispatchers.Main) {
+                                result.error(
+                                    "DOWNLOAD_ERROR",
+                                    "Gemini Nano model download failed.",
+                                    null
+                                )
+                            }
+                        }
+                        // DownloadStarted and DownloadProgress are intermediate — keep collecting.
+                        else -> { /* no-op, wait for terminal state */ }
+                    }
                 }
             } catch (t: Throwable) {
                 withContext(Dispatchers.Main) {
-                    result.error("DOWNLOAD_ERROR", t.message ?: "Failed to initiate Gemini Nano download.", null)
+                    result.error(
+                        "DOWNLOAD_ERROR",
+                        t.message ?: "Failed to initiate Gemini Nano download.",
+                        null
+                    )
                 }
             }
         }
     }
 
+    /**
+     * Runs on-device text inference using Gemini Nano.
+     *
+     * Uses [GenerativeModel.generateContent] with the simple String overload.
+     * The response text is extracted from the first [Candidate].
+     */
     private fun generatePrompt(prompt: String, result: MethodChannel.Result) {
         if (prompt.trim().isEmpty()) {
             result.error("INVALID_PROMPT", "Prompt cannot be empty.", null)
@@ -162,12 +218,11 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = Generation.getClient()
-                val response = client.generateContent(
-                    generateContentRequest {
-                        text(prompt)
-                    }
-                )
-                val responseText = response.text ?: ""
+                // Use the String overload: generateContent(String) -> GenerateContentResponse
+                val response = client.generateContent(prompt)
+                val responseText = response.candidates.firstOrNull()?.text ?: ""
+                client.close()
+
                 withContext(Dispatchers.Main) {
                     result.success(
                         mapOf(
