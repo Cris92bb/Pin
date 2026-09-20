@@ -64,9 +64,9 @@ Pin uses a clean, modern sans-serif system typeface (`fontFamily: 'sans-serif'`)
 
 ### 4.1 Corner Radii
 - **Full / Pill (`PinTokens.radiusFull`)**: `BorderRadius.circular(999)` — Badges, WIP pills, pill buttons, grab bar.
-- **Sliding Sheet Top (`PinTokens.radiusSheet`)**: `BorderRadius.vertical(top: Radius.circular(28))` — Active kanban drawer.
+- **Sliding Sheet Top (`PinTokens.radiusDeck`)**: `BorderRadius.vertical(top: Radius.circular(28))` — Active kanban drawer.
 - **Stacked Tab Top**: `BorderRadius.vertical(top: Radius.circular(24))` — Inactive drawer tabs.
-- **Card Surface (`PinTokens.radiusCard`)**: `BorderRadius.circular(16)` — Inner task cards.
+- **Card Surface (`PinTokens.radiusCard`)**: `BorderRadius.circular(20)` — Inner task cards (`radiusLg` is `16.0`).
 - **Subtask / Input (`PinTokens.radiusMd`)**: `BorderRadius.circular(10)` — Micro-step tiles, text fields.
 - **Control / Checkbox (`PinTokens.radiusSm`)**: `BorderRadius.circular(6)` — Action icons, micro buttons.
 

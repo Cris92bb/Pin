@@ -159,12 +159,10 @@ lib/
 │   ├── theme/
 │   └── app.dart
 ├── pages/                            # Full-screen views
-│   ├── home/
-│   │   ├── home_page.dart
-│   │   └── home.dart                 # Public API
-│   └── wearable/
-│       ├── wearable_home_page.dart   # Relocated from features/wearable
-│       └── wearable_page.dart        # Public API
+│   └── home/
+│       ├── home_page.dart
+│       ├── wearable_home_page.dart   # Relocated watch view
+│       └── wearable/                 # Sub-components for Wear OS screens
 ├── widgets/                          # Composite UI blocks
 │   └── kanban_board/
 │       ├── kanban_board.dart         # Public API
@@ -236,7 +234,7 @@ To eliminate horizontal feature coupling without losing existing capabilities:
    - `HomePage` or `kanban_board` provides the concrete modals upon invocation.
 
 3. **`wearable_home_page` Relocation**:
-   - Move `WearableHomePage` to `lib/pages/wearable/wearable_home_page.dart`.
+   - Move `WearableHomePage` to `lib/pages/home/wearable_home_page.dart` (with subcomponents in `lib/pages/home/wearable/`).
    - As a page, it is legally permitted in FSD to import `features/sync`, `entities/task`, and `widgets`.
 
 ---

@@ -11,11 +11,10 @@ This project supports modern multi-device form factors:
 
 ## 1. Breakpoint Philosophy
 
-Pin layout breakpoints adapt dynamically based on screen tiers and window widths (`PinBreakpoints`):
-- **Wearable**: Both display sides $\le 320$ logical pixels (Wear OS, smartwatch viewports). Dedicated `WearableHomePage` with vertical focus cards.
-- **Smartphone / Compact (< 600px)**: Companion single-column layout or compact single-drawer mode with swipeable decks.
-- **Foldable / Tablet (600px - 1024px)**: Dual/three-drawer responsive layout adapting to screen width or hinge display features.
-- **Desktop / Web ($\ge$ 1024px)**: Multi-drawer companion kanban workspace with responsive overlays, keyboard shortcuts, and full workarea height.
+Pin layout breakpoints adapt dynamically based on screen tiers and window widths (`PinBreakpoints` / `PinScreenTier`):
+- **Wearable (`PinScreenTier.xs`)**: Smartwatches / Wear OS viewports detected via `WearableUtils.isWearable(context)` or display width $< 320.0$ logical pixels (`PinBreakpoints.xsMax`). Renders the dedicated `WearableHomePage`.
+- **Smartphone / Compact (`PinScreenTier.small`)**: Screen width $< 720.0$ logical pixels (`PinBreakpoints.smallMax`). Single-column companion mode with layered swipeable deck drawers (`LayeredDeckView`).
+- **Foldable, Tablet & Desktop / Web (`PinScreenTier.wide`)**: Screen width $\ge 720.0$ logical pixels up to `wideMaxWidth` ($1240.0$ logical pixels). Responsive 3-drawer layout (`WideFoldKanbanView`) with side-by-side visible queue and active sliding overlay panel.
 
 ---
 
