@@ -86,15 +86,7 @@ class FirebaseConfig {
   ///   3. Persisted [SharedPreferences] credentials entered by the user in the
   ///      Cloud Sync settings panel.
   static Future<FirebaseConfig> load() async {
-    // 1. Flutter asset bundle (mobile & packaged desktop).
-    try {
-      final content = await rootBundle.loadString('firebase-applet-config.json');
-      final json = jsonDecode(content) as Map<String, dynamic>;
-      final fileConfig = FirebaseConfig.fromJson(json);
-      if (fileConfig.isConfigured) return fileConfig;
-    } catch (_) {}
-
-    // 2. Filesystem file relative to CWD (desktop development via flutter run).
+    // 1. Filesystem file relative to CWD (desktop development via flutter run & test runner).
     try {
       final file = File('firebase-applet-config.json');
       if (file.existsSync()) {
@@ -103,6 +95,14 @@ class FirebaseConfig {
         final fileConfig = FirebaseConfig.fromJson(json);
         if (fileConfig.isConfigured) return fileConfig;
       }
+    } catch (_) {}
+
+    // 2. Flutter asset bundle (mobile & packaged desktop).
+    try {
+      final content = await rootBundle.loadString('firebase-applet-config.json');
+      final json = jsonDecode(content) as Map<String, dynamic>;
+      final fileConfig = FirebaseConfig.fromJson(json);
+      if (fileConfig.isConfigured) return fileConfig;
     } catch (_) {}
 
     // 3. Persisted SharedPreferences credentials (user-entered via settings).

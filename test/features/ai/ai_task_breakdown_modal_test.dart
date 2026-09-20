@@ -89,7 +89,7 @@ void main() {
         overrides: [
           storageAdapterProvider.overrideWithValue(fakeStorage),
           taskStateProvider.overrideWith(
-            (ref) => TaskStateNotifier(
+            () => TaskStateNotifier(
               storage: fakeStorage,
               seedInitialSample: false,
             ),
@@ -137,7 +137,7 @@ void main() {
       ProviderScope(
         overrides: [
           storageAdapterProvider.overrideWithValue(fakeStorage),
-          taskStateProvider.overrideWith((ref) => notifier),
+          taskStateProvider.overrideWith(() => notifier),
         ],
         child: MaterialApp(
           theme: PinTheme.darkTheme,
@@ -194,7 +194,7 @@ void main() {
         overrides: [
           storageAdapterProvider.overrideWithValue(fakeStorage),
           taskStateProvider.overrideWith(
-            (ref) => TaskStateNotifier(
+            () => TaskStateNotifier(
               storage: fakeStorage,
               seedInitialSample: false,
             ),

@@ -90,6 +90,7 @@ void main() {
     late FirestoreSyncService firestoreService;
 
     setUp(() {
+      SharedPreferences.setMockInitialValues({});
       memoryStorage = MemoryStorageAdapter();
       mockHttp = MockHttpClient();
       testConfig = const FirebaseConfig(
@@ -104,7 +105,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(memoryStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: memoryStorage,
                 seedInitialSample: false,
               )),
@@ -145,13 +146,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(memoryStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: memoryStorage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -243,13 +243,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(memoryStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: memoryStorage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -271,13 +270,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(memoryStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: memoryStorage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -311,13 +309,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(memoryStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: memoryStorage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: failingAuthService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -350,13 +347,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(memoryStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: memoryStorage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -472,13 +468,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(device2Storage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: device2Storage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -551,13 +546,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(deviceStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: deviceStorage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -593,13 +587,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(memoryStorage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: memoryStorage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -727,13 +720,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(device2Storage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: device2Storage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -806,13 +798,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(device2Storage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: device2Storage,
                 seedInitialSample: false,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
@@ -858,13 +849,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           storageAdapterProvider.overrideWithValue(device2Storage),
-          taskStateProvider.overrideWith((ref) => TaskStateNotifier(
+          taskStateProvider.overrideWith(() => TaskStateNotifier(
                 storage: device2Storage,
                 seedInitialSample: true,
               )),
-          syncControllerProvider.overrideWith((ref) {
+          syncControllerProvider.overrideWith(() {
             return SyncController(
-              ref: ref,
               authService: authService,
               firestoreService: firestoreService,
               initialConfig: testConfig,
