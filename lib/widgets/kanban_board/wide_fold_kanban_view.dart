@@ -101,6 +101,19 @@ class _WideFoldKanbanViewState extends ConsumerState<WideFoldKanbanView>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<TaskListState>(taskStateProvider, (previous, next) {
+      final currentFocus = ref.read(activeFocusTaskProvider);
+      if (currentFocus != null) {
+        final matching =
+            next.tasks.where((t) => t.id == currentFocus.id).firstOrNull;
+        if (matching == null || matching.status == TaskStatus.done) {
+          ref.read(activeFocusTaskProvider.notifier).state = null;
+        } else if (matching != currentFocus) {
+          ref.read(activeFocusTaskProvider.notifier).state = matching;
+        }
+      }
+    });
+
     final taskState = ref.watch(taskStateProvider);
     final activeDeck = ref.watch(activeDeckProvider);
     final activeFocusTask = ref.watch(activeFocusTaskProvider);

@@ -147,4 +147,55 @@ void main() {
     expect(find.byTooltip('Pin to Today'), findsOneWidget);
     expect(capturedRef.read(taskStateProvider).todayTasks, isEmpty);
   });
+
+  testWidgets('Completing focused task from TaskCard clears activeFocusTaskProvider and animates completion', (tester) async {
+    final fakeStorage = MemoryStorageAdapter([testTask.toJson()]);
+    late WidgetRef capturedRef;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+          activeFocusTaskProvider.overrideWith((ref) => testTask),
+        ],
+        child: Consumer(
+          builder: (context, ref, child) {
+            capturedRef = ref;
+            final tasks = ref.watch(taskStateProvider).tasks;
+            final currentTask = tasks.isNotEmpty ? tasks.first : testTask;
+            return MaterialApp(
+              theme: PinTheme.darkTheme,
+              home: Scaffold(
+                body: TaskCard(task: currentTask),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify activeFocusTaskProvider is currently set
+    expect(capturedRef.read(activeFocusTaskProvider), isNotNull);
+    expect(capturedRef.read(activeFocusTaskProvider)!.id, testTask.id);
+
+    // Tap circular checkbox to complete task
+    await tester.tap(find.byTooltip('Move to Done'));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // Focus is immediately cleared during completion animation
+    expect(capturedRef.read(activeFocusTaskProvider), isNull);
+
+    // Settle animation
+    await tester.pumpAndSettle();
+
+    // Task is in done tasks
+    expect(capturedRef.read(taskStateProvider).doneTasks.length, 1);
+  });
 }

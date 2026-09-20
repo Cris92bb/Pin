@@ -90,6 +90,19 @@ class _HomePageState extends ConsumerState<HomePage> {
       return const WearableHomePage();
     }
 
+    ref.listen<TaskListState>(taskStateProvider, (previous, next) {
+      final currentFocus = ref.read(activeFocusTaskProvider);
+      if (currentFocus != null) {
+        final matching =
+            next.tasks.where((t) => t.id == currentFocus.id).firstOrNull;
+        if (matching == null || matching.status == TaskStatus.done) {
+          ref.read(activeFocusTaskProvider.notifier).state = null;
+        } else if (matching != currentFocus) {
+          ref.read(activeFocusTaskProvider.notifier).state = matching;
+        }
+      }
+    });
+
     final activeFocusTask = ref.watch(activeFocusTaskProvider);
     final taskState = ref.watch(taskStateProvider);
     final notifier = ref.read(taskStateProvider.notifier);
