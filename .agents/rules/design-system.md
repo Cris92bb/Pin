@@ -11,7 +11,7 @@ When creating or modifying light mode UI components, never use generic cold gray
 | Token Name | HEX Code | Visual Tone | Role & Application |
 | --- | --- | --- | --- |
 | `PinTokens.lightCanvasBg` | `#F3F5EE` | Soft sage-tinted white | Main page backdrop, companion frame background |
-| `PinTokens.lightSheetBg` | `#E7ECE1` | Faded misty sage green | Active sliding sheet body ("To do"), Focus Mode subtask tray |
+| `PinTokens.lightSheetBg` | `#E7ECE1` | Faded misty sage green | Active sliding sheet body ("Today"), Focus Mode subtask tray |
 | `PinTokens.lightStackedTabBg` | `#DEE3D7` | Muted olive-gray | Stacked background drawer tabs ("Backlog", "Done"), secondary hover |
 | `PinTokens.lightCardBg` | `#EFF3EA` | Ultra-light tinted off-white | Inner task cards, text input fields, modal surfaces |
 | `PinTokens.lightTagBg` | `#E2E9DC` | Soft desaturated sage fill | Category tags (`#dev`), duration/energy badges, secondary button background |

@@ -104,7 +104,8 @@ class TaskCrudActions {
       if (success) {
         final currentFocus = ref.read(activeFocusTaskProvider);
         if (currentFocus?.id == updated.id) {
-          ref.read(activeFocusTaskProvider.notifier).state = updated;
+          ref.read(activeFocusTaskProvider.notifier).state =
+              updated.status == TaskStatus.done ? null : updated;
         }
         ref.read(activeDeckProvider.notifier).state = selectedStatus;
         return true;

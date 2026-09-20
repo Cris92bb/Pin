@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../entities/task/model/pin_task.dart';
 import '../../entities/task/state/task_state_notifier.dart';
 import '../../features/task_crud/state/task_editor_state.dart';
-import 'package:pin/shared/lib/date_helpers.dart';
 import '../../shared/ui/pin_tokens.dart';
+import 'components/task_card_metadata_row.dart';
 import 'task_action_bubble.dart';
 
 /// Tactile Pin card designed to match the companion app screenshot.
@@ -24,14 +24,38 @@ class TaskCard extends ConsumerStatefulWidget {
 
 class _TaskCardState extends ConsumerState<TaskCard> {
   Offset? _lastTapDownPosition;
+  bool _isHovered = false;
+  bool _isCompleting = false;
+
+  Future<void> _handleCompleteTap(bool isDone) async {
+    final notifier = ref.read(taskStateProvider.notifier);
+    if (isDone) {
+      notifier.moveToToday(widget.task.id);
+      return;
+    }
+    if (_isCompleting) return;
+    setState(() => _isCompleting = true);
+
+    if (ref.read(activeFocusTaskProvider)?.id == widget.task.id) {
+      ref.read(activeFocusTaskProvider.notifier).state = null;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) {
+      await notifier.moveToDone(widget.task.id);
+      if (mounted) {
+        setState(() => _isCompleting = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isDone = task.status == TaskStatus.done;
-    final isToday = task.status == TaskStatus.today;
+    final isDone = task.status == TaskStatus.done || _isCompleting;
+    final isToday = task.status == TaskStatus.today && !_isCompleting;
 
     final activeFocusTask = ref.watch(activeFocusTaskProvider);
     final isFocused = activeFocusTask?.id == task.id;
@@ -45,397 +69,221 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     final textSecondary =
         isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: PinTokens.radiusCard,
-        border: isFocused
-            ? Border.all(
-                color: activeFocusColor,
-                width: 2.0,
-              )
-            : (isDark
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 250),
+        opacity: _isCompleting ? 0.45 : 1.0,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: PinTokens.radiusCard,
+            border: isFocused
                 ? Border.all(
-                    color: borderColor,
-                    width: 1.6,
+                    color: activeFocusColor,
+                    width: 2.0,
                   )
-                : null),
-        boxShadow: isFocused
-            ? [
-                BoxShadow(
-                  color: activeFocusColor.withValues(alpha: isDark ? 0.35 : 0.20),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : (isDark
-                ? PinTokens.darkCardShadow
-                : PinTokens.lightCardShadow),
-      ),
-      child: InkWell(
-        borderRadius: PinTokens.radiusCard,
-        onTapDown: (details) {
-          _lastTapDownPosition = details.globalPosition;
-        },
-        onTap: () {
-          // Select pin as focused and dismiss any active edit overlay
-          ref.read(activeTaskEditorProvider.notifier).state = null;
-          ref.read(activeFocusTaskProvider.notifier).state = task;
-        },
-        onLongPress: () {
-          TaskActionBubble.show(
-            context,
-            task: task,
-            targetPosition: _lastTapDownPosition,
-            onEdit: widget.onEdit,
-          );
-        },
-        onSecondaryTapUp: (details) {
-          TaskActionBubble.show(
-            context,
-            task: task,
-            targetPosition: details.globalPosition,
-            onEdit: widget.onEdit,
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Row: Check circle, status badge, pin toggle, and delete
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                : (isDark
+                    ? Border.all(
+                        color: borderColor,
+                        width: 1.6,
+                      )
+                    : null),
+            boxShadow: isFocused
+                ? [
+                    BoxShadow(
+                      color: activeFocusColor.withValues(alpha: isDark ? 0.35 : 0.20),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : (isDark
+                    ? PinTokens.darkCardShadow
+                    : PinTokens.lightCardShadow),
+          ),
+          child: InkWell(
+            borderRadius: PinTokens.radiusCard,
+            onTapDown: (details) {
+              _lastTapDownPosition = details.globalPosition;
+            },
+            onTap: () {
+              // Select pin as focused and dismiss any active edit overlay
+              ref.read(activeTaskEditorProvider.notifier).state = null;
+              ref.read(activeFocusTaskProvider.notifier).state = task;
+            },
+            onLongPress: () {
+              TaskActionBubble.show(
+                context,
+                task: task,
+                targetPosition: _lastTapDownPosition,
+                onEdit: widget.onEdit,
+                onDelete: () {
+                  if (ref.read(activeFocusTaskProvider)?.id == task.id) {
+                    ref.read(activeFocusTaskProvider.notifier).state = null;
+                  }
+                  ref.read(taskStateProvider.notifier).deleteTask(task.id);
+                },
+              );
+            },
+            onSecondaryTapUp: (details) {
+              TaskActionBubble.show(
+                context,
+                task: task,
+                targetPosition: details.globalPosition,
+                onEdit: widget.onEdit,
+                onDelete: () {
+                  if (ref.read(activeFocusTaskProvider)?.id == task.id) {
+                    ref.read(activeFocusTaskProvider.notifier).state = null;
+                  }
+                  ref.read(taskStateProvider.notifier).deleteTask(task.id);
+                },
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Radio / Checkbox circle
-                  InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () {
-                      final notifier = ref.read(taskStateProvider.notifier);
-                      if (isDone) {
-                        notifier.moveToToday(task.id);
-                      } else {
-                        notifier.moveToDone(task.id);
-                      }
-                    },
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDone
-                            ? (isDark ? PinTokens.darkTextPrimary : PinTokens.lightFabBg)
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: isDone
-                              ? (isDark ? PinTokens.darkTextPrimary : PinTokens.lightFabBg)
-                              : (isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary),
-                          width: 1.5,
+                  // Unified Title Row: Circular Checkbox on left, Title in middle, Pushpin on top right
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Dedicated circular checkbox aligned with first line of title
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1, right: 10),
+                        child: Tooltip(
+                          message: isDone ? 'Move back to Today' : 'Move to Done',
+                          child: InkResponse(
+                            radius: 16,
+                            onTap: () => _handleCompleteTap(task.status == TaskStatus.done),
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: Center(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  curve: Curves.easeOutCubic,
+                                  width: 18,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isDone
+                                        ? PinTokens.accentEmerald
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: isDone
+                                          ? PinTokens.accentEmerald
+                                          : (isDark
+                                              ? PinTokens.darkTextTertiary
+                                              : PinTokens.lightTextTertiary),
+                                      width: 1.6,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: AnimatedScale(
+                                    scale: isDone ? 1.0 : 0.0,
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: Curves.elasticOut,
+                                    child: const Icon(
+                                      Icons.check_rounded,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      child: isDone
-                          ? Icon(
-                              Icons.check_rounded,
-                              size: 14,
-                              color: isDark ? PinTokens.darkCardBg : Colors.white,
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
 
-                  // ACTIVE FOCUS status badge
-                  Flexible(
-                    child: Text(
-                      isFocused
-                          ? 'ACTIVE FOCUS'
-                          : (isToday
-                              ? 'TODAY'
-                              : (isDone ? 'COMPLETED' : 'BACKLOG')),
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                        color: isFocused
-                            ? activeFocusColor
-                            : (isToday
-                                ? (isDark
-                                    ? PinTokens.darkActiveFocus.withValues(alpha: 0.75)
-                                    : PinTokens.lightActiveFocus.withValues(alpha: 0.85))
-                                : (isDone
-                                    ? PinTokens.accentEmerald
-                                    : (isDark
-                                        ? PinTokens.darkTextMuted
-                                        : PinTokens.lightTextSecondary))),
+                      // Title
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 1),
+                          child: Text(
+                            task.title,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDone
+                                  ? (isDark
+                                      ? PinTokens.darkTextSecondary
+                                      : PinTokens.lightTextTertiary)
+                                  : textPrimary,
+                              decoration: isDone ? TextDecoration.lineThrough : null,
+                              decorationColor: isDark
+                                  ? PinTokens.darkTextMuted
+                                  : PinTokens.lightTextTertiary,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+
+                      // Subtle pushpin icon tucked into top-right corner, perfectly aligned
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1, left: 6),
+                        child: Tooltip(
+                          message: isToday ? 'Unpin from Today' : 'Pin to Today',
+                          child: InkResponse(
+                            radius: 16,
+                            onTap: () {
+                              ref.read(taskStateProvider.notifier).togglePin(task.id);
+                            },
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: Center(
+                                child: Icon(
+                                  isToday ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+                                  size: 16,
+                                  color: isToday
+                                      ? PinTokens.accentViolet
+                                      : (isDark
+                                              ? PinTokens.darkTextTertiary
+                                              : PinTokens.lightTextTertiary)
+                                          .withValues(alpha: _isHovered ? 0.85 : 0.35),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
-                  const Spacer(),
-
-                  // UNPIN / PIN Action (compact icon only)
-                  IconButton(
-                    icon: Icon(
-                      isToday ? Icons.push_pin_outlined : Icons.push_pin_rounded,
-                      size: 16,
-                      color: isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary,
+                // Description
+                if (task.description.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    task.description,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: isDone
+                          ? (isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary)
+                          : textSecondary,
+                      height: 1.35,
                     ),
-                    splashRadius: 16,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    tooltip: isToday ? 'Unpin' : 'Pin to Today',
-                    onPressed: () {
-                      ref.read(taskStateProvider.notifier).togglePin(task.id);
-                    },
-                  ),
-
-                  const SizedBox(width: 2),
-
-                  // Delete trash icon
-                  IconButton(
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 16,
-                      color: isDark ? PinTokens.darkTextTertiary : PinTokens.lightTextTertiary,
-                    ),
-                    splashRadius: 16,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                    tooltip: 'Delete Pin',
-                    onPressed: () {
-                      ref.read(taskStateProvider.notifier).deleteTask(task.id);
-                    },
                   ),
                 ],
-              ),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 12),
 
-              // Title
-              Text(
-                task.title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: isDone
-                      ? (isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextTertiary)
-                      : textPrimary,
-                  decoration: isDone ? TextDecoration.lineThrough : null,
-                  decorationColor: isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary,
-                  height: 1.3,
-                ),
-              ),
-
-              // Description
-              if (task.description.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  task.description,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: isDone
-                        ? (isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary)
-                        : textSecondary,
-                    height: 1.35,
-                  ),
+                // Bottom Metadata Row: Energy Pill, Duration, and Hashtags
+                TaskCardMetadataRow(
+                  task: task,
+                  isDark: isDark,
                 ),
               ],
-
-              const SizedBox(height: 12),
-
-              // Bottom Metadata Row: Energy Pill, Duration, and Hashtags
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  // Energy Pill
-                  _buildEnergyPill(task, isDark),
-
-                  // Duration Pill
-                  _buildDurationPill(task, isDark),
-
-                  // Tracked time counter (if any)
-                  if (task.trackedSeconds > 0)
-                    _buildTrackedPill(task, isDark),
-
-                  // Hashtag chips
-                  for (final tag in task.tags)
-                    _buildTagChip(tag, isDark),
-
-                  // Subtasks indicator
-                  if (task.hasSubtasks)
-                    _buildSubtasksPill(task, isDark),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildEnergyPill(PinTask task, bool isDark) {
-    Color bg;
-    Color textColor;
-
-    final lower = task.energyTag.toLowerCase();
-    if (lower.contains('deep') || lower.contains('focus')) {
-      bg = isDark ? PinTokens.darkEnergyFocusBg : PinTokens.energyDeepBg;
-      textColor = isDark ? PinTokens.darkEnergyFocusText : PinTokens.energyDeepText;
-    } else if (lower.contains('medium') || lower.contains('flow')) {
-      bg = isDark ? PinTokens.darkEnergyMediumBg : PinTokens.energyMediumBg;
-      textColor = isDark ? PinTokens.darkEnergyMediumText : PinTokens.energyMediumText;
-    } else if (lower.contains('creative')) {
-      bg = isDark ? PinTokens.darkEnergyCreativeBg : PinTokens.energyCreativeBg;
-      textColor = isDark ? PinTokens.darkEnergyCreativeText : PinTokens.energyCreativeText;
-    } else if (lower.contains('admin')) {
-      bg = isDark ? PinTokens.darkEnergyAdminBg : PinTokens.energyAdminBg;
-      textColor = isDark ? PinTokens.darkEnergyAdminText : PinTokens.energyAdminText;
-    } else {
-      bg = isDark ? PinTokens.darkEnergyLowBg : PinTokens.energyLowBg;
-      textColor = isDark ? PinTokens.darkEnergyLowText : PinTokens.energyLowText;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: PinTokens.radiusFull,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            task.energyEmoji,
-            style: const TextStyle(fontSize: 11),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            task.energyDisplayLabel,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-              color: textColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDurationPill(PinTask task, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark ? PinTokens.darkSheetBg : PinTokens.lightTagBg,
-        borderRadius: PinTokens.radiusFull,
-      ),
-      child: Text(
-        DateHelpers.formatMinutes(task.estimatedMinutes),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrackedPill(PinTask task, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark ? PinTokens.darkTimerBg : PinTokens.energyTimerBg,
-        borderRadius: PinTokens.radiusFull,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.timer_rounded,
-            size: 11,
-            color: isDark ? PinTokens.darkTimerText : PinTokens.energyTimerText,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            DateHelpers.formatSeconds(task.trackedSeconds),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: isDark ? PinTokens.darkTimerText : PinTokens.energyTimerText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTagChip(String tag, bool isDark) {
-    final clean = tag.trim();
-    if (clean.contains('\n') || clean.contains(' ')) {
-      final subTags = clean
-          .split(RegExp(r'[\n\s]+'))
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty);
-      return Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: subTags.map((t) => _buildSingleTag(t, isDark)).toList(),
-      );
-    }
-    return _buildSingleTag(clean, isDark);
-  }
-
-  Widget _buildSingleTag(String tag, bool isDark) {
-    final clean = tag.startsWith('#') ? tag : '#$tag';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-      decoration: BoxDecoration(
-        color: isDark ? PinTokens.darkSheetBg : PinTokens.lightTagBg,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        clean,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubtasksPill(PinTask task, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark ? PinTokens.darkSheetBg : PinTokens.lightTagBg,
-        borderRadius: PinTokens.radiusFull,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.checklist_rounded,
-            size: 12,
-            color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            '${task.completedSubtasksCount}/${task.totalSubtasksCount}',
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
+}
 }

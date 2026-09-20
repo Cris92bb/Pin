@@ -12,7 +12,7 @@ class WideFoldHelpers {
       case TaskStatus.backlog:
         return 'Backlog';
       case TaskStatus.today:
-        return 'To Do (Today)';
+        return 'Today';
       case TaskStatus.done:
         return 'Done';
     }

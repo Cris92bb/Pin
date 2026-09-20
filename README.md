@@ -82,7 +82,7 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
 | <kbd>Ctrl</kbd> + <kbd>N</kbd> | Create a new task |
 | <kbd>F</kbd> | Launch Focus Mode for the first Today pin |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd> / <kbd>Ctrl</kbd> + <kbd>I</kbd> | Open JSON Export / Import modal |
-| <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> | Switch to Backlog / To do / Done drawer |
+| <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> | Switch to Backlog / Today / Done drawer |
 | <kbd>←</kbd> / <kbd>→</kbd> | Cycle horizontally between drawers |
 | <kbd>Ctrl</kbd> + <kbd>Q</kbd> / <kbd>Ctrl</kbd> + <kbd>W</kbd> | Exit application |
 | <kbd>Esc</kbd> | Close open modals / dismiss alerts |

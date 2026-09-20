@@ -45,7 +45,7 @@ void main() {
     expect(find.byType(WideFoldKanbanView), findsOneWidget);
 
     // Verify all 3 drawers exist simultaneously
-    expect(find.text('To Do (Today)'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
     expect(find.text('Backlog'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
   });
@@ -156,7 +156,7 @@ void main() {
     expect(find.text('Wide Screen Focus Task'), findsAtLeastNWidgets(1));
 
     // Active drawer title is still visible beside the focus overlay!
-    expect(find.text('To Do (Today)'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
 
     // Click back to exit Focus Mode
     final backBtn = find.byTooltip('Return to Board (Esc)');
@@ -198,7 +198,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Click "+" button in active drawer header
-    final addIcon = find.byTooltip('Capture Pin in To Do (Today)');
+    final addIcon = find.byTooltip('Capture Pin in Today');
     expect(addIcon, findsOneWidget);
     await tester.tap(addIcon);
     await tester.pumpAndSettle();

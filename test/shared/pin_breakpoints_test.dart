@@ -144,7 +144,7 @@ void main() {
       expect(find.byType(LayeredDeckView), findsNothing);
 
       // Verify all 3 drawers exist simultaneously
-      expect(find.text('To Do (Today)'), findsOneWidget);
+      expect(find.text('Today'), findsOneWidget);
       expect(find.text('Backlog'), findsOneWidget);
       expect(find.text('Done'), findsOneWidget);
     });
