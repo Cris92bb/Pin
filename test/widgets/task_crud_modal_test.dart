@@ -15,7 +15,7 @@ void main() {
         overrides: [
           storageAdapterProvider.overrideWithValue(fakeStorage),
           taskStateProvider.overrideWith(
-            (ref) => TaskStateNotifier(
+            () => TaskStateNotifier(
               storage: fakeStorage,
               seedInitialSample: false,
             ),
@@ -51,7 +51,7 @@ void main() {
         overrides: [
           storageAdapterProvider.overrideWithValue(fakeStorage),
           taskStateProvider.overrideWith(
-            (ref) {
+            () {
               notifier = TaskStateNotifier(
                 storage: fakeStorage,
                 seedInitialSample: false,
@@ -123,7 +123,7 @@ void main() {
       ProviderScope(
         overrides: [
           storageAdapterProvider.overrideWithValue(fakeStorage),
-          taskStateProvider.overrideWith((ref) => notifier),
+          taskStateProvider.overrideWith(() => notifier),
         ],
         child: MaterialApp(
           home: Builder(
@@ -189,7 +189,7 @@ void main() {
       ProviderScope(
         overrides: [
           storageAdapterProvider.overrideWithValue(fakeStorage),
-          taskStateProvider.overrideWith((ref) => notifier),
+          taskStateProvider.overrideWith(() => notifier),
         ],
         child: MaterialApp(
           home: Builder(

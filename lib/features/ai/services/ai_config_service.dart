@@ -25,7 +25,7 @@ class AiConfig {
   }
 }
 
-class AiConfigNotifier extends StateNotifier<AiConfig> {
+class AiConfigNotifier extends Notifier<AiConfig> {
   static const String keyPref = 'pin_gemini_api_key';
   static const String modelPref = 'pin_gemini_model';
   static const String defaultModel = 'gemini-3.6-flash';
@@ -36,16 +36,41 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
     'gemini-3.8-flash',
   ];
 
-  final SharedPreferences? _prefs;
+  final SharedPreferences? _configuredPrefs;
+  SharedPreferences? _prefs;
+  AiConfig? _standaloneState;
 
-  AiConfigNotifier([this._prefs])
-      : super(const AiConfig(apiKey: '', selectedModel: defaultModel)) {
+  AiConfigNotifier([this._configuredPrefs]);
+
+  @override
+  AiConfig build() {
+    _prefs = _configuredPrefs;
     _load();
+    return const AiConfig(apiKey: '', selectedModel: defaultModel);
+  }
+
+  @override
+  AiConfig get state {
+    try {
+      return super.state;
+    } catch (_) {
+      return _standaloneState ??= build();
+    }
+  }
+
+  @override
+  set state(AiConfig value) {
+    try {
+      super.state = value;
+    } catch (_) {
+      _standaloneState = value;
+    }
   }
 
   Future<void> _load() async {
     try {
       final p = _prefs ?? await SharedPreferences.getInstance();
+      _prefs = p;
       String? key = p.getString(keyPref);
 
       // Fallback to environment variable or .env file if available and not configured in prefs
@@ -93,6 +118,7 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
     final trimmed = newKey.trim();
     try {
       final p = _prefs ?? await SharedPreferences.getInstance();
+      _prefs = p;
       if (trimmed.isEmpty) {
         await p.remove(keyPref);
       } else {
@@ -105,6 +131,7 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
   Future<void> setModel(String model) async {
     try {
       final p = _prefs ?? await SharedPreferences.getInstance();
+      _prefs = p;
       await p.setString(modelPref, model);
     } catch (_) {}
     state = state.copyWith(selectedModel: model);
@@ -115,6 +142,5 @@ class AiConfigNotifier extends StateNotifier<AiConfig> {
   }
 }
 
-final aiConfigProvider = StateNotifierProvider<AiConfigNotifier, AiConfig>((ref) {
-  return AiConfigNotifier();
-});
+final aiConfigProvider =
+    NotifierProvider<AiConfigNotifier, AiConfig>(AiConfigNotifier.new);
