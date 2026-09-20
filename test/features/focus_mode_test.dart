@@ -210,7 +210,9 @@ void main() {
 
     // Scroll down past 170px threshold
     await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -300));
-    await tester.pumpAndSettle();
+    for (int i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
 
     // Sticky banner should now be visible
     expect(find.byKey(const ValueKey('sticky_timer_banner')), findsOneWidget);
@@ -222,7 +224,9 @@ void main() {
     );
     expect(stickyPauseBtn, findsOneWidget);
     await tester.tap(stickyPauseBtn);
-    await tester.pumpAndSettle();
+    for (int i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
 
     final stickyResumeBtn = find.descendant(
       of: find.byKey(const ValueKey('sticky_timer_banner')),
@@ -232,7 +236,9 @@ void main() {
 
     // Scroll back to top
     await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
-    await tester.pumpAndSettle();
+    for (int i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
 
     // Sticky banner should hide when scrolled back to top
     expect(find.byKey(const ValueKey('sticky_timer_banner')), findsNothing);
@@ -280,7 +286,7 @@ void main() {
     final dynamic widgetsAppState = tester.state(find.byType(WidgetsApp));
     final didHandle = await widgetsAppState.didPopRoute();
     expect(didHandle, isTrue);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     // Verify focus mode exited
     expect(hasExited, isTrue);
