@@ -196,6 +196,93 @@
     <div id="pin-splash-error"></div>
   </div>
 
+  <!-- Google Identity Services (GIS) for Google SSO on Web -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    window.pinGoogleSsoRequestAuth = function(clientId) {
+      return new Promise(function(resolve) {
+        if (!clientId || clientId.trim() === '') {
+          resolve(JSON.stringify({
+            isCancelled: false,
+            errorMessage: 'Google OAuth Client ID is not configured.'
+          }));
+          return;
+        }
+
+        var cleanClientId = clientId.trim();
+
+        function launchGis() {
+          if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+            return false;
+          }
+          try {
+            var client = google.accounts.oauth2.initTokenClient({
+              client_id: cleanClientId,
+              scope: 'openid email profile',
+              callback: function(resp) {
+                if (resp.error) {
+                  if (resp.error === 'access_denied') {
+                    resolve(JSON.stringify({ isCancelled: true }));
+                  } else {
+                    resolve(JSON.stringify({
+                      isCancelled: false,
+                      errorMessage: resp.error_description || resp.error || 'Google authorization failed.'
+                    }));
+                  }
+                } else {
+                  resolve(JSON.stringify({
+                    isCancelled: false,
+                    accessToken: resp.access_token,
+                    expiresIn: resp.expires_in
+                  }));
+                }
+              },
+              error_callback: function(err) {
+                if (err && err.type === 'popup_closed') {
+                  resolve(JSON.stringify({ isCancelled: true }));
+                } else if (err && err.type === 'popup_blocked_by_browser') {
+                  resolve(JSON.stringify({
+                    isCancelled: false,
+                    errorMessage: 'Google Sign-In popup was blocked by your browser. Please allow popups for this site and try again.'
+                  }));
+                } else {
+                  resolve(JSON.stringify({
+                    isCancelled: false,
+                    errorMessage: (err && (err.message || err.type)) ? (err.message || err.type) : 'Google authorization failed.'
+                  }));
+                }
+              }
+            });
+            client.requestAccessToken({ prompt: 'select_account' });
+            return true;
+          } catch (e) {
+            resolve(JSON.stringify({
+              isCancelled: false,
+              errorMessage: 'Failed to initiate Google sign-in: ' + (e.message || e.toString())
+            }));
+            return true;
+          }
+        }
+
+        if (launchGis()) return;
+
+        var attempts = 0;
+        var interval = setInterval(function() {
+          attempts++;
+          if (launchGis()) {
+            clearInterval(interval);
+          } else if (attempts >= 25) { // 2.5 seconds timeout
+            clearInterval(interval);
+            resolve(JSON.stringify({
+              isCancelled: false,
+              errorMessage: 'Google Identity Services could not be loaded. Please ensure accounts.google.com is not blocked by your browser or extensions.'
+            }));
+          }
+        }, 100);
+      });
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

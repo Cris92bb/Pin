@@ -401,17 +401,22 @@ class FirebaseAuthService {
     }
   }
 
-  /// Signs in with Google SSO using an authentic Google ID token.
-  Future<AppUser> signInWithGoogleSso(String idToken) async {
+  /// Signs in with Google SSO using an authentic Google ID token or OAuth access token.
+  Future<AppUser> signInWithGoogleSso({
+    String? idToken,
+    String? accessToken,
+  }) async {
     return await signInWithIdpToken(
       idToken: idToken,
+      accessToken: accessToken,
       providerId: 'google.com',
     );
   }
 
   /// Signs in using Google ID token or OAuth credential.
   Future<AppUser> signInWithIdpToken({
-    required String idToken,
+    String? idToken,
+    String? accessToken,
     required String providerId,
   }) async {
     _ensureConfigured();
@@ -419,11 +424,20 @@ class FirebaseAuthService {
       'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${config.apiKey}',
     );
 
+    final postBodyParts = <String>[];
+    if (idToken != null && idToken.isNotEmpty) {
+      postBodyParts.add('id_token=$idToken');
+    }
+    if (accessToken != null && accessToken.isNotEmpty) {
+      postBodyParts.add('access_token=$accessToken');
+    }
+    postBodyParts.add('providerId=$providerId');
+
     final response = await _client.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'postBody': 'id_token=$idToken&providerId=$providerId',
+        'postBody': postBodyParts.join('&'),
         'requestUri': 'http://localhost',
         'returnSecureToken': true,
       }),
