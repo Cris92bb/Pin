@@ -53,6 +53,11 @@ void main() {
     // Verify pushpin exists (Unpin from Today)
     expect(find.byTooltip('Unpin from Today'), findsOneWidget);
 
+    // Verify circular checkbox and pushpin are precisely vertically aligned
+    final checkboxTop = tester.getTopLeft(find.byTooltip('Move to Done')).dy;
+    final pinTop = tester.getTopLeft(find.byTooltip('Unpin from Today')).dy;
+    expect(checkboxTop, equals(pinTop));
+
     // Verify "ACTIVE FOCUS" badge is NOT rendered
     expect(find.text('ACTIVE FOCUS'), findsNothing);
   });
