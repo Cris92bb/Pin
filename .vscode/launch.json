@@ -29,7 +29,8 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "chrome",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "args": ["--web-port", "8080"]
     },
     {
       "name": "Pin (Smartphone / Connected Device)",
