@@ -70,7 +70,7 @@ class _PinButtonState extends State<PinButton> {
           fg = PinTokens.textInverse;
         } else {
           bg = _isHovered
-              ? const Color(0xFF223028)
+              ? PinTokens.darkSurfaceHover
               : PinTokens.lightFabBg;
           fg = PinTokens.textInverse;
         }
@@ -105,16 +105,16 @@ class _PinButtonState extends State<PinButton> {
       case PinButtonVariant.danger:
         if (isDark) {
           bg = _isHovered
-              ? PinTokens.accentRose.withValues(alpha: 0.25)
-              : PinTokens.accentRose.withValues(alpha: 0.12);
-          fg = PinTokens.accentRose;
-          border = PinTokens.accentRose.withValues(alpha: 0.4);
+              ? PinTokens.dangerHoverDark
+              : PinTokens.dangerBgDark;
+          fg = PinTokens.dangerFgDark;
+          border = PinTokens.dangerBorderDark;
         } else {
           bg = _isHovered
-              ? const Color(0xFFFDE8E8)
-              : const Color(0xFFFDF2F2);
-          fg = const Color(0xFFB91C1C);
-          border = const Color(0xFFFCA5A5).withValues(alpha: 0.5);
+              ? PinTokens.dangerHoverLight
+              : PinTokens.dangerBgLight;
+          fg = PinTokens.dangerFgLight;
+          border = PinTokens.dangerBorderLight.withValues(alpha: 0.5);
         }
         break;
     }

@@ -159,12 +159,10 @@ lib/
 │   ├── theme/
 │   └── app.dart
 ├── pages/                            # Full-screen views
-│   ├── home/
-│   │   ├── home_page.dart
-│   │   └── home.dart                 # Public API
-│   └── wearable/
-│       ├── wearable_home_page.dart   # Relocated from features/wearable
-│       └── wearable_page.dart        # Public API
+│   └── home/
+│       ├── home_page.dart
+│       ├── wearable_home_page.dart   # Relocated watch view
+│       └── wearable/                 # Sub-components for Wear OS screens
 ├── widgets/                          # Composite UI blocks
 │   └── kanban_board/
 │       ├── kanban_board.dart         # Public API
@@ -236,7 +234,7 @@ To eliminate horizontal feature coupling without losing existing capabilities:
    - `HomePage` or `kanban_board` provides the concrete modals upon invocation.
 
 3. **`wearable_home_page` Relocation**:
-   - Move `WearableHomePage` to `lib/pages/wearable/wearable_home_page.dart`.
+   - Move `WearableHomePage` to `lib/pages/home/wearable_home_page.dart` (with subcomponents in `lib/pages/home/wearable/`).
    - As a page, it is legally permitted in FSD to import `features/sync`, `entities/task`, and `widgets`.
 
 ---
@@ -294,3 +292,21 @@ A standalone Dart CLI script runnable via `dart run tool/verify_fsd.dart`:
 | **Phase 6** | Public API barrel exports across all slices. | Planned |
 
 **Current Status**: 0 Upward Inversions, 0 Cross-Slice Couplings, 100% strict compliance in `tool/verify_fsd.dart --strict` and `fsd_architecture_test.dart`.
+
+---
+
+## 7. File Size & Componentization Standard (<= 300 LOC)
+
+To maintain long-term architectural hygiene and code scannability across all FSD slices:
+- **Maximum File Threshold**: All Dart source files must ideally remain **under 300 lines of code (LOC)**.
+- **Componentized Sub-Directories**: Large multi-responsibility files (such as modals, compound views, and complex page orchestrators) must be broken down into modular, single-responsibility sub-widgets organized in a `components/` subfolder (or sub-package) within their parent slice.
+- **Doctype & Documentation Comments**: Every component, public class, method, and state provider must be documented with comprehensive Dart doc comments (`///`) detailing purpose, input contracts, and layer roles.
+
+---
+
+## 8. Strict Design Token Consistency & Zero Hardcoded Colors
+
+- **Zero Hardcoded Colors**: Constructing colors directly with `Color(0x...)` or random hex literals is strictly prohibited.
+- **Single Source of Truth**: All palette shades, backgrounds, text colors, borders, shadows, and radii must reference `PinTokens` or `Theme.of(context)`.
+- **Theme Integrity**: Consistent light/dark behavior and fidelity to the tactile faded sage green light theme (`#F3F5EE`, `#E7ECE1`, `#EFF3EA`, `#2B3B32`) and Wear OS OLED dark theme must be preserved across every component.
+

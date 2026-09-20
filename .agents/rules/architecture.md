@@ -47,3 +47,22 @@ Always run the automated import verifier. It scans `import` and `export` directi
 dart run tool/verify_fsd.dart --strict
 ```
 Any violation fails CI (`.github/workflows/ci.yml`).
+
+---
+
+## 4. File Size & Componentization Standard (<= 300 LOC)
+
+To maintain clarity, readability, and testability across all FSD slices:
+- **Maximum File Target**: Ideally, no Dart source file should exceed **300 lines of code (LOC)**.
+- **Componentization Hierarchy**: Large widgets, monolithic views, and complex modal sheets must be decomposed into focused, single-responsibility sub-widgets located in a `components/` subfolder within the slice (e.g. `lib/features/sync/ui/components/`, `lib/pages/home/wearable/`).
+- **Doctype & Documentation Comments**: Every component, public class, method, and provider must include comprehensive Dart doc comments (`///`) detailing its responsibilities, parameters, and architectural layer.
+
+---
+
+## 5. Strict Design Token Consistency & Zero Hardcoded Colors
+
+All UI elements across all FSD layers must strictly adhere to the project's design token system:
+- **No Hardcoded Colors**: Constructing colors directly with `Color(0x...)` or random hex literals in UI files is strictly prohibited.
+- **Single Source of Truth**: All palette shades, background colors, text colors, borders, shadows, and radii must reference `PinTokens` or `Theme.of(context)`.
+- **Palette Fidelity**: Maintain the faded sage green light palette (`#F3F5EE`, `#E7ECE1`, `#EFF3EA`, `#2B3B32`) and OLED dark palette across all form factors.
+

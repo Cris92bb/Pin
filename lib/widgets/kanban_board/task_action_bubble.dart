@@ -122,8 +122,8 @@ class TaskActionBubble extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final bgColor = isDark ? const Color(0xFF161A23) : PinTokens.lightCardBg;
-    final borderColor = isDark ? const Color(0xFF2E3648) : PinTokens.lightBorder;
+    final bgColor = isDark ? PinTokens.darkActionBubbleBg : PinTokens.lightCardBg;
+    final borderColor = isDark ? PinTokens.darkActionBubbleBorder : PinTokens.lightBorder;
     final textPrimary = isDark ? PinTokens.darkTextPrimary : PinTokens.lightTextPrimary;
     final textSecondary = isDark ? PinTokens.darkTextSecondary : PinTokens.lightTextSecondary;
 
@@ -138,14 +138,14 @@ class TaskActionBubble extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? Colors.black : const Color(0xFF0F172A))
+            color: (isDark ? Colors.black : PinTokens.shadowSlate)
                 .withValues(alpha: isDark ? 0.55 : 0.08),
             blurRadius: 20,
             spreadRadius: 2,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.12 : 0.08),
+            color: PinTokens.aiAccentViolet.withValues(alpha: isDark ? 0.12 : 0.08),
             blurRadius: 14,
             spreadRadius: -2,
             offset: const Offset(0, 2),
@@ -158,12 +158,12 @@ class TaskActionBubble extends StatelessWidget {
           // Option 1: AI Breakdown
           _BubbleActionButton(
             icon: Icons.auto_awesome_rounded,
-            iconColor: const Color(0xFF818CF8),
+            iconColor: PinTokens.aiAccentVioletLight,
             label: 'AI Breakdown',
             subtitle: 'Re-analyze',
-            labelColor: const Color(0xFF818CF8),
-            subtitleColor: const Color(0xFFA5B4FC).withValues(alpha: 0.8),
-            hoverBgColor: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.18 : 0.10),
+            labelColor: PinTokens.aiAccentVioletLight,
+            subtitleColor: PinTokens.aiAccentVioletSubtle.withValues(alpha: 0.8),
+            hoverBgColor: PinTokens.aiAccentViolet.withValues(alpha: isDark ? 0.18 : 0.10),
             onTap: onAiBreakdown,
           ),
 

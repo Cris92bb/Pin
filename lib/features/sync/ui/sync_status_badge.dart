@@ -33,7 +33,7 @@ class SyncStatusBadge extends ConsumerWidget {
         break;
       case SyncStatus.offline:
         icon = Icons.cloud_off_rounded;
-        iconColor = isDark ? PinTokens.darkTextMuted : const Color(0xFF64748B);
+        iconColor = isDark ? PinTokens.darkTextMuted : PinTokens.lightTextTertiary;
         tooltip = 'Offline - Local storage active';
         break;
       case SyncStatus.error:
