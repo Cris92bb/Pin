@@ -1,12 +1,16 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pin/features/sync/services/firebase_config.dart';
+import 'package:pin/features/sync/services/google_sso_desktop_html.dart';
 import 'package:pin/features/sync/services/google_sso_service.dart';
 import 'package:pin/features/sync/services/platform/google_sso_runner.dart';
+import 'package:pin/features/sync/services/platform/google_sso_runner_io.dart';
 
 class _MockRunner implements GoogleSsoPlatformRunner {
   bool cancelled = false;
-  GoogleSsoResult nextResult = const GoogleSsoResult(accessToken: 'mock-access');
+  GoogleSsoResult nextResult =
+      const GoogleSsoResult(accessToken: 'mock-access');
 
   @override
   Future<GoogleSsoResult> signIn({
@@ -63,7 +67,8 @@ void main() {
       expect(result.isSuccess, isTrue);
     });
 
-    test('isSuccess is false when idToken and accessToken are null or empty', () {
+    test('isSuccess is false when idToken and accessToken are null or empty',
+        () {
       const result1 = GoogleSsoResult(errorMessage: 'Sign-in failed');
       expect(result1.isSuccess, isFalse);
 
@@ -96,7 +101,8 @@ void main() {
     test('handles malformed or invalid tokens gracefully', () {
       expect(GoogleSsoJwtDecoder.decodePayload(''), isNull);
       expect(GoogleSsoJwtDecoder.decodePayload('not-a-jwt'), isNull);
-      expect(GoogleSsoJwtDecoder.decodePayload('header.invalid-base-64'), isNull);
+      expect(
+          GoogleSsoJwtDecoder.decodePayload('header.invalid-base-64'), isNull);
     });
   });
 
@@ -127,7 +133,9 @@ void main() {
   });
 
   group('FirebaseConfig OAuth Secret and Web Client ID', () {
-    test('serializes and deserializes oAuthClientSecret and webOAuthClientId correctly', () {
+    test(
+        'serializes and deserializes oAuthClientSecret and webOAuthClientId correctly',
+        () {
       const config = FirebaseConfig(
         apiKey: 'test-api-key',
         projectId: 'test-project',
@@ -137,7 +145,8 @@ void main() {
       );
       final json = config.toJson();
       expect(json['oAuthClientSecret'], equals('GOCSPX-secret123'));
-      expect(json['webOAuthClientId'], equals('web-client-id.apps.googleusercontent.com'));
+      expect(json['webOAuthClientId'],
+          equals('web-client-id.apps.googleusercontent.com'));
 
       final fromJson = FirebaseConfig.fromJson(json);
       expect(fromJson.oAuthClientSecret, equals('GOCSPX-secret123'));
@@ -156,6 +165,90 @@ void main() {
         oAuthClientId: 'desktop-id',
       );
       expect(desktopOnly.activeOAuthClientId, equals('desktop-id'));
+    });
+  });
+
+  group('GoogleSsoDesktopHtml', () {
+    test(
+        'buildSuccessHtml renders deep link pin://auth and intent URI fallback',
+        () {
+      final html = GoogleSsoDesktopHtml.buildSuccessHtml(
+        email: 'alice@example.com',
+        name: 'Alice',
+      );
+      expect(html, contains('Welcome, Alice!'));
+      expect(html, contains('pin://auth'));
+      expect(
+          html,
+          contains(
+              'intent://auth#Intent;scheme=pin;package=com.example.pin;end'));
+      expect(html, contains('tryLaunchPin'));
+      expect(html, contains('open-pin-btn'));
+    });
+
+    test('buildCancelledHtml renders Return to Pin deep link', () {
+      final html = GoogleSsoDesktopHtml.buildCancelledHtml();
+      expect(html, contains('Sign-In Cancelled'));
+      expect(html, contains('pin://auth'));
+      expect(html, contains('Return to Pin'));
+    });
+
+    test('buildErrorHtml renders error message and Return to Pin deep link',
+        () {
+      final html = GoogleSsoDesktopHtml.buildErrorHtml('Network unreachable');
+      expect(html, contains('Authentication Error'));
+      expect(html, contains('Network unreachable'));
+      expect(html, contains('pin://auth'));
+      expect(html, contains('Return to Pin'));
+    });
+  });
+
+  group('GoogleSsoDesktopRunner Loopback Server', () {
+    test(
+        'handles OPTIONS preflight with Private Network Access headers and processes callback',
+        () async {
+      final prevOverrides = HttpOverrides.current;
+      HttpOverrides.global = null;
+      addTearDown(() => HttpOverrides.global = prevOverrides);
+
+      final runner = GoogleSsoDesktopRunner(browserLauncher: (_) async {});
+      final signInFuture = runner.signIn(clientId: 'test-client-id');
+
+      // Wait briefly for the server to bind
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      final server = runner.activeServer;
+      expect(server, isNotNull);
+      final port = server!.port;
+
+      final client = HttpClient();
+
+      // 1. Send an OPTIONS preflight request (Chromium Private Network Access)
+      final optionsReq = await client.openUrl(
+          'OPTIONS', Uri.parse('http://127.0.0.1:$port/callback'));
+      optionsReq.headers.set('Access-Control-Request-Private-Network', 'true');
+      final optionsResp = await optionsReq.close();
+
+      expect(optionsResp.statusCode, equals(HttpStatus.noContent));
+      expect(optionsResp.headers.value('Access-Control-Allow-Private-Network'),
+          equals('true'));
+      expect(optionsResp.headers.value('Access-Control-Allow-Origin'),
+          equals('*'));
+
+      // 2. Send GET request with access_denied error (simulating user cancel)
+      final getReq = await client.getUrl(
+          Uri.parse('http://127.0.0.1:$port/callback?error=access_denied'));
+      final getResp = await getReq.close();
+      expect(getResp.statusCode, equals(HttpStatus.ok));
+      expect(getResp.headers.value('Access-Control-Allow-Private-Network'),
+          equals('true'));
+      expect(getResp.headers.value('Access-Control-Allow-Origin'), equals('*'));
+      await getResp.drain<void>();
+
+      // 3. Verify runner completed cleanly
+      final result = await signInFuture;
+      expect(result.isCancelled, isTrue);
+      expect(runner.activeServer, isNull);
+      client.close();
     });
   });
 }
