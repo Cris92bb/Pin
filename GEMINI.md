@@ -10,7 +10,9 @@ For all coding tasks in this repository, the agent must adhere to:
 
 ## Mandatory Commits on Impactful Changes
 - **Requirement**: For every impactful change made to the codebase (feature addition, bug/layout fix, script/build update, documentation, or test modification), create a Git commit.
-- **Pre-requisite**: Ensure changes are verified (e.g., `flutter test` or `dart analyze` pass).
+- **Pre-requisite & Documentation Consistency**:
+  - Ensure changes are verified (e.g., `flutter test` or `dart analyze` pass).
+  - Before committing, always check for consistency between the code and markdown documentation files (`README.md`, `docs/`, `.agents/rules/`). Keep architectural diagrams, model lists, shortcuts, tokens, and guides synchronized with the code.
 - **Format**: Follow [Conventional Commits](https://www.conventionalcommits.org/):
   - `feat(...)`: new feature or functionality
   - `fix(...)`: bug or layout fix
