@@ -76,17 +76,23 @@ abstract final class GoogleSsoDesktopHtml {
     <div class="badge">✓</div>
     <h1>$welcome</h1>
     <p>$accountText<br>Return to Pin to finish connecting your board.</p>
-    <a href="pin://auth" style="display:inline-block;padding:12px 24px;background:#34D399;color:#0E1411;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:16px;font-size:14px;">Open Pin</a>
-    <div class="hint">This tab may be closed safely.</div>
+    <a href="pin://auth" onclick="tryLaunchPin(event)" id="open-pin-btn" style="display:inline-block;padding:12px 24px;background:#34D399;color:#0E1411;font-weight:700;border-radius:12px;text-decoration:none;margin-bottom:16px;font-size:14px;cursor:pointer;">Open Pin</a>
+    <div class="hint">If this page does not close automatically, tap above to return to Pin.</div>
   </div>
   <script>
-    setTimeout(function() {
-      try { window.location.href = "pin://auth"; } catch(e) {}
+    function tryLaunchPin(e) {
+      if (e && e.preventDefault) { try { e.preventDefault(); } catch(_) {} }
+      try { window.location.href = "pin://auth"; } catch(_) {}
       setTimeout(function() {
-        try { window.location.href = "intent://auth#Intent;scheme=pin;package=com.example.pin;end"; } catch(e) {}
-      }, 250);
-      try { window.close(); } catch(e) {}
-    }, 400);
+        try { window.location.href = "intent://auth#Intent;scheme=pin;package=com.example.pin;end"; } catch(_) {}
+      }, 150);
+    }
+    setTimeout(function() {
+      tryLaunchPin();
+      setTimeout(function() {
+        try { window.close(); } catch(_) {}
+      }, 300);
+    }, 350);
   </script>
 </body>
 </html>''';
@@ -158,6 +164,7 @@ abstract final class GoogleSsoDesktopHtml {
     <div class="badge">✕</div>
     <h1>Sign-In Cancelled</h1>
     <p>You cancelled Google authentication.<br>You can return to Pin to try again.</p>
+    <a href="pin://auth" onclick="try{window.location.href='pin://auth';}catch(_){}" style="display:inline-block;padding:10px 22px;background:#233028;color:#E2E8F0;font-weight:600;border-radius:10px;text-decoration:none;margin-bottom:14px;font-size:13px;">Return to Pin</a>
     <div class="hint">This tab may be closed safely.</div>
   </div>
 </body>
@@ -231,6 +238,7 @@ abstract final class GoogleSsoDesktopHtml {
     <div class="badge">!</div>
     <h1>Authentication Error</h1>
     <p>$errorMessage</p>
+    <a href="pin://auth" onclick="try{window.location.href='pin://auth';}catch(_){}" style="display:inline-block;padding:10px 22px;background:#3E2424;color:#FCA5A5;font-weight:600;border-radius:10px;text-decoration:none;margin-bottom:14px;font-size:13px;">Return to Pin</a>
     <div class="hint">You can close this tab and return to Pin.</div>
   </div>
 </body>

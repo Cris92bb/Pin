@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../google_sso_desktop_html.dart';
@@ -14,12 +15,20 @@ GoogleSsoPlatformRunner createPlatformRunner({http.Client? httpClient}) =>
 /// Native desktop implementation of Google SSO via RFC 8252 loopback redirect.
 class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
   final http.Client _httpClient;
+  final Future<void> Function(String url)? _browserLauncher;
   HttpServer? _server;
   Completer<GoogleSsoResult>? _completer;
   Timer? _timeoutTimer;
 
-  GoogleSsoDesktopRunner({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  /// Visible for unit testing to inspect loopback listener state.
+  @visibleForTesting
+  HttpServer? get activeServer => _server;
+
+  GoogleSsoDesktopRunner({
+    http.Client? httpClient,
+    Future<void> Function(String url)? browserLauncher,
+  })  : _httpClient = httpClient ?? http.Client(),
+        _browserLauncher = browserLauncher;
 
   @override
   Future<GoogleSsoResult> signIn({
@@ -39,7 +48,7 @@ class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
     _completer = completer;
 
     try {
-      _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      _server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
       final port = _server!.port;
       final redirectUri = 'http://127.0.0.1:$port/callback';
 
@@ -65,6 +74,20 @@ class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
       });
 
       _server!.listen((HttpRequest request) async {
+        // Enforce CORS and Chromium Private Network Access (PNA) headers for loopback access
+        request.response.headers
+          ..set('Access-Control-Allow-Origin', '*')
+          ..set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+          ..set('Access-Control-Allow-Headers', '*')
+          ..set('Access-Control-Allow-Private-Network', 'true');
+
+        // Handle Chromium Local/Private Network Access OPTIONS preflight without closing session
+        if (request.method == 'OPTIONS') {
+          request.response.statusCode = HttpStatus.noContent;
+          await request.response.close();
+          return;
+        }
+
         if (request.uri.path != '/callback') {
           request.response
             ..statusCode = HttpStatus.notFound
@@ -86,14 +109,11 @@ class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
           await request.response.close();
 
           if (!completer.isCompleted) {
-            completer.complete(
-              GoogleSsoResult(
-                isCancelled: isAccessDenied,
-                errorMessage: isAccessDenied
-                    ? null
-                    : 'Google authentication error: $error',
-              ),
-            );
+            completer.complete(GoogleSsoResult(
+              isCancelled: isAccessDenied,
+              errorMessage:
+                  isAccessDenied ? null : 'Google authentication error: $error',
+            ));
           }
           _cleanUp();
           return;
@@ -103,19 +123,15 @@ class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
           request.response
             ..statusCode = HttpStatus.badRequest
             ..headers.contentType = ContentType.html
-            ..write(
-              GoogleSsoDesktopHtml.buildErrorHtml(
-                'Missing authorization code from Google.',
-              ),
-            );
+            ..write(GoogleSsoDesktopHtml.buildErrorHtml(
+              'Missing authorization code from Google.',
+            ));
           await request.response.close();
 
           if (!completer.isCompleted) {
-            completer.complete(
-              const GoogleSsoResult(
-                errorMessage: 'Authorization code missing in Google callback.',
-              ),
-            );
+            completer.complete(const GoogleSsoResult(
+              errorMessage: 'Authorization code missing in Google callback.',
+            ));
           }
           _cleanUp();
           return;
@@ -133,6 +149,12 @@ class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
           clientSecret: clientSecret,
           redirectUri: redirectUri,
         );
+
+        if (Platform.isAndroid || Platform.isIOS) {
+          try {
+            await closeInAppWebView();
+          } catch (_) {}
+        }
 
         if (!completer.isCompleted) {
           completer.complete(
@@ -157,6 +179,11 @@ class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
 
   @override
   void cancel() {
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        closeInAppWebView();
+      } catch (_) {}
+    }
     if (_completer != null && !_completer!.isCompleted) {
       _completer!.complete(const GoogleSsoResult(isCancelled: true));
     }
@@ -239,19 +266,28 @@ class GoogleSsoDesktopRunner implements GoogleSsoPlatformRunner {
   }
 
   Future<void> _openBrowser(String url) async {
+    if (_browserLauncher != null) {
+      await _browserLauncher(url);
+      return;
+    }
     final uri = Uri.parse(url);
+    final isMobile = Platform.isAndroid || Platform.isIOS;
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (isMobile &&
+          await canLaunchUrl(uri) &&
+          await launchUrl(uri, mode: LaunchMode.inAppBrowserView)) {
+        return;
+      }
+      if (await canLaunchUrl(uri) &&
+          await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         return;
       }
     } catch (_) {}
-
     try {
-      if (Platform.isLinux) {
-        await Process.run('xdg-open', [url]);
-      } else if (Platform.isMacOS) {
-        await Process.run('open', [url]);
+      final cmd =
+          Platform.isLinux ? 'xdg-open' : (Platform.isMacOS ? 'open' : null);
+      if (cmd != null) {
+        await Process.run(cmd, [url]);
       } else if (Platform.isWindows) {
         await Process.run('cmd', ['/c', 'start', '', url]);
       }
