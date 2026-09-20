@@ -174,6 +174,10 @@ To optimize the limited screen real estate on circular displays ($\sim 1.2" - 1.
 - **Infinite Carousel Loop**: 4-page sequence (`Today -> Backlog -> Completed -> Account -> Today...`).
 - **Input Sanitization**: Virtual keyboard inputs for email explicitly enforce `textCapitalization: TextCapitalization.none` and `autocorrect: false` to guarantee credential parity across devices.
 
+### 7.5 Splash Screen & Circular Launcher Icon
+- **True OLED Black Splash**: `res/values-watch/` and `res/values-watch-v31/` configure `android:windowSplashScreenBackground` and `LaunchTheme` to pure `#000000` black, blending seamlessly with circular watch bezels during process startup.
+- **Circular Launcher Icon**: Wear OS circular app drawer uses `android:roundIcon="@mipmap/ic_launcher_round"` featuring a native circular obsidian badge with the centered 3D red pushpin, replacing any default platform logos.
+
 ---
 
 ## 8. Strict Design Token Consistency & Zero Hardcoded Colors
