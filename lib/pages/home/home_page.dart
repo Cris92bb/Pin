@@ -473,7 +473,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       children: [
                         Icon(Icons.sync_alt_rounded, size: 16),
                         SizedBox(width: 8),
-                        Expanded(child: Text('Blueprints (Import / Export)')),
+                        Expanded(child: Text('Transfer & Share (Import / Export)')),
                       ],
                     ),
                   ),

@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import '../../entities/task/model/pin_task.dart';
 import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
+import '../../features/task_export_import/ui/single_task_share_modal.dart';
 import '../../shared/ui/pin_tokens.dart';
 import 'components/bubble_action_button.dart';
 
 /// Tactile floating action bubble menu revealing quick options:
 /// 1. ✨ AI Breakdown & Re-Analysis
 /// 2. ✏️ Edit Pin
-/// 3. 🗑️ Delete Pin
+/// 3. 📤 Share Pin (Text, Calendar, Blueprint)
+/// 4. 🗑️ Delete Pin
 class TaskActionBubble extends StatelessWidget {
   final PinTask task;
   final VoidCallback? onAiBreakdown;
   final VoidCallback? onEdit;
+  final VoidCallback? onShare;
   final VoidCallback? onDelete;
 
   const TaskActionBubble({
@@ -21,6 +24,7 @@ class TaskActionBubble extends StatelessWidget {
     required this.task,
     this.onAiBreakdown,
     this.onEdit,
+    this.onShare,
     this.onDelete,
   });
 
@@ -31,6 +35,7 @@ class TaskActionBubble extends StatelessWidget {
     Offset? targetPosition,
     VoidCallback? onAiBreakdown,
     VoidCallback? onEdit,
+    VoidCallback? onShare,
     VoidCallback? onDelete,
   }) {
     return showGeneralDialog<T>(
@@ -62,7 +67,7 @@ class TaskActionBubble extends StatelessWidget {
         double? top;
 
         if (targetPosition != null) {
-          const estimatedWidth = 380.0;
+          const estimatedWidth = 480.0;
           const estimatedHeight = 56.0;
 
           // Center horizontally around the target
@@ -100,6 +105,14 @@ class TaskActionBubble extends StatelessWidget {
                 onEdit();
               } else {
                 TaskCrudModal.show(context, task: task);
+              }
+            },
+            onShare: () {
+              Navigator.of(dialogContext).pop();
+              if (onShare != null) {
+                onShare();
+              } else {
+                SingleTaskShareModal.show(context, task: task);
               }
             },
             onDelete: () {
@@ -210,7 +223,28 @@ class TaskActionBubble extends StatelessWidget {
             color: borderColor,
           ),
 
-          // Option 3: Delete Pin
+          // Option 3: Share Pin
+          BubbleActionButton(
+            icon: Icons.share_rounded,
+            iconColor: PinTokens.accentEmerald,
+            label: 'Share',
+            subtitle: 'Text & Cal',
+            labelColor: PinTokens.accentEmerald,
+            subtitleColor: textSecondary,
+            hoverBgColor: PinTokens.accentEmerald
+                .withValues(alpha: isDark ? 0.18 : 0.10),
+            onTap: onShare,
+          ),
+
+          // Vertical divider
+          Container(
+            width: 1.2,
+            height: 28,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            color: borderColor,
+          ),
+
+          // Option 4: Delete Pin
           BubbleActionButton(
             icon: Icons.delete_outline_rounded,
             iconColor: PinTokens.accentRose,

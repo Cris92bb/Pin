@@ -6,6 +6,7 @@ import '../features/ai/services/ai_breakdown_orchestrator.dart';
 import '../features/ai/services/ai_config_service.dart';
 import '../features/ai/ui/ai_settings_modal.dart';
 import '../features/task_crud/ui/task_crud_modal.dart';
+import '../features/task_export_import/ui/single_task_share_modal.dart';
 import '../pages/home/home_page.dart';
 import 'theme/pin_scroll_behavior.dart';
 import 'theme/pin_theme.dart';
@@ -37,6 +38,7 @@ class _PinAppContentState extends ConsumerState<_PinAppContent>
     WidgetsBinding.instance.addObserver(this);
 
     TaskCrudModal.defaultAiSettingsHandler = (ctx) => AiSettingsModal.show(ctx);
+    TaskCrudModal.defaultShareHandler = (ctx, task) => SingleTaskShareModal.show(ctx, task: task);
     TaskCrudModal.defaultAiBreakdownHandler =
         (ctx, ref, {required prompt, currentDescription}) async {
       final aiConfig = ref.read(aiConfigProvider);
