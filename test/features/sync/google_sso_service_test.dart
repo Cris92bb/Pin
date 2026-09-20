@@ -126,23 +126,36 @@ void main() {
     });
   });
 
-  group('FirebaseConfig OAuth Secret', () {
-    test('serializes and deserializes oAuthClientSecret correctly', () {
+  group('FirebaseConfig OAuth Secret and Web Client ID', () {
+    test('serializes and deserializes oAuthClientSecret and webOAuthClientId correctly', () {
       const config = FirebaseConfig(
         apiKey: 'test-api-key',
         projectId: 'test-project',
-        oAuthClientId: 'test-client-id.apps.googleusercontent.com',
+        oAuthClientId: 'desktop-client-id.apps.googleusercontent.com',
         oAuthClientSecret: 'GOCSPX-secret123',
+        webOAuthClientId: 'web-client-id.apps.googleusercontent.com',
       );
       final json = config.toJson();
       expect(json['oAuthClientSecret'], equals('GOCSPX-secret123'));
+      expect(json['webOAuthClientId'], equals('web-client-id.apps.googleusercontent.com'));
 
       final fromJson = FirebaseConfig.fromJson(json);
       expect(fromJson.oAuthClientSecret, equals('GOCSPX-secret123'));
       expect(
         fromJson.oAuthClientId,
-        equals('test-client-id.apps.googleusercontent.com'),
+        equals('desktop-client-id.apps.googleusercontent.com'),
       );
+      expect(
+        fromJson.webOAuthClientId,
+        equals('web-client-id.apps.googleusercontent.com'),
+      );
+    });
+
+    test('activeOAuthClientId resolves correctly', () {
+      const desktopOnly = FirebaseConfig(
+        oAuthClientId: 'desktop-id',
+      );
+      expect(desktopOnly.activeOAuthClientId, equals('desktop-id'));
     });
   });
 }
