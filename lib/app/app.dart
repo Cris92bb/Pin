@@ -45,16 +45,7 @@ class _PinAppContentState extends ConsumerState<_PinAppContent>
     TaskCrudModal.defaultShareHandler = (ctx, task) => SingleTaskShareModal.show(ctx, task: task);
     TaskCrudModal.defaultAiBreakdownHandler =
         (ctx, ref, {required prompt, currentDescription}) async {
-      final aiConfig = ref.read(aiConfigProvider);
-      final canRunLocally = aiConfig.isOnDeviceReady &&
-          aiConfig.executionMode != AiExecutionMode.cloudOnly;
-
-      if (!aiConfig.hasKey && !canRunLocally) {
-        final configured = await AiSettingsModal.show(ctx);
-        if (configured != true) return null;
-        final updated = ref.read(aiConfigProvider);
-        if (!updated.hasKey && !updated.isOnDeviceReady) return null;
-      }
+      await ref.read(aiConfigProvider.notifier).ensureLoaded();
 
       final orchestrator = AiBreakdownOrchestrator();
       final result = await orchestrator.breakdown(

@@ -6,6 +6,7 @@ import 'package:pin/entities/task/model/atomic_step.dart';
 import 'package:pin/entities/task/model/pin_task.dart';
 import 'package:pin/entities/task/state/task_state_notifier.dart';
 import 'package:pin/features/ai/services/gemini_service.dart';
+import 'package:pin/features/ai/ui/ai_settings_modal.dart';
 import 'package:pin/features/ai/ui/ai_task_breakdown_modal.dart';
 import 'package:pin/features/task_crud/ui/task_crud_modal.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
@@ -235,5 +236,48 @@ void main() {
     // Verify TaskCrudModal is now open with the breakdown values
     expect(find.byType(TaskCrudModal), findsOneWidget);
     expect(find.text('Architect Crisp AMOLED Dark Theme System'), findsOneWidget);
+  });
+
+  testWidgets('AiTaskBreakdownModal decomposes task with smart local engine when no API key configured without opening settings', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'pin_gemini_api_key': '',
+      'pin_gemini_model': 'gemini-3.6-flash',
+    });
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final fakeStorage = MemoryStorageAdapter();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            () => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.darkTheme,
+          home: Scaffold(
+            body: AiTaskBreakdownModal(
+              task: testTask,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify modal is open and DOES NOT open AiSettingsModal
+    expect(find.byType(AiSettingsModal), findsNothing);
+    expect(find.byType(AiTaskBreakdownModal), findsOneWidget);
+    expect(find.text('AI Breakdown & Re-Analysis'), findsOneWidget);
+    // Verify decomposed with Smart Local Engine
+    expect(find.textContaining('Smart Local Engine'), findsOneWidget);
+    expect(find.textContaining('Atomic Subtasks'), findsOneWidget);
   });
 }

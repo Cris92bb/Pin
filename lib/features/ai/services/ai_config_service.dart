@@ -88,12 +88,20 @@ class AiConfigNotifier extends Notifier<AiConfig> {
         executionMode: mode,
       );
     }
-    _load();
-    return const AiConfig(
-      apiKey: '',
+    const compileTimeKey = String.fromEnvironment('GEMINI_API_KEY');
+    _loadFuture = _load();
+    return AiConfig(
+      apiKey: compileTimeKey.trim(),
       selectedModel: defaultModel,
       executionMode: AiExecutionMode.auto,
     );
+  }
+
+  Future<void>? _loadFuture;
+
+  /// Ensures persisted preferences, environment keys, and hardware capabilities are fully loaded.
+  Future<void> ensureLoaded() async {
+    await (_loadFuture ??= _load());
   }
 
   @override
@@ -120,28 +128,33 @@ class AiConfigNotifier extends Notifier<AiConfig> {
       _prefs = p;
       String? key = p.getString(keyPref);
 
-      // Fallback to environment variable or .env file if available and not in prefs
-      if ((key == null || key.trim().isEmpty) && !kIsWeb) {
-        final envKey = Platform.environment['GEMINI_API_KEY'];
-        if (envKey != null && envKey.trim().isNotEmpty) {
-          key = envKey.trim();
-        } else {
-          try {
-            final envFile = File('.env');
-            if (envFile.existsSync()) {
-              final lines = envFile.readAsLinesSync();
-              for (final line in lines) {
-                final trimmed = line.trim();
-                if (trimmed.startsWith('GEMINI_API_KEY=')) {
-                  final val = trimmed.substring('GEMINI_API_KEY='.length).trim();
-                  if (val.isNotEmpty) {
-                    key = val.replaceAll('"', '').replaceAll("'", '');
-                    break;
+      // Fallback to compile-time env, system env, or .env file if available and not in prefs
+      if (key == null || key.trim().isEmpty) {
+        const compileKey = String.fromEnvironment('GEMINI_API_KEY');
+        if (compileKey.trim().isNotEmpty) {
+          key = compileKey.trim();
+        } else if (!kIsWeb) {
+          final envKey = Platform.environment['GEMINI_API_KEY'];
+          if (envKey != null && envKey.trim().isNotEmpty) {
+            key = envKey.trim();
+          } else {
+            try {
+              final envFile = File('.env');
+              if (envFile.existsSync()) {
+                final lines = envFile.readAsLinesSync();
+                for (final line in lines) {
+                  final trimmed = line.trim();
+                  if (trimmed.startsWith('GEMINI_API_KEY=')) {
+                    final val = trimmed.substring('GEMINI_API_KEY='.length).trim();
+                    if (val.isNotEmpty) {
+                      key = val.replaceAll('"', '').replaceAll("'", '');
+                      break;
+                    }
                   }
                 }
               }
-            }
-          } catch (_) {}
+            } catch (_) {}
+          }
         }
       }
 
@@ -166,8 +179,8 @@ class AiConfigNotifier extends Notifier<AiConfig> {
         executionMode: mode,
       );
 
-      // Check on-device capability in background
-      _checkCapability();
+      // Check on-device capability and await so ensureLoaded captures it
+      await _checkCapability();
     } catch (_) {
       // Gracefully ignore local read errors
     }
