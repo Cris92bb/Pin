@@ -24,6 +24,7 @@ Smartwatches present unique constraints:
 - **Circular Display Insets**: Square viewports clip corners on circular screens. Use `WearableUtils.getSafeCircularPadding(context)` to compute the maximal inscribed rectangular padding.
 - **Glanceable Hierarchy**: Large typography, high-contrast badges, single-touch actions, and no overflow.
 - **Dismiss Navigation**: System dismiss edge-swipes are accommodated using dedicated gesture isolation and back buttons.
+- **OLED Black Splash Screen & Circular Icon**: Wear OS enforces pure OLED black `#000000` window background during cold startup via `values-watch/` and `values-watch-v31/`, and utilizes `android:roundIcon="@mipmap/ic_launcher_round"` for edge-safe round application drawer representation.
 
 ---
 
