@@ -5,7 +5,6 @@ import '../../../entities/task/state/task_state_notifier.dart';
 import '../../../shared/ui/pin_tokens.dart';
 import 'wide_fold_compact_card.dart';
 import 'wide_fold_helpers.dart';
-import 'wide_fold_wip_slots.dart';
 
 /// Inactive drawer with subtle opacity and click-to-dock interaction.
 class WideFoldInactiveDrawer extends ConsumerStatefulWidget {
@@ -99,7 +98,7 @@ class _WideFoldInactiveDrawerState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Inactive Header - unified 56px height perfectly matching active drawer
+                // Inactive Header - contains just title and task count
                 SizedBox(
                   height: 56,
                   child: Padding(
@@ -107,77 +106,40 @@ class _WideFoldInactiveDrawerState
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(
-                          WideFoldHelpers.statusIcon(widget.status),
-                          size: 19,
-                          color: textSecondary,
+                        Flexible(
+                          child: Text(
+                            WideFoldHelpers.statusTitle(widget.status),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: textPrimary,
+                              letterSpacing: -0.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  WideFoldHelpers.statusTitle(widget.status),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: textPrimary,
-                                    letterSpacing: -0.2,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              // Count Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 7, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: widget.isDark
-                                      ? PinTokens.darkCardBg
-                                      : PinTokens.lightTagBg,
-                                  borderRadius: PinTokens.radiusFull,
-                                  border:
-                                      Border.all(color: borderColor, width: 1),
-                                ),
-                                child: Text(
-                                  '${tasks.length}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
+                        // Count Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: widget.isDark
+                                ? PinTokens.darkCardBg
+                                : PinTokens.lightTagBg,
+                            borderRadius: PinTokens.radiusFull,
+                            border:
+                                Border.all(color: borderColor, width: 1),
+                          ),
+                          child: Text(
+                            '${tasks.length}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: textSecondary,
+                            ),
                           ),
                         ),
-                        if (widget.status == TaskStatus.today) ...[
-                          WideFoldWipSlots(
-                            state: widget.taskState,
-                            isDark: widget.isDark,
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (widget.status == TaskStatus.done && tasks.isNotEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.delete_sweep_outlined,
-                                size: 17),
-                            color: textSecondary,
-                            splashRadius: 16,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                                minWidth: 32, minHeight: 32),
-                            tooltip: 'Clear Done Tasks',
-                            onPressed: () {
-                              ref
-                                  .read(taskStateProvider.notifier)
-                                  .clearDoneTasks();
-                            },
-                          )
-                        else
-                          const SizedBox(width: 32, height: 32),
                       ],
                     ),
                   ),

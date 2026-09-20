@@ -1,13 +1,12 @@
 # Form Factors & Multi-Device Guidelines
 
-This repository supports four distinct device and viewport tiers:
+This repository supports three canonical viewport tiers defined in `PinScreenTier` and `PinBreakpoints`:
 
 | Tier | Enum | Condition / Width | Primary Target Devices | Layout Archetype |
 |---|---|---|---|---|
-| **Wearable** | `ScreenTier.wearable` | `longestSide <= 320.0` (both sides small) | Wear OS, Apple Watch | Circular/glanceable, high-contrast, vertical gestures |
-| **Smartphone** | `ScreenTier.compact` | `width < 600.0` | Mobile phones, folded foldables | Single-column stacked, bottom navigation / app bar |
-| **Foldable / Tablet** | `ScreenTier.foldOrTablet` | `600.0 <= width < 1024.0` | Foldables unfolded, 8-11" tablets | Dual-pane split view (along the hinge when reported), master-detail |
-| **Desktop / Web** | `ScreenTier.desktopWeb` | `width >= 1024.0` | Windows, Linux, macOS, Full Web | Navigation rail, multi-column workspace, keyboard shortcuts |
+| **Wearable** | `PinScreenTier.xs` | `WearableUtils.isWearable` or `width < 320.0` | Wear OS (Pixel Watch, Galaxy Watch) | Circular/glanceable, high-contrast, infinite left-only carousel (`WearableHomePage`) |
+| **Smartphone / Compact** | `PinScreenTier.small` | `width < 720.0` | Mobile phones, folded foldables, compact companion | Single-column layered deck, swipeable drawers (`LayeredDeckView`) |
+| **Foldable / Tablet / Desktop / Web** | `PinScreenTier.wide` | `width >= 720.0` | Unfolded foldables, tablets, desktop, web | Responsive 3-drawer layout (`WideFoldKanbanView`), docking drawers & side overlay |
 
 ---
 

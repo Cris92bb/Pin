@@ -15,6 +15,7 @@ Whenever working on this codebase, the agent must adhere to the following rules 
 ## 2. Timing and Quality Verification
 - Create commits when a coherent unit of work is completed and verified.
 - Run tests (`flutter test`) or static checks (`dart analyze`) when modifying Dart/Flutter code before committing to ensure the build remains clean.
+- **Code & Documentation Consistency Check**: Before creating any commit that introduces, removes, or alters functionality, architecture, endpoints, models, tokens, shortcuts, or form factors, scan and check related markdown documentation (`README.md`, `docs/`, `.agents/rules/`) and update them to prevent drift.
 - Never commit broken code, syntax errors, or unverified changes unless explicitly instructed.
 
 ## 3. Scope & Staging

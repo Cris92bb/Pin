@@ -9,6 +9,7 @@ import 'package:pin/features/task_crud/ui/task_crud_modal.dart';
 import 'package:pin/pages/home/home_page.dart';
 import 'package:pin/shared/api/storage/memory_storage_adapter.dart';
 import 'package:pin/shared/ui/pin_tokens.dart';
+import 'package:pin/widgets/kanban_board/components/wide_fold_docking_tray.dart';
 import 'package:pin/widgets/kanban_board/task_card.dart';
 import 'package:pin/widgets/kanban_board/wide_fold_kanban_view.dart';
 
@@ -44,7 +45,7 @@ void main() {
     expect(find.byType(WideFoldKanbanView), findsOneWidget);
 
     // Verify all 3 drawers exist simultaneously
-    expect(find.text('To Do (Today)'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
     expect(find.text('Backlog'), findsOneWidget);
     expect(find.text('Done'), findsOneWidget);
   });
@@ -155,7 +156,7 @@ void main() {
     expect(find.text('Wide Screen Focus Task'), findsAtLeastNWidgets(1));
 
     // Active drawer title is still visible beside the focus overlay!
-    expect(find.text('To Do (Today)'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
 
     // Click back to exit Focus Mode
     final backBtn = find.byTooltip('Return to Board (Esc)');
@@ -197,7 +198,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Click "+" button in active drawer header
-    final addIcon = find.byTooltip('Capture Pin in To Do (Today)');
+    final addIcon = find.byTooltip('Capture Pin in Today');
     expect(addIcon, findsOneWidget);
     await tester.tap(addIcon);
     await tester.pumpAndSettle();
@@ -396,6 +397,55 @@ void main() {
 
     // Active drawer + inactive drawers all have antiAlias clip & foregroundDecoration border
     expect(clippedDeckContainers.length, greaterThanOrEqualTo(3));
+  });
+
+  testWidgets(
+      'tapping an inactive drawer mounts docking tray and smoothly glides during animation',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final fakeStorage = MemoryStorageAdapter();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.lightTheme,
+          home: const HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // In idle state, docking tray is not present
+    expect(find.byType(WideFoldDockingTray), findsNothing);
+
+    // Tap Done drawer
+    final doneDrawer = find.text('Done');
+    expect(doneDrawer, findsOneWidget);
+    await tester.tap(doneDrawer);
+
+    // Advance animation midway
+    await tester.pump(const Duration(milliseconds: 150));
+
+    // Docking tray is now visible in the vacated slot!
+    expect(find.byType(WideFoldDockingTray), findsOneWidget);
+
+    // Complete transition
+    await tester.pumpAndSettle();
+
+    // Docking tray is gone, Done is docked in active column
+    expect(find.byType(WideFoldDockingTray), findsNothing);
   });
 }
 

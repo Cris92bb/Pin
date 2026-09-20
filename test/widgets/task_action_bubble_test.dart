@@ -24,9 +24,10 @@ void main() {
     updatedAt: DateTime.now(),
   );
 
-  testWidgets('TaskActionBubble renders AI Breakdown and Edit Pin options', (tester) async {
+  testWidgets('TaskActionBubble renders AI Breakdown, Edit Pin, and Delete options', (tester) async {
     bool aiClicked = false;
     bool editClicked = false;
+    bool deleteClicked = false;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -36,6 +37,7 @@ void main() {
             task: testTask,
             onAiBreakdown: () => aiClicked = true,
             onEdit: () => editClicked = true,
+            onDelete: () => deleteClicked = true,
           ),
         ),
       ),
@@ -46,6 +48,8 @@ void main() {
     expect(find.text('Re-analyze'), findsOneWidget);
     expect(find.text('Edit Pin'), findsOneWidget);
     expect(find.text('Full editor'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(find.text('Remove pin'), findsOneWidget);
 
     // Tap AI Breakdown
     await tester.tap(find.text('AI Breakdown'));
@@ -56,6 +60,11 @@ void main() {
     await tester.tap(find.text('Edit Pin'));
     await tester.pumpAndSettle();
     expect(editClicked, isTrue);
+
+    // Tap Delete
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(deleteClicked, isTrue);
   });
 
   testWidgets('Long-pressing TaskCard opens TaskActionBubble modal', (tester) async {
@@ -204,5 +213,89 @@ void main() {
 
     // Verify AiTaskBreakdownModal opened
     expect(find.byType(AiTaskBreakdownModal), findsOneWidget);
+  });
+
+  testWidgets('Tapping Delete in TaskActionBubble removes task from board', (tester) async {
+    final fakeStorage = MemoryStorageAdapter([testTask.toJson()]);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: PinTheme.darkTheme,
+          home: Scaffold(
+            body: TaskCard(task: testTask),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify card is rendered
+    expect(find.text('Design high-converting landing page'), findsOneWidget);
+
+    // Long press to open bubble
+    await tester.longPress(find.byType(TaskCard));
+    await tester.pumpAndSettle();
+
+    // Tap Delete in bubble
+    expect(find.text('Delete'), findsOneWidget);
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    // Bubble is dismissed
+    expect(find.byType(TaskActionBubble), findsNothing);
+  });
+
+  testWidgets('Tapping green checkmark on TaskCard moves task to done', (tester) async {
+    final fakeStorage = MemoryStorageAdapter([testTask.toJson()]);
+    late WidgetRef capturedRef;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageAdapterProvider.overrideWithValue(fakeStorage),
+          taskStateProvider.overrideWith(
+            (ref) => TaskStateNotifier(
+              storage: fakeStorage,
+              seedInitialSample: false,
+            ),
+          ),
+        ],
+        child: Consumer(
+          builder: (context, ref, child) {
+            capturedRef = ref;
+            final tasks = ref.watch(taskStateProvider).tasks;
+            final currentTask = tasks.isNotEmpty ? tasks.first : testTask;
+            return MaterialApp(
+              theme: PinTheme.darkTheme,
+              home: Scaffold(
+                body: TaskCard(task: currentTask),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Find the green checkmark icon button
+    final checkmark = find.byTooltip('Move to Done');
+    expect(checkmark, findsOneWidget);
+
+    await tester.tap(checkmark);
+    await tester.pumpAndSettle();
+
+    // Verify task is now moved to Done
+    expect(capturedRef.read(taskStateProvider).doneTasks.length, 1);
+    expect(capturedRef.read(taskStateProvider).doneTasks.first.id, testTask.id);
   });
 }

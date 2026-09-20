@@ -3,7 +3,7 @@ import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
 import '../../../shared/ui/pin_tokens.dart';
 
-/// Target deck / status selector component (To do, Backlog, Done) for TaskCrudModal.
+/// Target deck / status selector component (Today, Backlog, Done) for TaskCrudModal.
 class TaskCrudDeckSelector extends StatelessWidget {
   /// The currently selected status.
   final TaskStatus selectedStatus;
@@ -55,7 +55,7 @@ class TaskCrudDeckSelector extends StatelessWidget {
             children: [
               _buildColumnOption(
                 context: context,
-                label: 'To do',
+                label: 'Today',
                 status: TaskStatus.today,
                 badge: '${taskState.todayCount}/${taskState.wipLimit} focus',
                 isFull: taskState.isTodayWipFull &&

@@ -4,20 +4,24 @@ import '../../entities/task/model/pin_task.dart';
 import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
 import '../../shared/ui/pin_tokens.dart';
+import 'components/bubble_action_button.dart';
 
 /// Tactile floating action bubble menu revealing quick options:
 /// 1. ✨ AI Breakdown & Re-Analysis
 /// 2. ✏️ Edit Pin
+/// 3. 🗑️ Delete Pin
 class TaskActionBubble extends StatelessWidget {
   final PinTask task;
   final VoidCallback? onAiBreakdown;
   final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const TaskActionBubble({
     super.key,
     required this.task,
     this.onAiBreakdown,
     this.onEdit,
+    this.onDelete,
   });
 
   /// Displays the action bubble positioned near [targetPosition] or centered on screen.
@@ -27,6 +31,7 @@ class TaskActionBubble extends StatelessWidget {
     Offset? targetPosition,
     VoidCallback? onAiBreakdown,
     VoidCallback? onEdit,
+    VoidCallback? onDelete,
   }) {
     return showGeneralDialog<T>(
       context: context,
@@ -57,7 +62,7 @@ class TaskActionBubble extends StatelessWidget {
         double? top;
 
         if (targetPosition != null) {
-          const estimatedWidth = 310.0;
+          const estimatedWidth = 380.0;
           const estimatedHeight = 56.0;
 
           // Center horizontally around the target
@@ -95,6 +100,12 @@ class TaskActionBubble extends StatelessWidget {
                 onEdit();
               } else {
                 TaskCrudModal.show(context, task: task);
+              }
+            },
+            onDelete: () {
+              Navigator.of(dialogContext).pop();
+              if (onDelete != null) {
+                onDelete();
               }
             },
           ),
@@ -156,14 +167,16 @@ class TaskActionBubble extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Option 1: AI Breakdown
-          _BubbleActionButton(
+          BubbleActionButton(
             icon: Icons.auto_awesome_rounded,
             iconColor: PinTokens.aiAccentVioletLight,
             label: 'AI Breakdown',
             subtitle: 'Re-analyze',
             labelColor: PinTokens.aiAccentVioletLight,
-            subtitleColor: PinTokens.aiAccentVioletSubtle.withValues(alpha: 0.8),
-            hoverBgColor: PinTokens.aiAccentViolet.withValues(alpha: isDark ? 0.18 : 0.10),
+            subtitleColor:
+                PinTokens.aiAccentVioletSubtle.withValues(alpha: 0.8),
+            hoverBgColor: PinTokens.aiAccentViolet
+                .withValues(alpha: isDark ? 0.18 : 0.10),
             onTap: onAiBreakdown,
           ),
 
@@ -176,7 +189,7 @@ class TaskActionBubble extends StatelessWidget {
           ),
 
           // Option 2: Edit Pin
-          _BubbleActionButton(
+          BubbleActionButton(
             icon: Icons.edit_rounded,
             iconColor: textPrimary,
             label: 'Edit Pin',
@@ -188,91 +201,30 @@ class TaskActionBubble extends StatelessWidget {
                 : Colors.black.withValues(alpha: 0.05),
             onTap: onEdit,
           ),
+
+          // Vertical divider
+          Container(
+            width: 1.2,
+            height: 28,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            color: borderColor,
+          ),
+
+          // Option 3: Delete Pin
+          BubbleActionButton(
+            icon: Icons.delete_outline_rounded,
+            iconColor: PinTokens.accentRose,
+            label: 'Delete',
+            subtitle: 'Remove pin',
+            labelColor: PinTokens.accentRose,
+            subtitleColor: isDark
+                ? PinTokens.darkTextSecondary
+                : PinTokens.lightTextSecondary,
+            hoverBgColor: PinTokens.accentRose
+                .withValues(alpha: isDark ? 0.18 : 0.10),
+            onTap: onDelete,
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _BubbleActionButton extends StatefulWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String subtitle;
-  final Color labelColor;
-  final Color subtitleColor;
-  final Color hoverBgColor;
-  final VoidCallback? onTap;
-
-  const _BubbleActionButton({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.subtitle,
-    required this.labelColor,
-    required this.subtitleColor,
-    required this.hoverBgColor,
-    this.onTap,
-  });
-
-  @override
-  State<_BubbleActionButton> createState() => _BubbleActionButtonState();
-}
-
-class _BubbleActionButtonState extends State<_BubbleActionButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: InkWell(
-        borderRadius: PinTokens.radiusFull,
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: PinTokens.animFast,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _isHovered ? widget.hoverBgColor : Colors.transparent,
-            borderRadius: PinTokens.radiusFull,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.icon,
-                size: 16,
-                color: widget.iconColor,
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    widget.label,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: widget.labelColor,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                  Text(
-                    widget.subtitle,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: widget.subtitleColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

@@ -34,9 +34,9 @@ class KanbanBoard extends ConsumerWidget {
                   initialCollapsed: false,
                 ),
 
-                // To Do (Today) - Strict WIP queue
+                // Today - Strict WIP queue
                 KanbanColumn(
-                  title: 'To Do (Today)',
+                  title: 'Today',
                   icon: Icons.bolt_rounded,
                   status: TaskStatus.today,
                   tasks: state.todayTasks,

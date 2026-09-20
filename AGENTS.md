@@ -33,7 +33,8 @@ You MUST create a Git commit for every impactful change made to this repository.
 
 ### Commit Requirements
 1. **Verification First**: Validate changes before committing (e.g., run `flutter test` or `dart analyze`).
-2. **Conventional Commits Format**:
+2. **Code & Documentation Consistency**: Before committing code changes, always inspect related documentation markdown files (`README.md`, `docs/`, `.agents/rules/`). Verify that architecture trees, models, APIs, shortcuts, tokens, breakpoints, and workflows in the documentation accurately reflect the active code, and update the documentation in lockstep.
+3. **Conventional Commits Format**:
    - `feat(...)`: new features or capabilities
    - `fix(...)`: bug and layout fixes
    - `docs(...)`: documentation updates
@@ -41,7 +42,7 @@ You MUST create a Git commit for every impactful change made to this repository.
    - `refactor(...)`: structural code improvements
    - `test(...)`: test additions and updates
    - `chore(...)`: build scripts, configs, launcher shortcuts, dependencies
-3. **Clean Staging**: Stage only the files associated with the change. Never commit temporary files, logs, or build artifacts.
+4. **Clean Staging**: Stage only the files associated with the change. Never commit temporary files, logs, or build artifacts.
 
 ## Branching & Pull Request Policy
 

@@ -67,7 +67,7 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
 - **✨ Gemini AI Decomposition & Auto-Fill**:
   - Securely configure your Google Gemini API key via the header menu or inside the task dialog.
   - One-click task breakdown: type a quick idea or title, and Gemini refines the title, generates a clear objective description, sets the cognitive energy profile, estimates total duration, attaches relevant tags, and generates 2–6 bite-sized atomic subtasks (each $\le 15$ minutes).
-  - Supports model selection (`gemini-1.5-flash`, `gemini-2.5-flash`, `gemini-2.0-flash`) and zero-config fallback via the `GEMINI_API_KEY` environment variable.
+  - Supports model selection (`gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.7-flash`, `gemini-3.8-flash`) with zero-config fallback via the `GEMINI_API_KEY` environment variable.
 - **🐧 Native Linux Integration**:
   - GNOME Application Menu (`.desktop`) integration.
   - Multi-resolution hicolor icon assets (`16x16` through `512x512`).
@@ -80,9 +80,12 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
 | Shortcut | Action |
 | :--- | :--- |
 | <kbd>Ctrl</kbd> + <kbd>N</kbd> | Create a new task |
+| <kbd>F</kbd> | Launch Focus Mode for the first Today pin |
+| <kbd>Ctrl</kbd> + <kbd>E</kbd> / <kbd>Ctrl</kbd> + <kbd>I</kbd> | Open JSON Export / Import modal |
+| <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> | Switch to Backlog / Today / Done drawer |
+| <kbd>←</kbd> / <kbd>→</kbd> | Cycle horizontally between drawers |
 | <kbd>Ctrl</kbd> + <kbd>Q</kbd> / <kbd>Ctrl</kbd> + <kbd>W</kbd> | Exit application |
-| <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> | Switch to Backlog / In Progress / Done drawer |
-| <kbd>Esc</kbd> | Close open modals / drawer |
+| <kbd>Esc</kbd> | Close open modals / dismiss alerts |
 
 ---
 
@@ -104,23 +107,21 @@ Pin/
 ├── android/                   # Android & Wear OS runner manifests and configurations
 ├── lib/
 │   ├── main.dart              # Application entry point
-│   ├── app/                   # App-wide routing, configuration & theme tokens
+│   ├── app/                   # App-wide configuration & theme tokens
 │   ├── entities/
-│   │   ├── task/              # PinTask entity, state notifier & repository
-│   │   └── atomic_step/       # Micro-step models and widgets
+│   │   └── task/              # PinTask aggregate root (PinTask, AtomicStep, state notifier & repository)
 │   ├── features/
 │   │   ├── ai/                # Gemini task breakdown & smart decomposition
 │   │   ├── focus_mode/        # Deep-focus immersion view and timer
 │   │   ├── sync/              # Cloud Firestore dual-layer sync & auth service
 │   │   ├── task_crud/         # Task creation, editing & priority tags
-│   │   ├── task_export_import/# JSON export & import tools
-│   │   └── wearable/          # Wear OS smartwatch UI, left-only physics & watch login
+│   │   └── task_export_import/# JSON export & import tools
 │   ├── pages/
-│   │   └── home/              # Main companion window & header controls
-│   ├── shared/                # Common UI tokens, constants & utilities
+│   │   └── home/              # Main companion window, wearable watch tier & header controls
+│   ├── shared/                # Common UI tokens, constants, storage & utilities (WearableUtils)
 │   └── widgets/
 │       └── kanban_board/      # Layered deck view, columns & task cards
-└── test/                      # Comprehensive unit and widget test suite
+└── test/                      # Comprehensive unit, widget, and FSD architecture test suite
 ```
 
 ---

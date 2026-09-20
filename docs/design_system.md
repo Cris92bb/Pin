@@ -20,7 +20,7 @@ Pin is designed as an **editorial, tactile desk companion**. It rejects harsh, u
 | Variable / Token | HEX Code | RGB / CSS | Visual Tone | Semantic Usage |
 | --- | --- | --- | --- | --- |
 | `PinTokens.lightCanvasBg` | `#F3F5EE` | `rgb(243, 245, 238)` | Very soft warm sage-tinted white | Main page backdrop, companion frame background, Focus Mode canvas |
-| `PinTokens.lightSheetBg` | `#E7ECE1` | `rgb(231, 236, 225)` | Faded misty sage green | Active sliding bottom sheet container ("To do"), Focus Mode subtasks tray |
+| `PinTokens.lightSheetBg` | `#E7ECE1` | `rgb(231, 236, 225)` | Faded misty sage green | Active sliding bottom sheet container ("Today"), Focus Mode subtasks tray |
 | `PinTokens.lightStackedTabBg` | `#DEE3D7` | `rgb(222, 227, 215)` | Muted desaturated olive-gray | Collapsed background drawer tabs ("Backlog", "Done"), secondary hover state |
 | `PinTokens.lightCardBg` | `#EFF3EA` | `rgb(239, 243, 234)` | Ultra-light tinted off-white | Foreground task item cards, atomic subtask tiles, text input fields, modal surfaces |
 | `PinTokens.lightTagBg` | `#E2E9DC` | `rgb(226, 233, 220)` | Soft desaturated sage fill | Category tags (`#dev`), duration/energy pills, secondary button background |
@@ -49,7 +49,7 @@ Pin uses a clean, modern sans-serif system typeface (`fontFamily: 'sans-serif'`)
 | Level | Size | Weight | Line Height | Letter Spacing | Color Token | Example Usage |
 | --- | --- | --- | --- | --- | --- | --- |
 | **Stopwatch Digits** | `56px` | `FontWeight.w700` | `1.0` | `2.0` (Tabular) | `lightTextPrimary` | Focus Mode elapsed timer |
-| **Drawer Header (Active)** | `24px` | `FontWeight.w800` | `1.2` | `-0.5` | `lightTextPrimary` | "To do" active sheet title |
+| **Drawer Header (Active)** | `24px` | `FontWeight.w800` | `1.2` | `-0.5` | `lightTextPrimary` | "Today" active sheet title |
 | **Drawer Header (Inactive)**| `14px` | `FontWeight.w500` | `1.2` | `0.0` | `lightTextSecondary` | "Backlog" / "Done" tab title |
 | **Section / Modal Title** | `18px` | `FontWeight.w700` | `1.3` | `-0.3` | `lightTextPrimary` | Modals, card action bubble |
 | **Task Title** | `15px` | `FontWeight.w700` | `1.3` | `0.0` | `lightTextPrimary` | Task card foreground title |
@@ -64,9 +64,9 @@ Pin uses a clean, modern sans-serif system typeface (`fontFamily: 'sans-serif'`)
 
 ### 4.1 Corner Radii
 - **Full / Pill (`PinTokens.radiusFull`)**: `BorderRadius.circular(999)` — Badges, WIP pills, pill buttons, grab bar.
-- **Sliding Sheet Top (`PinTokens.radiusSheet`)**: `BorderRadius.vertical(top: Radius.circular(28))` — Active kanban drawer.
+- **Sliding Sheet Top (`PinTokens.radiusDeck`)**: `BorderRadius.vertical(top: Radius.circular(28))` — Active kanban drawer.
 - **Stacked Tab Top**: `BorderRadius.vertical(top: Radius.circular(24))` — Inactive drawer tabs.
-- **Card Surface (`PinTokens.radiusCard`)**: `BorderRadius.circular(16)` — Inner task cards.
+- **Card Surface (`PinTokens.radiusCard`)**: `BorderRadius.circular(20)` — Inner task cards (`radiusLg` is `16.0`).
 - **Subtask / Input (`PinTokens.radiusMd`)**: `BorderRadius.circular(10)` — Micro-step tiles, text fields.
 - **Control / Checkbox (`PinTokens.radiusSm`)**: `BorderRadius.circular(6)` — Action icons, micro buttons.
 
@@ -83,7 +83,7 @@ Pin uses a clean, modern sans-serif system typeface (`fontFamily: 'sans-serif'`)
 1. **Background Drawer Stacking**:
    - Depth layer 0 (Backlog): `cardBg: PinTokens.lightStackedTabBg` (`#DEE3D7`), hover: `#D6DCCF`.
    - Depth layer 1 (Done): `cardBg: PinTokens.lightStackedTabBg` (`#DEE3D7`), hover: `#D6DCCF`.
-   - Active Foreground (To do): `cardBg: PinTokens.lightSheetBg` (`#E7ECE1`), border: `PinTokens.lightBorder` (`#D4DCCE`).
+   - Active Foreground (Today): `cardBg: PinTokens.lightSheetBg` (`#E7ECE1`), border: `PinTokens.lightBorder` (`#D4DCCE`).
 2. **Tactile Grab Handle**:
    - `width: 36`, `height: 4`, `borderRadius: 2`, `color: PinTokens.lightTextTertiary` (`#8E9C92`).
 3. **WIP Segment Track**:

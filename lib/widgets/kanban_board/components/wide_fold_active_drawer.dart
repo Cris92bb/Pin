@@ -132,6 +132,22 @@ class WideFoldActiveDrawer extends ConsumerWidget {
                     WideFoldWipSlots(state: taskState, isDark: isDark),
                     const SizedBox(width: 8),
                   ],
+                  // If Done and tasks exist: Clear Done action
+                  if (status == TaskStatus.done && tasks.isNotEmpty) ...[
+                    IconButton(
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                      color: textSecondary,
+                      splashRadius: 16,
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      tooltip: 'Clear Done Pins',
+                      onPressed: () {
+                        ref.read(taskStateProvider.notifier).clearDoneTasks();
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   // Quick Add button for this drawer
                   IconButton(
                     icon: const Icon(Icons.add_rounded, size: 20),
