@@ -174,3 +174,20 @@ To optimize the limited screen real estate on circular displays ($\sim 1.2" - 1.
 - **Infinite Carousel Loop**: 4-page sequence (`Today -> Backlog -> Completed -> Account -> Today...`).
 - **Input Sanitization**: Virtual keyboard inputs for email explicitly enforce `textCapitalization: TextCapitalization.none` and `autocorrect: false` to guarantee credential parity across devices.
 
+---
+
+## 8. Strict Design Token Consistency & Zero Hardcoded Colors
+
+1. **Zero Hardcoded Colors**: All UI elements, modal cards, buttons, backgrounds, and badges must reference `PinTokens` or `Theme.of(context)`. Hardcoded `Color(0x...)` or random hex literals are strictly prohibited.
+2. **Harmonious Palette Enforcement**: The tactile faded sage green light palette (`#F3F5EE`, `#E7ECE1`, `#EFF3EA`, `#2B3B32`) and the OLED dark palette are the sole sources of styling truth across desktop, foldables, and Wear OS watches.
+3. **Shadow and Border Cohesion**: Shadows and borders must use standardized tokens (`PinTokens.lightCardShadow`, `PinTokens.shadowSlate`, `PinTokens.shadowForest`, `PinTokens.lightBorder`, `PinTokens.darkBorder`).
+
+---
+
+## 9. File Size & Clean Componentization Standard (<= 300 LOC)
+
+1. **Target File Threshold**: Strive to keep all Dart source files **under 300 lines of code**.
+2. **Sub-Component Modularity**: Complex multi-part widgets and large modal dialogs must be extracted into dedicated `components/` subdirectories with clear single responsibilities.
+3. **Comprehensive Dart Doc Comments**: Every public component, class, method, and constructor must include descriptive Dart doc comments (`///`) detailing purpose, interaction models, parameters, and architectural classification.
+
+

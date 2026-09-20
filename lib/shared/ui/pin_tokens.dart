@@ -48,6 +48,8 @@ class PinTokens {
   static const Color headerThemeBgLight = Color(0xFFDEE3D7);
   static const Color headerThemeBorderLight = Color(0xFFD4DCCE);
   static const Color headerThemeFgLight = Color(0xFF1A241E);
+  static const Color headerSyncBorderMedium = Color(0xFFA7D7BE);
+  static const Color noticeErrorBgLight = dangerBgLight;
 
   // Dark Mode Palette
   static const Color darkCanvasBg =
@@ -85,8 +87,72 @@ class PinTokens {
   static const Color darkEnergyMediumText = Color(0xFFFB923C);
   static const Color darkEnergyFocusBg = Color(0xFF22243C);
   static const Color darkEnergyFocusText = Color(0xFFA5B4FC);
+  static const Color darkEnergyCreativeBg = Color(0xFF2D2311);
+  static const Color darkEnergyCreativeText = Color(0xFFFCD34D);
+  static const Color darkEnergyAdminBg = Color(0xFF1F2432);
+  static const Color darkEnergyAdminText = Color(0xFF94A3B8);
   static const Color darkTimerBg = Color(0xFF22243C);
   static const Color darkTimerText = Color(0xFFA5B4FC);
+
+  // Brand & Identity Tokens
+  static const Color googleBlue = Color(0xFF4285F4);
+
+  // Danger & Destructive Action Tokens
+  static const Color dangerBgLight = Color(0xFFFDF2F2);
+  static const Color dangerHoverLight = Color(0xFFFDE8E8);
+  static const Color dangerFgLight = Color(0xFFB91C1C);
+  static const Color dangerBorderLight = Color(0xFFFCA5A5);
+  static const Color dangerBgDark = Color(0xFF2C1518);
+  static const Color dangerHoverDark = Color(0xFF381A1E);
+  static const Color dangerFgDark = Color(0xFFF87171);
+  static const Color dangerBorderDark = Color(0xFF7F1D1D);
+
+  // Energy Badge Border Accents (Light Mode)
+  static const Color energyLowBorder = Color(0xFFA7D7BE);
+  static const Color energyMediumBorder = Color(0xFFF6C3A6);
+  static const Color energyDeepBorder = Color(0xFFC7CDFA);
+  static const Color energyCreativeBorder = Color(0xFFFDE68A);
+  static const Color energyAdminBorder = Color(0xFFD8D2C4);
+
+  // High-Contrast Pill Text Colors (Light Mode Selected State)
+  static const Color energyLowAccentText = Color(0xFF047857);
+  static const Color energyMediumAccentText = Color(0xFFB45309);
+  static const Color energyDeepAccentText = Color(0xFF6D28D9);
+  static const Color energySkyAccentText = Color(0xFF0369A1);
+  static const Color energyBlueAccentText = Color(0xFF1D4ED8);
+
+  // Interactive Surface & Container Tokens
+  static const Color darkInputBg = Color(0xFF1B2520);
+  static const Color darkInputBorder = Color(0xFF2E4536);
+  static const Color darkSheetBgAlt = Color(0xFF1E2638);
+  static const Color darkSurfaceCardMuted = Color(0xFF161A26);
+  static const Color darkSurfaceHover = Color(0xFF1E242C);
+  static const Color lightSurfaceHover = Color(0xFFD6DCCF);
+  static const Color lightHoverAlt = Color(0xFFECE7DE);
+  static const Color darkHeaderPillBg = Color(0xFF11221A);
+  static const Color darkHeaderPillBorder = Color(0xFF1F3D2E);
+  static const Color darkAccountTileBg = Color(0xFF101713);
+  static const Color darkActionBubbleBg = Color(0xFF161A23);
+  static const Color darkActionBubbleBorder = Color(0xFF2E3648);
+
+  // AI Feature Accents
+  static const Color aiAccentViolet = Color(0xFF6366F1);
+  static const Color aiAccentVioletLight = Color(0xFF818CF8);
+  static const Color aiAccentVioletSubtle = Color(0xFFA5B4FC);
+
+  // Neutral Shadow Colors
+  static const Color shadowSlate = Color(0xFF0F172A);
+  static const Color shadowForest = Color(0xFF1A241E);
+
+  // Wear OS OLED Palette Tokens
+  static const Color wearableOledBg = Color(0xFF000000);
+  static const Color wearableSurfaceDark = Color(0xFF141916);
+  static const Color wearableSurfaceDarkAlt = Color(0xFF141A16);
+  static const Color wearableSurfaceCard = Color(0xFF1B1D1C);
+  static const Color wearableSurfaceInput = Color(0xFF1E211F);
+  static const Color wearableSurfaceActive = Color(0xFF1A211D);
+  static const Color wearableSurfaceHeader = Color(0xFF161817);
+  static const Color wearableSurfaceChip = Color(0xFF191B1A);
 
   // Action Accents (Top) - Dark Mode
   static const Color darkActionSyncBg = Color(0xFF193836);
@@ -120,12 +186,16 @@ class PinTokens {
   static const Color accentAmber = Color(0xFFF59E0B);
   static const Color accentRose = Color(0xFFEF4444);
 
+  static const Color energyMediumFlow = Color(0xFF0284C7);
+  static const Color energyAdministrative = Color(0xFF38BDF8);
+  static const Color energyBlue = Color(0xFF2563EB);
+
   static const Map<String, Color> energyTagColors = {
-    'low-friction': Color(0xFF10B981),
-    'medium-flow': Color(0xFF0284C7),
-    'deep-focus': Color(0xFF8B5CF6),
-    'creative': Color(0xFFF59E0B),
-    'administrative': Color(0xFF38BDF8),
+    'low-friction': accentEmerald,
+    'medium-flow': energyMediumFlow,
+    'deep-focus': accentViolet,
+    'creative': accentAmber,
+    'administrative': energyAdministrative,
   };
 
   // Energy Badges (Balanced desaturated pastels)
@@ -155,12 +225,12 @@ class PinTokens {
   // Pin Card Elevation Shadows
   static List<BoxShadow> get lightCardShadow => [
         BoxShadow(
-          color: const Color(0xFF1A241E).withValues(alpha: 0.04),
+          color: shadowForest.withValues(alpha: 0.04),
           blurRadius: 4,
           offset: const Offset(0, 1),
         ),
         BoxShadow(
-          color: const Color(0xFF1A241E).withValues(alpha: 0.07),
+          color: shadowForest.withValues(alpha: 0.07),
           blurRadius: 16,
           spreadRadius: -2,
           offset: const Offset(0, 4),
@@ -194,4 +264,29 @@ class PinTokens {
   static const int defaultWipLimit = 5;
   static const int minWipLimit = 4;
   static const int maxWipLimit = 5;
+
+  // ==========================================
+  // Wear OS Smartwatch Palette Tokens (OLED Dark)
+  // ==========================================
+  /// Primary background for wearable cards, dialogs, and hero timers.
+  static const Color wearableCardBg = Color(0xFF141916);
+
+  /// Secondary surface background for compact wearable cards and text inputs.
+  static const Color wearableCardSurface = Color(0xFF1E211F);
+
+  /// Background container color for backlog pins on Wear OS.
+  static const Color wearableCardBacklog = Color(0xFF1B1D1C);
+
+  /// Background container color for completed pins on Wear OS.
+  static const Color wearableCardDone = Color(0xFF141A16);
+
+  /// Micro-step tile container background on Wear OS focus mode.
+  static const Color wearableStepBg = Color(0xFF191B1A);
+
+  /// Empty state container background on Wear OS.
+  static const Color wearableEmptyBg = Color(0xFF161817);
+
+  /// Status badge container background for wearable account card.
+  static const Color wearableStatusBadgeBg = Color(0xFF1A211D);
 }
+

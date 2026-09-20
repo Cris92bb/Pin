@@ -290,11 +290,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       bg = isDark ? PinTokens.darkEnergyMediumBg : PinTokens.energyMediumBg;
       textColor = isDark ? PinTokens.darkEnergyMediumText : PinTokens.energyMediumText;
     } else if (lower.contains('creative')) {
-      bg = isDark ? const Color(0xFF2D2311) : PinTokens.energyCreativeBg;
-      textColor = isDark ? const Color(0xFFFCD34D) : PinTokens.energyCreativeText;
+      bg = isDark ? PinTokens.darkEnergyCreativeBg : PinTokens.energyCreativeBg;
+      textColor = isDark ? PinTokens.darkEnergyCreativeText : PinTokens.energyCreativeText;
     } else if (lower.contains('admin')) {
-      bg = isDark ? const Color(0xFF1F2432) : PinTokens.energyAdminBg;
-      textColor = isDark ? const Color(0xFF94A3B8) : PinTokens.energyAdminText;
+      bg = isDark ? PinTokens.darkEnergyAdminBg : PinTokens.energyAdminBg;
+      textColor = isDark ? PinTokens.darkEnergyAdminText : PinTokens.energyAdminText;
     } else {
       bg = isDark ? PinTokens.darkEnergyLowBg : PinTokens.energyLowBg;
       textColor = isDark ? PinTokens.darkEnergyLowText : PinTokens.energyLowText;

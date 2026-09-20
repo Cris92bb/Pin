@@ -47,3 +47,20 @@ When creating or modifying light mode UI components, never use generic cold gray
 - **Primary Buttons (`PinButton.primary`)**: Solid spruce evergreen `#2B3B32` (hover `#202D26`) with white text/icon.
 - **Secondary Buttons (`PinButton.secondary`)**: Soft sage background `#E2E9DC` (hover `#DEE3D7`), border `#D4DCCE`, text `#1A241E`.
 - **Ghost Buttons**: Transparent background with hover fill `#E2E9DC` (alpha 0.6).
+
+---
+
+## 3. Strict Design Token Enforcement (Zero Hardcoded Colors)
+
+1. **No Raw Color Literals**: Constructing ad-hoc colors with `Color(0x...)` or random hex literals is strictly prohibited in widgets, modals, views, or painters.
+2. **Single Source of Truth**: All colors must be read from `PinTokens` (e.g., `PinTokens.lightCanvasBg`, `PinTokens.accentEmerald`, `PinTokens.darkSurfaceHover`, `PinTokens.googleBlue`) or `Theme.of(context)`.
+3. **Shadow & Border Tokens**: Use standard token definitions (`PinTokens.lightCardShadow`, `PinTokens.shadowSlate`, `PinTokens.shadowForest`, `PinTokens.lightBorder`, `PinTokens.darkBorder`) to prevent visual fragmentation.
+
+---
+
+## 4. File Size & Clean Componentization Standard (<= 300 LOC)
+
+1. **Hard Limit**: Strive to keep all Dart source files **under 300 lines of code**.
+2. **Component Separation**: Decompose large files into focused, well-organized sub-components in dedicated `components/` subdirectories.
+3. **Comprehensive Doc Comments**: Every component, constructor, and method should feature descriptive Dart doc comments (`///`) detailing visual mechanics, states, parameters, and architectural classification.
+

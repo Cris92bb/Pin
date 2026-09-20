@@ -2,6 +2,12 @@
 
 For all coding tasks in this repository, the agent must adhere to:
 
+## Code Quality, Design Tokens & FSD Compliance
+- **File Size Limit (<= 300 LOC)**: Strive to keep all Dart source files under 300 lines of code. Split large classes and monolithic views into modular components in dedicated `components/` subdirectories.
+- **Componentization & Doctype Comments**: Build cohesive, reusable widgets with complete Dart doc comments (`///`) providing role descriptions, architectural context, and parameter specifications.
+- **Design Token Consistency**: Never hardcode colors (`Color(0x...)`). Always use `PinTokens` or `Theme.of(context)` for colors, radii, shadows, borders, and spacing.
+- **Strict FSD Compliance**: Preserve unidirectional imports (`app` -> `pages` -> `widgets` -> `features` -> `entities` -> `shared`) and zero cross-slice imports. Validate with `tool/verify_fsd.dart --strict`.
+
 ## Mandatory Commits on Impactful Changes
 - **Requirement**: For every impactful change made to the codebase (feature addition, bug/layout fix, script/build update, documentation, or test modification), create a Git commit.
 - **Pre-requisite**: Ensure changes are verified (e.g., `flutter test` or `dart analyze` pass).

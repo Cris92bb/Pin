@@ -182,6 +182,17 @@ flutter test
 
 ---
 
+## 🏛️ Code Quality, Architecture & Design Tokens
+
+Pin adheres to strict code quality and architectural guidelines:
+
+- **Feature-Sliced Design (FSD v2.1)**: Strictly unidirectional dependencies (`app` → `pages` → `widgets` → `features` → `entities` → `shared`) with zero cross-slice coupling. Verify with `dart run tool/verify_fsd.dart --strict`.
+- **File Sizing & Modularity (<= 300 LOC)**: All Dart source files ideally remain under 300 lines of code. Large files and monolithic views are broken down into clean, modular sub-components in dedicated `components/` subdirectories.
+- **Doctype & Documentation Comments**: Every component, class, method, and state provider is documented with descriptive Dart doc comments (`///`) providing role descriptions, architectural context, and parameter specifications.
+- **Design Token Consistency & Zero Hardcoded Colors**: No hardcoded `Color(0x...)` or random hex literals in UI files. All visual styles, borders, radii, and shadows reference `PinTokens` or `Theme.of(context)` to preserve the faded sage green and OLED dark palettes.
+
+---
+
 ## 📦 Building & Desktop Installation
 
 ### 1. Build the Release Binary
