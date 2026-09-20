@@ -18,6 +18,10 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // Register On-Device AI Channel (Gemini Nano via AICore)
+        val onDeviceAiChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, OnDeviceAiHandler.CHANNEL)
+        onDeviceAiChannel.setMethodCallHandler(OnDeviceAiHandler(applicationContext))
+
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {

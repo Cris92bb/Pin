@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pin/shared/lib/platform_theme_service.dart';
 import '../entities/task/state/task_state_notifier.dart';
+import '../features/ai/services/ai_breakdown_orchestrator.dart';
 import '../features/ai/services/ai_config_service.dart';
-import '../features/ai/services/gemini_service.dart';
 import '../features/ai/ui/ai_settings_modal.dart';
 import '../features/task_crud/ui/task_crud_modal.dart';
 import '../pages/home/home_page.dart';
@@ -40,18 +40,23 @@ class _PinAppContentState extends ConsumerState<_PinAppContent>
     TaskCrudModal.defaultAiBreakdownHandler =
         (ctx, ref, {required prompt, currentDescription}) async {
       final aiConfig = ref.read(aiConfigProvider);
-      if (!aiConfig.hasKey) {
+      final canRunLocally = aiConfig.isOnDeviceReady &&
+          aiConfig.executionMode != AiExecutionMode.cloudOnly;
+
+      if (!aiConfig.hasKey && !canRunLocally) {
         final configured = await AiSettingsModal.show(ctx);
         if (configured != true) return null;
-        if (!ref.read(aiConfigProvider).hasKey) return null;
+        final updated = ref.read(aiConfigProvider);
+        if (!updated.hasKey && !updated.isOnDeviceReady) return null;
       }
-      final service = GeminiService();
-      final breakdown = await service.suggestTaskBreakdown(
-        apiKey: ref.read(aiConfigProvider).apiKey,
+
+      final orchestrator = AiBreakdownOrchestrator();
+      final result = await orchestrator.breakdown(
+        config: ref.read(aiConfigProvider),
         prompt: prompt,
         currentDescription: currentDescription,
-        model: ref.read(aiConfigProvider).selectedModel,
       );
+      final breakdown = result.breakdown;
       return TaskAiBreakdownPayload(
         title: breakdown.title,
         description: breakdown.description,

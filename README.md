@@ -64,10 +64,14 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
   - Zero required cloud dependencies or telemetry; guest mode works entirely offline.
 - **📤 Export & Import**:
   - Full JSON backup and restore capabilities for data safety and cross-machine migration.
-- **✨ Gemini AI Decomposition & Auto-Fill**:
-  - Securely configure your Google Gemini API key via the header menu or inside the task dialog.
-  - One-click task breakdown: type a quick idea or title, and Gemini refines the title, generates a clear objective description, sets the cognitive energy profile, estimates total duration, attaches relevant tags, and generates 2–6 bite-sized atomic subtasks (each $\le 15$ minutes).
-  - Supports model selection (`gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.7-flash`, `gemini-3.8-flash`) with zero-config fallback via the `GEMINI_API_KEY` environment variable.
+- **✨ Gemini AI Decomposition & Auto-Fill (On-Device & Cloud)**:
+  - **⚡ On-Device Gemini Nano Support**: Native hardware-accelerated on-device AI via Android AICore (`com.google.mlkit:genai-prompt`) on flagship smartphones including Google Pixel 9 / 9 Pro / 9 Pro Fold and Samsung Galaxy S24 / S25 / Z Fold series.
+  - **Zero-Latency Offline Execution**: Runs entirely on your smartphone's NPU without sending prompts over the internet when on-device Nano is ready.
+  - **Seamless Cloud API Fallback**: If the device hardware or OS lacks on-device Gemini Nano, the app automatically and transparently falls back to Cloud Gemini API using your configured API key.
+  - **Configurable Execution Modes**: Choose between `Auto` (On-Device first, fallback to Cloud), `On-Device Only` (strict offline privacy), or `Cloud Only`.
+  - **One-Click Task Breakdown**: Type a quick idea or title, and Gemini decomposes it into a refined objective, energy profile, estimated duration, relevant tags, and bite-sized atomic subtasks (each $\le 15$ minutes).
+  - **Engine Indicator Badge**: Visual real-time indicator (`⚡ Gemini Nano` vs `☁️ Cloud Gemini`) showing the engine and execution time.
+  - **Cloud Model Support**: Supports `gemini-3.6-flash`, `gemini-3.5-flash`, `gemini-3.7-flash`, and `gemini-3.8-flash` with zero-config fallback via the `GEMINI_API_KEY` environment variable.
 - **🐧 Native Linux Integration**:
   - GNOME Application Menu (`.desktop`) integration.
   - Multi-resolution hicolor icon assets (`16x16` through `512x512`).
