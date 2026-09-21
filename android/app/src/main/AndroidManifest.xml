@@ -68,6 +68,7 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <package android:name="com.google.android.aicore" />
+        <package android:name="com.samsung.android.aicore" />
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />

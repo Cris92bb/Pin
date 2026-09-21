@@ -193,7 +193,11 @@ class OnDeviceAiStatusCard extends StatelessWidget {
                 icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Check Status', style: TextStyle(fontSize: 12)),
               ),
-              if (isDownloadable && onDownload != null) ...[
+              if ((isDownloadable ||
+                      (!isReady &&
+                          (cap?.isKnownSupportedDevice == true ||
+                              cap?.isAiCoreInstalled == true))) &&
+                  onDownload != null) ...[
                 const SizedBox(width: 8),
                 PinButton(
                   text: 'Download Model',
