@@ -11,6 +11,7 @@ class BreakdownModalHeader extends StatelessWidget {
   final bool isLocalOnDevice;
   final String? engineTitle;
   final Duration? duration;
+  final VoidCallback? onOpenSettings;
   final VoidCallback onClose;
 
   const BreakdownModalHeader({
@@ -20,6 +21,7 @@ class BreakdownModalHeader extends StatelessWidget {
     required this.isLocalOnDevice,
     this.engineTitle,
     this.duration,
+    this.onOpenSettings,
     required this.onClose,
   });
 
@@ -65,8 +67,20 @@ class BreakdownModalHeader extends StatelessWidget {
             ],
           ),
         ),
+        if (onOpenSettings != null) ...[
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 18),
+            tooltip: 'AI Settings',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            splashRadius: 18,
+            onPressed: onOpenSettings,
+          ),
+          const SizedBox(width: 8),
+        ],
         IconButton(
           icon: const Icon(Icons.close_rounded, size: 20),
+          tooltip: 'Close',
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
           splashRadius: 18,

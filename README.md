@@ -62,8 +62,13 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
 - **💾 Local-First & Private by Default**:
   - 100% functional without an account or internet connection.
   - Zero required cloud dependencies or telemetry; guest mode works entirely offline.
-- **📤 Export & Import**:
-  - Full JSON backup and restore capabilities for data safety and cross-machine migration.
+- **📤 Transfer, Sharing & Calendar Integration**:
+  - **🔗 Deep Link Sharing & Instant In-App Import**: Generate `pin://import?blueprint=...` links to share with friends or teammates. Tapping a shared link in messages, email, or browser automatically launches Pin, displays a tactile preview of the pin with checklist, and imports it directly to Today or Backlog with one tap.
+  - **Formatted Text & Markdown Export**: One-tap copy of single pins or entire decks into beautifully formatted Markdown with energy badges, tags, and checklist checkboxes for sharing into Slack, email, or notes.
+  - **📅 Direct Calendar Integration**: One-tap "Add to Calendar" triggers Google Calendar on Android / mobile or web calendar on desktop with pre-filled title, duration, and details. Full RFC 5545 `.ics` event export supported.
+  - **Portable Blueprints**: Offline Base64 blueprints for instant cross-device transfer without cloud dependencies.
+  - **Smart Text Import**: Paste free-form notes or meeting checklists to automatically detect tasks, subtasks, durations, and hashtags.
+  - **Individual Pin Sharing**: Quick-share any pin from its card action bubble or editor modal.
 - **✨ Gemini AI Decomposition & Auto-Fill (On-Device & Cloud)**:
   - **⚡ On-Device Gemini Nano Support**: Native hardware-accelerated on-device AI via Android AICore (`com.google.mlkit:genai-prompt`) on flagship smartphones including Google Pixel 9 / 9 Pro / 9 Pro Fold and Samsung Galaxy S24 / S25 / Z Fold series.
   - **Zero-Latency Offline Execution**: Runs entirely on your smartphone's NPU without sending prompts over the internet when on-device Nano is ready.
@@ -85,7 +90,7 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
 | :--- | :--- |
 | <kbd>Ctrl</kbd> + <kbd>N</kbd> | Create a new task |
 | <kbd>F</kbd> | Launch Focus Mode for the first Today pin |
-| <kbd>Ctrl</kbd> + <kbd>E</kbd> / <kbd>Ctrl</kbd> + <kbd>I</kbd> | Open JSON Export / Import modal |
+| <kbd>Ctrl</kbd> + <kbd>E</kbd> / <kbd>Ctrl</kbd> + <kbd>I</kbd> | Open Transfer & Share (Export, Import, Calendar) modal |
 | <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> | Switch to Backlog / Today / Done drawer |
 | <kbd>←</kbd> / <kbd>→</kbd> | Cycle horizontally between drawers |
 | <kbd>Ctrl</kbd> + <kbd>Q</kbd> / <kbd>Ctrl</kbd> + <kbd>W</kbd> | Exit application |

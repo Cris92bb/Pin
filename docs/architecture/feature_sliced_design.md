@@ -189,8 +189,8 @@ lib/
 │   │   ├── task_crud.dart            # Public API
 │   │   ├── state/
 │   │   └── ui/
-│   └── task_export_import/           # JSON/Blueprint backup & restore
-│       ├── task_export_import.dart   # Public API
+│   └── task_export_import/           # Text, Calendar, & Blueprint sharing / import hub
+│       ├── services/                 # Text formatter & Calendar services
 │       └── ui/
 ├── entities/                         # Business models & domain state
 │   └── task/                         # Task aggregate root

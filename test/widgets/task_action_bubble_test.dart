@@ -27,6 +27,7 @@ void main() {
   testWidgets('TaskActionBubble renders AI Breakdown, Edit Pin, and Delete options', (tester) async {
     bool aiClicked = false;
     bool editClicked = false;
+    bool shareClicked = false;
     bool deleteClicked = false;
 
     await tester.pumpWidget(
@@ -37,6 +38,7 @@ void main() {
             task: testTask,
             onAiBreakdown: () => aiClicked = true,
             onEdit: () => editClicked = true,
+            onShare: () => shareClicked = true,
             onDelete: () => deleteClicked = true,
           ),
         ),
@@ -48,6 +50,8 @@ void main() {
     expect(find.text('Re-analyze'), findsOneWidget);
     expect(find.text('Edit Pin'), findsOneWidget);
     expect(find.text('Full editor'), findsOneWidget);
+    expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Text & Cal'), findsOneWidget);
     expect(find.text('Delete'), findsOneWidget);
     expect(find.text('Remove pin'), findsOneWidget);
 
@@ -60,6 +64,11 @@ void main() {
     await tester.tap(find.text('Edit Pin'));
     await tester.pumpAndSettle();
     expect(editClicked, isTrue);
+
+    // Tap Share
+    await tester.tap(find.text('Share'));
+    await tester.pumpAndSettle();
+    expect(shareClicked, isTrue);
 
     // Tap Delete
     await tester.tap(find.text('Delete'));

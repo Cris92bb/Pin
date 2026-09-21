@@ -2,6 +2,8 @@ import 'ai_config_service.dart';
 import 'gemini_service.dart';
 import 'on_device_ai_service.dart';
 
+import 'local_heuristic_breakdown_service.dart';
+
 /// Result containing the decomposed Pin task and metadata about the execution engine.
 class AiBreakdownResult {
   final AiTaskBreakdown breakdown;
@@ -17,16 +19,21 @@ class AiBreakdownResult {
   });
 }
 
-/// Orchestrates task breakdown execution between On-Device Gemini Nano and Cloud Gemini API.
+/// Orchestrates task breakdown execution between On-Device Gemini Nano, Cloud Gemini,
+/// and offline Smart Local Heuristic engine.
 class AiBreakdownOrchestrator {
   final OnDeviceAiService _onDeviceService;
   final GeminiService _cloudService;
+  final LocalHeuristicBreakdownService _localHeuristicService;
 
   AiBreakdownOrchestrator({
     OnDeviceAiService? onDeviceService,
     GeminiService? cloudService,
+    LocalHeuristicBreakdownService? localHeuristicService,
   })  : _onDeviceService = onDeviceService ?? OnDeviceAiService(),
-        _cloudService = cloudService ?? GeminiService();
+        _cloudService = cloudService ?? GeminiService(),
+        _localHeuristicService =
+            localHeuristicService ?? const LocalHeuristicBreakdownService();
 
   /// Executes task breakdown according to user execution preferences and device capability.
   Future<AiBreakdownResult> breakdown({
@@ -74,7 +81,6 @@ class AiBreakdownOrchestrator {
                 stopwatch: stopwatch,
               );
             }
-            rethrow;
           }
         }
 
@@ -88,17 +94,32 @@ class AiBreakdownOrchestrator {
           );
         }
 
-        // Neither on-device nor API key is available
-        if (capability.status == OnDeviceAiStatus.downloadable) {
-          throw const GeminiApiException(
-            'Gemini Nano is supported on your device! Open AI Settings to download the model, or provide a Gemini API key.',
-          );
-        }
-
-        throw GeminiApiException(
-          'Gemini API key is required. (On-Device Gemini Nano is not available on this device: ${capability.message})',
+        // Neither on-device nor API key is available: use Smart Local Engine
+        return _breakdownLocalHeuristic(
+          prompt: prompt,
+          currentDescription: currentDescription,
+          stopwatch: stopwatch,
         );
     }
+  }
+
+  AiBreakdownResult _breakdownLocalHeuristic({
+    required String prompt,
+    String? currentDescription,
+    required Stopwatch stopwatch,
+  }) {
+    final breakdown = _localHeuristicService.decompose(
+      prompt: prompt,
+      currentDescription: currentDescription,
+    );
+    stopwatch.stop();
+
+    return AiBreakdownResult(
+      breakdown: breakdown,
+      isLocalOnDevice: true,
+      engineTitle: 'Smart Local Engine (Offline)',
+      duration: stopwatch.elapsed,
+    );
   }
 
   Future<AiBreakdownResult> _breakdownOnDevice({

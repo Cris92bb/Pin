@@ -91,19 +91,8 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
   }
 
   Future<void> _startBreakdown() async {
-    final aiConfig = ref.read(aiConfigProvider);
-    final canRunLocally = aiConfig.isOnDeviceReady &&
-        aiConfig.executionMode != AiExecutionMode.cloudOnly;
-
-    if (widget.serviceOverride == null &&
-        widget.orchestratorOverride == null &&
-        !aiConfig.hasKey &&
-        !canRunLocally) {
-      final configured = await AiSettingsModal.show(context);
-      if (configured != true || !mounted) return;
-      final updated = ref.read(aiConfigProvider);
-      if (!updated.hasKey && !updated.isOnDeviceReady) return;
-    }
+    await ref.read(aiConfigProvider.notifier).ensureLoaded();
+    if (!mounted) return;
 
     setState(() {
       _isLoading = true;
@@ -111,9 +100,10 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
     });
 
     try {
-      final effectiveConfig = (ref.read(aiConfigProvider).apiKey.isEmpty && widget.serviceOverride != null)
-          ? ref.read(aiConfigProvider).copyWith(apiKey: 'test_key')
-          : ref.read(aiConfigProvider);
+      final currentConfig = ref.read(aiConfigProvider);
+      final effectiveConfig = (currentConfig.apiKey.isEmpty && widget.serviceOverride != null)
+          ? currentConfig.copyWith(apiKey: 'test_key')
+          : currentConfig;
 
       final orchestrator = widget.orchestratorOverride ??
           AiBreakdownOrchestrator(cloudService: widget.serviceOverride);
@@ -240,6 +230,10 @@ class _AiTaskBreakdownModalState extends ConsumerState<AiTaskBreakdownModal> {
                 isLocalOnDevice: _isLocalOnDevice,
                 engineTitle: _engineTitle,
                 duration: _duration,
+                onOpenSettings: () async {
+                  final configured = await AiSettingsModal.show(context);
+                  if (configured == true) _startBreakdown();
+                },
                 onClose: () => Navigator.of(context).pop(false),
               ),
               const SizedBox(height: 16),

@@ -6,6 +6,9 @@ import '../features/ai/services/ai_breakdown_orchestrator.dart';
 import '../features/ai/services/ai_config_service.dart';
 import '../features/ai/ui/ai_settings_modal.dart';
 import '../features/task_crud/ui/task_crud_modal.dart';
+import '../features/task_export_import/services/deep_link_service.dart';
+import '../features/task_export_import/ui/import_shared_pin_modal.dart';
+import '../features/task_export_import/ui/single_task_share_modal.dart';
 import '../pages/home/home_page.dart';
 import 'theme/pin_scroll_behavior.dart';
 import 'theme/pin_theme.dart';
@@ -31,24 +34,18 @@ class _PinAppContent extends ConsumerStatefulWidget {
 
 class _PinAppContentState extends ConsumerState<_PinAppContent>
     with WidgetsBindingObserver {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
     TaskCrudModal.defaultAiSettingsHandler = (ctx) => AiSettingsModal.show(ctx);
+    TaskCrudModal.defaultShareHandler = (ctx, task) => SingleTaskShareModal.show(ctx, task: task);
     TaskCrudModal.defaultAiBreakdownHandler =
         (ctx, ref, {required prompt, currentDescription}) async {
-      final aiConfig = ref.read(aiConfigProvider);
-      final canRunLocally = aiConfig.isOnDeviceReady &&
-          aiConfig.executionMode != AiExecutionMode.cloudOnly;
-
-      if (!aiConfig.hasKey && !canRunLocally) {
-        final configured = await AiSettingsModal.show(ctx);
-        if (configured != true) return null;
-        final updated = ref.read(aiConfigProvider);
-        if (!updated.hasKey && !updated.isOnDeviceReady) return null;
-      }
+      await ref.read(aiConfigProvider.notifier).ensureLoaded();
 
       final orchestrator = AiBreakdownOrchestrator();
       final result = await orchestrator.breakdown(
@@ -69,11 +66,27 @@ class _PinAppContentState extends ConsumerState<_PinAppContent>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncTheme();
+      _initDeepLinks();
     });
+  }
+
+  void _initDeepLinks() {
+    DeepLinkService.instance.init(
+      onLinkReceived: (uri) {
+        final tasks = DeepLinkService.parseSharedTasks(uri);
+        if (tasks.isNotEmpty) {
+          final ctx = _navigatorKey.currentContext;
+          if (ctx != null && mounted) {
+            ImportSharedPinModal.show(ctx, tasks: tasks);
+          }
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
+    DeepLinkService.instance.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -108,6 +121,7 @@ class _PinAppContentState extends ConsumerState<_PinAppContent>
     });
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Pin',
       debugShowCheckedModeBanner: false,
       scrollBehavior: const PinScrollBehavior(),

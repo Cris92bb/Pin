@@ -220,7 +220,7 @@ void main() {
       expect(cloudService.callCount, 1);
     });
 
-    test('Auto mode throws informative exception when neither on-device nor API key is available', () async {
+    test('Auto mode falls back to Smart Local Engine when neither on-device nor API key is available', () async {
       OnDeviceAiService.mockCapability = OnDeviceAiCapability.unsupported(
         reason: 'Running on Linux desktop',
       );
@@ -234,6 +234,27 @@ void main() {
         executionMode: AiExecutionMode.auto,
       );
 
+      final result = await orchestrator.breakdown(
+        config: config,
+        prompt: 'Implement on-device task breakdown',
+      );
+
+      expect(result.isLocalOnDevice, isTrue);
+      expect(result.engineTitle, contains('Smart Local Engine'));
+      expect(result.breakdown.atomicSteps, isNotEmpty);
+      expect(cloudService.callCount, 0);
+    });
+
+    test('CloudOnly mode throws informative exception when API key is missing', () async {
+      final cloudService = FakeCloudGeminiService(cannedBreakdown);
+      final orchestrator = AiBreakdownOrchestrator(cloudService: cloudService);
+
+      const config = AiConfig(
+        apiKey: '',
+        selectedModel: 'gemini-3.6-flash',
+        executionMode: AiExecutionMode.cloudOnly,
+      );
+
       expect(
         () => orchestrator.breakdown(
           config: config,
@@ -242,7 +263,7 @@ void main() {
         throwsA(isA<GeminiApiException>().having(
           (e) => e.message,
           'message',
-          contains('Gemini API key is required'),
+          contains('Gemini API key is required for Cloud mode'),
         )),
       );
     });
