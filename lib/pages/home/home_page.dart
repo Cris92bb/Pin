@@ -16,6 +16,9 @@ import '../../features/ai/ui/ai_settings_modal.dart';
 import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/sync/ui/firebase_account_modal.dart';
 import '../../features/sync/ui/sync_status_badge.dart';
+import '../../entities/board/state/board_providers.dart';
+import '../../entities/board/state/board_state.dart';
+import '../../features/board_switcher/ui/board_switcher_chip.dart';
 import 'wearable_home_page.dart';
 
 /// The primary companion view assembling the mobile/companion frame,
@@ -89,6 +92,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (screenTier == PinScreenTier.xs) {
       return const WearableHomePage();
     }
+
+    ref.listen<BoardState>(boardStateProvider, (previous, next) {
+      if (previous?.activeBoardId != next.activeBoardId ||
+          previous?.activeBoard.wipLimit != next.activeBoard.wipLimit) {
+        ref.read(taskStateProvider.notifier).setActiveBoard(
+              next.activeBoardId,
+              wipLimit: next.activeBoard.wipLimit,
+            );
+      }
+    });
 
     ref.listen<TaskListState>(taskStateProvider, (previous, next) {
       final currentFocus = ref.read(activeFocusTaskProvider);
@@ -344,6 +357,8 @@ class _HomePageState extends ConsumerState<HomePage> {
               color: textPrimary,
             ),
           ),
+          const SizedBox(width: 8),
+          const BoardSwitcherChip(),
 
           const Spacer(),
 

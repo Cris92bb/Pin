@@ -26,6 +26,7 @@
         "status": { "type": "string", "description": "today | in_progress | completed | backlog" },
         "subtasks": { "type": "array", "description": "Atomic micro-steps" },
         "pinned": { "type": "boolean", "description": "Pinned status" },
+        "boardId": { "type": "string", "description": "Board workspace ID (e.g. personal, projects)" },
         "createdAt": { "type": "number", "description": "Creation epoch ms" },
         "completedAt": { "type": "number", "description": "Completion epoch ms" },
         "scheduledFor": { "type": "string", "description": "Scheduled date" },
@@ -36,6 +37,7 @@
       "collection": "users/{userId}/meta",
       "description": "Daily check-in and board metadata",
       "fields": {
+        "boards": { "type": "array", "description": "List of user workspace boards" },
         "dailyCheckin": { "type": "object", "description": "Energy readiness & intensity checkin" },
         "lastSyncedAt": { "type": "number", "description": "Last synced epoch ms" }
       }

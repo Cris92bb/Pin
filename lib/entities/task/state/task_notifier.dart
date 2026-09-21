@@ -43,9 +43,7 @@ class TaskStateNotifier extends Notifier<TaskListState> {
     StorageAdapter? watchedStorage;
     try {
       watchedStorage = ref.watch(storageAdapterProvider);
-    } catch (_) {
-      watchedStorage = null;
-    }
+    } catch (_) {}
     _storage = _configuredStorage ?? watchedStorage ?? PrefsStorageAdapter();
     final initialState = TaskListState(wipLimit: _initialWipLimit);
     _standaloneState = initialState;
@@ -121,17 +119,27 @@ class TaskStateNotifier extends Notifier<TaskListState> {
     }
   }
 
+  /// Changes the active board workspace.
+  void setActiveBoard(String boardId, {int? wipLimit}) {
+    state = state.copyWith(
+      activeBoardId: boardId,
+      wipLimit: wipLimit ?? state.wipLimit,
+    );
+  }
+
   /// Sets WIP limit between min and max tokens.
   Future<void> setWipLimit(int limit) async {
-    final clamped = limit.clamp(PinTokens.minWipLimit, PinTokens.maxWipLimit);
-    state = state.copyWith(wipLimit: clamped);
+    state = state.copyWith(wipLimit: limit.clamp(PinTokens.minWipLimit, PinTokens.maxWipLimit));
   }
 
   /// Creates a new Pin.
   /// Rejects addition to Today if the WIP limit has been reached.
   Future<bool> createTask(PinTask task) async {
     await loadFuture;
-    if (task.status == TaskStatus.today && state.isTodayWipFull) {
+    final effective = task.boardId.isEmpty
+        ? task.copyWith(boardId: state.activeBoardId)
+        : task;
+    if (effective.status == TaskStatus.today && state.isTodayWipFull) {
       state = state.copyWith(
         alertMessage:
             'WIP Limit reached (${state.wipLimit}/${state.wipLimit})! Finish or move an active task before adding another.',
@@ -139,10 +147,27 @@ class TaskStateNotifier extends Notifier<TaskListState> {
       return false;
     }
 
-    final updated = [task, ...state.tasks];
+    final updated = [effective, ...state.tasks];
     state = state.copyWith(tasks: updated, clearAlert: true);
     await persist();
     return true;
+  }
+
+  /// Moves a task to a target board.
+  Future<void> moveTaskToBoard(String taskId, String targetBoardId) async {
+    await loadFuture;
+    final taskIndex = state.tasks.indexWhere((t) => t.id == taskId);
+    if (taskIndex == -1) return;
+
+    final currentTask = state.tasks[taskIndex];
+    final updatedTask = currentTask.copyWith(
+      boardId: targetBoardId,
+      updatedAt: DateTime.now(),
+    );
+
+    final updatedList = List<PinTask>.from(state.tasks)..[taskIndex] = updatedTask;
+    state = state.copyWith(tasks: updatedList, clearAlert: true);
+    await persist();
   }
 
   /// Moves a task into "Today", enforcing WIP constraints.
@@ -179,14 +204,12 @@ class TaskStateNotifier extends Notifier<TaskListState> {
   Future<bool> togglePin(String taskId) async {
     final taskIndex = state.tasks.indexWhere((t) => t.id == taskId);
     if (taskIndex == -1) return false;
-
     final currentTask = state.tasks[taskIndex];
     if (currentTask.status == TaskStatus.today) {
       await moveToBacklog(taskId);
       return true;
-    } else {
-      return await moveToToday(taskId);
     }
+    return await moveToToday(taskId);
   }
 
   /// Moves a task into "Backlog".

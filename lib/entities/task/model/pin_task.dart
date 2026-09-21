@@ -1,46 +1,7 @@
 import 'atomic_step.dart';
+import 'task_status.dart';
 
-enum TaskStatus {
-  backlog,
-  today,
-  done;
-
-  String get label {
-    switch (this) {
-      case TaskStatus.backlog:
-        return 'Backlog';
-      case TaskStatus.today:
-        return 'Today';
-      case TaskStatus.done:
-        return 'Done';
-    }
-  }
-
-  static TaskStatus fromString(String? val) {
-    switch (val) {
-      case 'today':
-      case 'in_progress':
-        return TaskStatus.today;
-      case 'completed':
-      case 'done':
-        return TaskStatus.done;
-      case 'backlog':
-      default:
-        return TaskStatus.backlog;
-    }
-  }
-
-  String toStorageString() {
-    switch (this) {
-      case TaskStatus.today:
-        return 'today';
-      case TaskStatus.done:
-        return 'completed';
-      case TaskStatus.backlog:
-        return 'backlog';
-    }
-  }
-}
+export 'task_status.dart';
 
 /// The core domain entity representing a Task (Pin) in Pin, aligned with Firebase Blueprint.
 class PinTask {
@@ -56,6 +17,7 @@ class PinTask {
   final int estimatedMinutes;
   final int trackedSeconds;
   final bool isPinned;
+  final String boardId;
   final List<String> tags;
   final List<AtomicStep> subtasks;
   final DateTime createdAt;
@@ -75,6 +37,7 @@ class PinTask {
     this.estimatedMinutes = 15,
     this.trackedSeconds = 0,
     this.isPinned = false,
+    this.boardId = 'personal',
     this.tags = const [],
     this.subtasks = const [],
     required this.createdAt,
@@ -145,6 +108,7 @@ class PinTask {
     int? estimatedMinutes,
     int? trackedSeconds,
     bool? isPinned,
+    String? boardId,
     List<String>? tags,
     List<AtomicStep>? subtasks,
     DateTime? createdAt,
@@ -165,6 +129,7 @@ class PinTask {
       estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
       trackedSeconds: trackedSeconds ?? this.trackedSeconds,
       isPinned: isPinned ?? this.isPinned,
+      boardId: boardId ?? this.boardId,
       tags: tags ?? this.tags,
       subtasks: subtasks ?? this.subtasks,
       createdAt: createdAt ?? this.createdAt,
@@ -185,6 +150,7 @@ class PinTask {
       'source': source,
       'pinned': isPinned,
       'isPinned': isPinned,
+      'boardId': boardId,
       'energyTag': energyTag,
       'estimatedMinutes': estimatedMinutes,
       'trackedSeconds': trackedSeconds,
@@ -254,6 +220,7 @@ class PinTask {
       estimatedMinutes: (json['estimatedMinutes'] as num?)?.toInt() ?? 15,
       trackedSeconds: (json['trackedSeconds'] as num?)?.toInt() ?? 0,
       isPinned: json['pinned'] as bool? ?? json['isPinned'] as bool? ?? (parsedStatus == TaskStatus.today),
+      boardId: json['boardId'] as String? ?? 'personal',
       tags: (json['tags'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
@@ -281,6 +248,7 @@ class PinTask {
           estimatedMinutes == other.estimatedMinutes &&
           trackedSeconds == other.trackedSeconds &&
           isPinned == other.isPinned &&
+          boardId == other.boardId &&
           createdAt == other.createdAt;
 
   @override
@@ -293,6 +261,7 @@ class PinTask {
         estimatedMinutes,
         trackedSeconds,
         isPinned,
+        boardId,
         createdAt,
       );
 }
