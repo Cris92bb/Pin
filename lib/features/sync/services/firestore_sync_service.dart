@@ -21,6 +21,7 @@ class SyncResult {
 /// Payload returned when hydrating board from Firestore.
 class CloudBoardData {
   final List<Map<String, dynamic>> tasks;
+  final List<Map<String, dynamic>> boards;
   final Map<String, dynamic>? dailyCheckin;
   final Map<String, int> deletedTaskIds;
   final int lastSyncedAt;
@@ -28,6 +29,7 @@ class CloudBoardData {
 
   const CloudBoardData({
     required this.tasks,
+    this.boards = const [],
     this.dailyCheckin,
     this.deletedTaskIds = const {},
     required this.lastSyncedAt,
@@ -66,6 +68,7 @@ class FirestoreSyncService {
     required String userId,
     String? idToken,
     required List<Map<String, dynamic>> tasks,
+    List<Map<String, dynamic>>? boards,
     Map<String, dynamic>? dailyCheckin,
     Map<String, int>? deletedTaskIds,
   }) async {
@@ -93,6 +96,7 @@ class FirestoreSyncService {
 
     final fields = FirestoreRestCodec.encodeFields({
       'tasks': tasks,
+      'boards': boards ?? [],
       'dailyCheckin': dailyCheckin ?? {},
       'deletedTaskIds': deletedTaskIds ?? {},
       'lastSyncedAt': syncedAt,
@@ -192,11 +196,18 @@ class FirestoreSyncService {
             }
           }
         }
+        final rawBoards = decoded['boards'] as List<dynamic>? ?? [];
+        final boardMaps = rawBoards
+            .whereType<Map>()
+            .map((m) => Map<String, dynamic>.from(m))
+            .toList();
+
         final lastSyncedAt = (decoded['lastSyncedAt'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch;
         final count = (decoded['count'] as num?)?.toInt() ?? taskMaps.length;
 
         return CloudBoardData(
           tasks: taskMaps,
+          boards: boardMaps,
           dailyCheckin: checkinMap,
           deletedTaskIds: deletedMap,
           lastSyncedAt: lastSyncedAt,

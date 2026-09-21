@@ -64,16 +64,18 @@ extension TaskMutations on TaskStateNotifier {
     await persist();
   }
 
-  /// Clears all Done tasks (Archive).
-  Future<void> clearDoneTasks() async {
+  /// Clears all Done tasks (Archive) for the active board.
+  Future<void> clearDoneTasks({String? boardId}) async {
+    final targetBoard = boardId ?? state.activeBoardId;
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final t in state.tasks) {
-      if (t.status == TaskStatus.done) {
+      if (t.status == TaskStatus.done && t.boardId == targetBoard) {
         recordTaskDeleted(t.id, timestamp: now);
       }
     }
-    final updatedList =
-        state.tasks.where((t) => t.status != TaskStatus.done).toList();
+    final updatedList = state.tasks
+        .where((t) => !(t.status == TaskStatus.done && t.boardId == targetBoard))
+        .toList();
     state = state.copyWith(tasks: updatedList);
     await persist();
   }
