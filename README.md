@@ -29,6 +29,12 @@ On smartwatches, **Pin** seamlessly adapts into a lightweight, tactile wrist com
 
 ## ✨ Features
 
+- **📋 Multi-Board Workspaces & Feature Toggle (Pro)**:
+  - **Single Board Simplicity by Default**: New installations start cleanly with a single dedicated **Personal** board.
+  - **Feature-Toggled Multiple Boards**: Optional feature toggle unlocks unlimited custom workspaces (e.g., **Projects**, **Work**, **Study**).
+  - **Tactile Header Workspace Switcher**: Quick-switch between boards directly from the companion header chip (`BoardSwitcherChip`).
+  - **Workspace Isolation & Scoping**: Each board maintains its own isolated Today, Backlog, and Done columns with board-scoped WIP limits and inter-board task movement.
+  - **Zero-Config Cloud Sync**: Board workspaces sync automatically across devices through `/users/{userId}/meta/board` with no Firebase configuration or rule changes required.
 - **🗂️ Layered Deck Kanban**:
   - Three intuitive, full-width drawers: **Backlog**, **In Progress**, and **Done**.
   - One-click toggling and seamless animated transitions between layers.

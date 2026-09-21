@@ -47,6 +47,7 @@ class TaskCrudActions {
     required String title,
     required String description,
     required TaskStatus selectedStatus,
+    String? boardId,
     required String selectedEnergyTag,
     required int selectedEstimateMinutes,
     required List<String> tags,
@@ -63,12 +64,14 @@ class TaskCrudActions {
     final now = DateTime.now();
 
     if (initialTask == null) {
+      final activeBoard = boardId ?? ref.read(taskStateProvider).activeBoardId;
       final newTask = PinTask(
         id: 'pin_${now.microsecondsSinceEpoch}',
         title: cleanTitle,
         description: description.trim(),
         status: selectedStatus,
         isPinned: selectedStatus == TaskStatus.today,
+        boardId: activeBoard,
         energyTag: selectedEnergyTag,
         estimatedMinutes: selectedEstimateMinutes,
         tags: tags,
@@ -93,6 +96,7 @@ class TaskCrudActions {
         description: description.trim(),
         status: selectedStatus,
         isPinned: selectedStatus == TaskStatus.today,
+        boardId: boardId ?? initialTask.boardId,
         energyTag: selectedEnergyTag,
         estimatedMinutes: selectedEstimateMinutes,
         tags: tags,

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../entities/board/model/board.dart';
+import '../../../entities/board/state/board_providers.dart';
 import '../../../entities/task/model/pin_task.dart';
 import '../../../entities/task/state/task_state_notifier.dart';
 import '../model/app_user.dart';
@@ -13,7 +15,6 @@ import '../services/google_sso_service.dart';
 import '../services/watch_auth_bridge.dart';
 import 'sync_merger.dart';
 import 'sync_state.dart';
-
 export 'sync_auth_coordinator.dart';
 export 'sync_merger.dart';
 export 'sync_providers.dart';
@@ -39,10 +40,8 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   GoogleSsoService? activeSsoService;
   SyncState? _standaloneState;
 
-  FirebaseAuthService get authService =>
-      _authService ?? _configuredAuthService ?? FirebaseAuthService(config: state.config);
-  FirestoreSyncService get firestoreService =>
-      _firestoreService ?? _configuredFirestoreService ?? FirestoreSyncService(config: state.config);
+  FirebaseAuthService get authService => _authService ?? _configuredAuthService ?? FirebaseAuthService(config: state.config);
+  FirestoreSyncService get firestoreService => _firestoreService ?? _configuredFirestoreService ?? FirestoreSyncService(config: state.config);
 
   SyncController({
     Ref? ref,
@@ -51,12 +50,12 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     FirebaseConfig initialConfig = const FirebaseConfig(),
     AppUser? initialUser,
     bool autoInit = true,
-  })  : _configuredRef = ref,
-        _configuredAuthService = authService,
-        _configuredFirestoreService = firestoreService,
-        _initialConfig = initialConfig,
-        _initialUser = initialUser,
-        _autoInit = autoInit;
+  }) : _configuredRef = ref,
+       _configuredAuthService = authService,
+       _configuredFirestoreService = firestoreService,
+       _initialConfig = initialConfig,
+       _initialUser = initialUser,
+       _autoInit = autoInit;
 
   @override
   SyncState build() {
@@ -140,17 +139,13 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && this.state.isSignedIn) {
-      syncNow();
-    }
+    if (state == AppLifecycleState.resumed && this.state.isSignedIn) syncNow();
   }
 
   void startPeriodicSync() {
     _pollingTimer?.cancel();
     _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (state.isSignedIn && !_isSyncing) {
-        performTwoWaySync();
-      }
+      if (state.isSignedIn && !_isSyncing) performTwoWaySync();
     });
   }
 
@@ -159,16 +154,11 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     _pollingTimer = null;
   }
 
-  void cancelDebounce() {
-    _debounceTimer?.cancel();
-  }
-
+  void cancelDebounce() => _debounceTimer?.cancel();
 
   void _handleLocalTasksChanged(List<PinTask> tasks) {
     if (state.user == null) {
-      if (state.status != SyncStatus.guest) {
-        state = state.copyWith(status: SyncStatus.guest);
-      }
+      if (state.status != SyncStatus.guest) state = state.copyWith(status: SyncStatus.guest);
       return;
     }
     state = state.copyWith(isDebouncing: true);
@@ -199,6 +189,12 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       await taskNotifier.loadFuture;
       final localTasks = _activeRef.read(taskStateProvider).tasks;
       final localDeletedMap = taskNotifier.deletedTaskIds;
+      List<Board>? localBoards;
+      try {
+        final bNotifier = _activeRef.read(boardStateProvider.notifier);
+        await bNotifier.loadFuture;
+        localBoards = _activeRef.read(boardStateProvider).boards;
+      } catch (_) {}
 
       final cloudBoard = await firestoreService.loadBoardFromFirestore(
         userId: user.uid,
@@ -207,14 +203,19 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
 
       if (cloudBoard == null) {
         await _pushAndApplyResult(
-          userId: user.uid,
-          idToken: user.idToken,
-          tasks: localTasks,
-          checkin: state.dailyCheckin,
-          deletedIds: localDeletedMap,
+          userId: user.uid, idToken: user.idToken, tasks: localTasks,
+          boards: localBoards, checkin: state.dailyCheckin, deletedIds: localDeletedMap,
         );
         _isSyncing = false;
         return;
+      }
+
+      if (cloudBoard.boards.isNotEmpty) {
+        try {
+          final cloudBoards = cloudBoard.boards.map((m) => Board.fromJson(m)).toList();
+          await _activeRef.read(boardStateProvider.notifier).hydrateBoards(cloudBoards);
+          localBoards = _activeRef.read(boardStateProvider).boards;
+        } catch (_) {}
       }
 
       final mergeResult = SyncMerger.reconcile(
@@ -232,11 +233,8 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       }
 
       await _pushAndApplyResult(
-        userId: user.uid,
-        idToken: user.idToken,
-        tasks: mergeResult.mergedTasks,
-        checkin: mergeResult.checkin,
-        deletedIds: mergeResult.mergedDeletedMap,
+        userId: user.uid, idToken: user.idToken, tasks: mergeResult.mergedTasks,
+        boards: localBoards, checkin: mergeResult.checkin, deletedIds: mergeResult.mergedDeletedMap,
       );
     } catch (e) {
       state = state.copyWith(
@@ -252,6 +250,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
     required String userId,
     required String? idToken,
     required List<PinTask> tasks,
+    List<Board>? boards,
     required DailyCheckin? checkin,
     required Map<String, int> deletedIds,
   }) async {
@@ -259,6 +258,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
       userId: userId,
       idToken: idToken,
       tasks: tasks.map((t) => t.toJson()).toList(),
+      boards: boards?.map((b) => b.toJson()).toList(),
       dailyCheckin: checkin?.toJson(),
       deletedTaskIds: deletedIds,
     );
@@ -283,8 +283,7 @@ class SyncController extends Notifier<SyncState> with WidgetsBindingObserver {
   Future<void> updateDailyCheckin(DailyCheckin checkin) async {
     state = state.copyWith(dailyCheckin: checkin);
     if (state.user != null) {
-      final tasks = _activeRef.read(taskStateProvider).tasks;
-      _handleLocalTasksChanged(tasks);
+      _handleLocalTasksChanged(_activeRef.read(taskStateProvider).tasks);
     }
   }
 
