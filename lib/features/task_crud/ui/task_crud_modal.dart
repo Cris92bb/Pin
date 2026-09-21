@@ -20,28 +20,19 @@ class TaskCrudModal extends ConsumerStatefulWidget {
   /// Default global handler for opening AI settings.
   static void Function(BuildContext context)? defaultAiSettingsHandler;
 
+  /// Default global handler for sharing a Pin.
+  static void Function(BuildContext context, PinTask task)? defaultShareHandler;
+
   /// Optional initial task for editing mode.
   final PinTask? initialTask;
-
-  /// Optional fallback status.
   final TaskStatus? defaultStatus;
-
-  /// Whether to auto-trigger AI breakdown on mount.
   final bool autoTriggerAi;
-
-  /// Whether to wrap in a Dialog.
   final bool asDialog;
-
-  /// Dismiss callback.
   final VoidCallback? onClose;
-
-  /// Custom AI breakdown handler.
   final TaskAiBreakdownHandler? onAiBreakdown;
-
-  /// Custom handler to open AI settings.
   final VoidCallback? onOpenAiSettings;
+  final VoidCallback? onShare;
 
-  /// Creates a [TaskCrudModal].
   const TaskCrudModal({
     super.key,
     this.initialTask,
@@ -51,6 +42,7 @@ class TaskCrudModal extends ConsumerStatefulWidget {
     this.onClose,
     this.onAiBreakdown,
     this.onOpenAiSettings,
+    this.onShare,
   });
 
   /// Displays the modal dialog.
@@ -61,6 +53,7 @@ class TaskCrudModal extends ConsumerStatefulWidget {
     bool autoTriggerAi = false,
     TaskAiBreakdownHandler? onAiBreakdown,
     VoidCallback? onOpenAiSettings,
+    VoidCallback? onShare,
   }) =>
       showDialog(
         context: context,
@@ -71,6 +64,7 @@ class TaskCrudModal extends ConsumerStatefulWidget {
           autoTriggerAi: autoTriggerAi,
           onAiBreakdown: onAiBreakdown,
           onOpenAiSettings: onOpenAiSettings,
+          onShare: onShare,
         ),
       );
 
@@ -239,10 +233,20 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
               onOpenAiSettings: () {
                 if (widget.onOpenAiSettings != null) {
                   widget.onOpenAiSettings!();
-                } else if (TaskCrudModal.defaultAiSettingsHandler != null) {
-                  TaskCrudModal.defaultAiSettingsHandler!(context);
+                } else {
+                  TaskCrudModal.defaultAiSettingsHandler?.call(context);
                 }
               },
+              onShare: widget.initialTask == null
+                  ? null
+                  : () {
+                      if (widget.onShare != null) {
+                        widget.onShare!();
+                      } else {
+                        TaskCrudModal.defaultShareHandler
+                            ?.call(context, widget.initialTask!);
+                      }
+                    },
               onClose: _dismiss,
             ),
             const SizedBox(height: 12),
@@ -272,15 +276,12 @@ class _TaskCrudModalState extends ConsumerState<TaskCrudModal> {
                   _tagController.clear();
                 },
                 onRemoveTag: (tag) => setState(() => _tags.remove(tag)),
-                onEstimateChanged: (m) =>
-                    setState(() => _selectedEstimateMinutes = m),
+                onEstimateChanged: (m) => setState(() => _selectedEstimateMinutes = m),
                 onEnergyChanged: (t) => setState(() => _selectedEnergyTag = t),
                 onAddSubtask: _addSubtask,
-                onToggleStep: (idx, val) {
-                  setState(() {
-                    _subtasks[idx] = _subtasks[idx].copyWith(isCompleted: val);
-                  });
-                },
+                onToggleStep: (idx, val) => setState(() {
+                  _subtasks[idx] = _subtasks[idx].copyWith(isCompleted: val);
+                }),
                 onDeleteStep: (idx) => setState(() => _subtasks.removeAt(idx)),
               ),
             ),

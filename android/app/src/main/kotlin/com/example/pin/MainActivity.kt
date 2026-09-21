@@ -1,6 +1,7 @@
 package com.example.pin
 
 import android.content.Context
+import android.content.Intent
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.Wearable
 import io.flutter.embedding.android.FlutterActivity
@@ -13,10 +14,30 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.pin/watch_auth"
+    private val DEEP_LINK_CHANNEL = "com.example.pin/deep_link"
     private var methodChannel: MethodChannel? = null
+    private var deepLinkChannel: MethodChannel? = null
+    private var initialDeepLink: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Capture initial launch intent data if present
+        if (initialDeepLink == null) {
+            initialDeepLink = intent?.dataString
+        }
+
+        // Register Deep Link Channel
+        deepLinkChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEEP_LINK_CHANNEL)
+        deepLinkChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getInitialLink" -> {
+                    result.success(initialDeepLink)
+                    initialDeepLink = null
+                }
+                else -> result.notImplemented()
+            }
+        }
 
         // Register On-Device AI Channel (Gemini Nano via AICore)
         val onDeviceAiChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, OnDeviceAiHandler.CHANNEL)
@@ -88,8 +109,18 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val link = intent.dataString
+        if (link != null) {
+            deepLinkChannel?.invokeMethod("onLinkReceived", link)
+        }
+    }
+
     override fun onDestroy() {
         PinWearableListenerService.onAuthResponseCallback = null
+        deepLinkChannel = null
         super.onDestroy()
     }
 }

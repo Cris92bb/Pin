@@ -3,17 +3,21 @@ import 'package:flutter/material.dart';
 import '../../entities/task/model/pin_task.dart';
 import '../../features/ai/ui/ai_task_breakdown_modal.dart';
 import '../../features/task_crud/ui/task_crud_modal.dart';
+import '../../features/task_export_import/ui/single_task_share_modal.dart';
 import '../../shared/ui/pin_tokens.dart';
 import 'components/bubble_action_button.dart';
+import 'components/task_action_mobile_sheet.dart';
 
 /// Tactile floating action bubble menu revealing quick options:
 /// 1. ✨ AI Breakdown & Re-Analysis
 /// 2. ✏️ Edit Pin
-/// 3. 🗑️ Delete Pin
+/// 3. 📤 Share Pin (Text, Calendar, Blueprint)
+/// 4. 🗑️ Delete Pin
 class TaskActionBubble extends StatelessWidget {
   final PinTask task;
   final VoidCallback? onAiBreakdown;
   final VoidCallback? onEdit;
+  final VoidCallback? onShare;
   final VoidCallback? onDelete;
 
   const TaskActionBubble({
@@ -21,6 +25,7 @@ class TaskActionBubble extends StatelessWidget {
     required this.task,
     this.onAiBreakdown,
     this.onEdit,
+    this.onShare,
     this.onDelete,
   });
 
@@ -31,6 +36,7 @@ class TaskActionBubble extends StatelessWidget {
     Offset? targetPosition,
     VoidCallback? onAiBreakdown,
     VoidCallback? onEdit,
+    VoidCallback? onShare,
     VoidCallback? onDelete,
   }) {
     return showGeneralDialog<T>(
@@ -40,43 +46,31 @@ class TaskActionBubble extends StatelessWidget {
       barrierColor: Colors.black.withValues(alpha: 0.35),
       transitionDuration: const Duration(milliseconds: 220),
       transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+        final isMobile = MediaQuery.of(dialogContext).size.width < 500;
         final curved = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutBack,
           reverseCurve: Curves.easeInCubic,
         );
 
+        if (isMobile) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.12),
+              end: Offset.zero,
+            ).animate(curved),
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        }
+
         return ScaleTransition(
           scale: Tween<double>(begin: 0.82, end: 1.0).animate(curved),
-          child: FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
+          child: FadeTransition(opacity: animation, child: child),
         );
       },
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         final screenSize = MediaQuery.of(dialogContext).size;
-
-        // Calculate clamped position so the bubble hovers right around the click/touch point
-        double? left;
-        double? top;
-
-        if (targetPosition != null) {
-          const estimatedWidth = 380.0;
-          const estimatedHeight = 56.0;
-
-          // Center horizontally around the target
-          left = (targetPosition.dx - estimatedWidth / 2)
-              .clamp(16.0, math.max(16.0, screenSize.width - estimatedWidth - 16.0));
-
-          // Position slightly above target, or below if too close to top
-          if (targetPosition.dy > estimatedHeight + 30) {
-            top = targetPosition.dy - estimatedHeight - 14;
-          } else {
-            top = targetPosition.dy + 20;
-          }
-          top = top.clamp(16.0, math.max(16.0, screenSize.height - estimatedHeight - 16.0));
-        }
+        final isMobile = screenSize.width < 500;
 
         final bubble = Material(
           type: MaterialType.transparency,
@@ -96,20 +90,47 @@ class TaskActionBubble extends StatelessWidget {
             },
             onEdit: () {
               Navigator.of(dialogContext).pop();
-              if (onEdit != null) {
-                onEdit();
-              } else {
-                TaskCrudModal.show(context, task: task);
-              }
+              onEdit != null ? onEdit() : TaskCrudModal.show(context, task: task);
+            },
+            onShare: () {
+              Navigator.of(dialogContext).pop();
+              onShare != null ? onShare() : SingleTaskShareModal.show(context, task: task);
             },
             onDelete: () {
               Navigator.of(dialogContext).pop();
-              if (onDelete != null) {
-                onDelete();
-              }
+              onDelete?.call();
             },
           ),
         );
+
+        if (isMobile) {
+          return Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                child: bubble,
+              ),
+            ),
+          );
+        }
+
+        // Calculate clamped position so the bubble hovers right around the click/touch point
+        double? left;
+        double? top;
+
+        if (targetPosition != null) {
+          const estimatedWidth = 480.0;
+          const estimatedHeight = 56.0;
+
+          left = (targetPosition.dx - estimatedWidth / 2)
+              .clamp(16.0, math.max(16.0, screenSize.width - estimatedWidth - 16.0));
+
+          top = targetPosition.dy > estimatedHeight + 30
+              ? targetPosition.dy - estimatedHeight - 14
+              : targetPosition.dy + 20;
+          top = top.clamp(16.0, math.max(16.0, screenSize.height - estimatedHeight - 16.0));
+        }
 
         if (left != null && top != null) {
           return Stack(
@@ -130,6 +151,17 @@ class TaskActionBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+    if (isMobile) {
+      return TaskActionMobileSheet(
+        task: task,
+        onAiBreakdown: onAiBreakdown,
+        onEdit: onEdit,
+        onShare: onShare,
+        onDelete: onDelete,
+      );
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -179,14 +211,7 @@ class TaskActionBubble extends StatelessWidget {
                 .withValues(alpha: isDark ? 0.18 : 0.10),
             onTap: onAiBreakdown,
           ),
-
-          // Vertical divider
-          Container(
-            width: 1.2,
-            height: 28,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            color: borderColor,
-          ),
+          _buildDivider(borderColor),
 
           // Option 2: Edit Pin
           BubbleActionButton(
@@ -201,16 +226,23 @@ class TaskActionBubble extends StatelessWidget {
                 : Colors.black.withValues(alpha: 0.05),
             onTap: onEdit,
           ),
+          _buildDivider(borderColor),
 
-          // Vertical divider
-          Container(
-            width: 1.2,
-            height: 28,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            color: borderColor,
+          // Option 3: Share Pin
+          BubbleActionButton(
+            icon: Icons.share_rounded,
+            iconColor: PinTokens.accentEmerald,
+            label: 'Share',
+            subtitle: 'Text & Cal',
+            labelColor: PinTokens.accentEmerald,
+            subtitleColor: textSecondary,
+            hoverBgColor: PinTokens.accentEmerald
+                .withValues(alpha: isDark ? 0.18 : 0.10),
+            onTap: onShare,
           ),
+          _buildDivider(borderColor),
 
-          // Option 3: Delete Pin
+          // Option 4: Delete Pin
           BubbleActionButton(
             icon: Icons.delete_outline_rounded,
             iconColor: PinTokens.accentRose,
@@ -228,4 +260,11 @@ class TaskActionBubble extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDivider(Color color) => Container(
+        width: 1.2,
+        height: 28,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        color: color,
+      );
 }

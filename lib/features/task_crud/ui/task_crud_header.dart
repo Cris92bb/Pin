@@ -12,6 +12,9 @@ class TaskCrudHeader extends StatelessWidget {
   /// Callback when AI settings icon is tapped.
   final VoidCallback onOpenAiSettings;
 
+  /// Optional callback when share button is tapped (editing mode).
+  final VoidCallback? onShare;
+
   /// Callback when close button is tapped.
   final VoidCallback onClose;
 
@@ -21,6 +24,7 @@ class TaskCrudHeader extends StatelessWidget {
     required this.isEditing,
     required this.isDark,
     required this.onOpenAiSettings,
+    this.onShare,
     required this.onClose,
   });
 
@@ -44,6 +48,14 @@ class TaskCrudHeader extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (isEditing && onShare != null)
+              IconButton(
+                tooltip: 'Share Pin',
+                icon: const Icon(Icons.share_rounded, size: 18),
+                color: isDark ? PinTokens.accentEmerald : PinTokens.lightFabBg,
+                splashRadius: 18,
+                onPressed: onShare,
+              ),
             IconButton(
               tooltip: 'Gemini AI Settings',
               icon: const Icon(Icons.auto_awesome_rounded, size: 18),
