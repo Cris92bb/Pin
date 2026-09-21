@@ -55,9 +55,9 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
         val sdkInt = Build.VERSION.SDK_INT
 
         val isKnownGoogle = manufacturer.contains("Google", ignoreCase = true) &&
-                (model.contains("Pixel 9", ignoreCase = true) ||
-                 model.contains("Pixel 10", ignoreCase = true) ||
-                 model.contains("Pixel 8 Pro", ignoreCase = true))
+                (model.contains("Pixel 8", ignoreCase = true) ||
+                 model.contains("Pixel 9", ignoreCase = true) ||
+                 model.contains("Pixel 10", ignoreCase = true))
 
         val isKnownSamsung = manufacturer.contains("samsung", ignoreCase = true) &&
                 (model.contains("SM-S92", ignoreCase = true) || // Galaxy S24 series
@@ -74,7 +74,12 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
             context.packageManager.getPackageInfo("com.google.android.aicore", 0)
             isAiCoreInstalled = true
         } catch (_: PackageManager.NameNotFoundException) {
-            isAiCoreInstalled = false
+            try {
+                context.packageManager.getPackageInfo("com.samsung.android.aicore", 0)
+                isAiCoreInstalled = true
+            } catch (_: PackageManager.NameNotFoundException) {
+                isAiCoreInstalled = false
+            }
         }
 
         if (sdkInt < 26) {
@@ -139,17 +144,31 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
                     )
                 }
             } catch (t: Throwable) {
+                val isSupportedDevice = isKnownFlagship || isAiCoreInstalled
+                val statusString = if (isSupportedDevice) "downloadable" else "unavailable"
+                val detailedError = if (t.message.isNullOrBlank()) {
+                    t.javaClass.simpleName
+                } else {
+                    "${t.javaClass.simpleName}: ${t.message}"
+                }
+
+                val message = if (isSupportedDevice) {
+                    "Gemini Nano model needs to be re-downloaded after app reinstallation. Tap 'Download Model' to initiate, or reboot your device if AICore service needs a refresh ($detailedError)."
+                } else {
+                    t.message ?: "AICore check failed ($detailedError)."
+                }
+
                 withContext(Dispatchers.Main) {
                     result.success(
                         mapOf(
-                            "isSupported" to false,
-                            "status" to "unavailable",
+                            "isSupported" to isSupportedDevice,
+                            "status" to statusString,
                             "modelName" to "Gemini Nano",
                             "deviceModel" to model,
                             "manufacturer" to manufacturer,
                             "isKnownFlagship" to isKnownFlagship,
                             "isAiCoreInstalled" to isAiCoreInstalled,
-                            "message" to (t.message ?: "AICore check failed.")
+                            "message" to message
                         )
                     )
                 }
@@ -161,34 +180,49 @@ class OnDeviceAiHandler(private val context: Context) : MethodChannel.MethodCall
      * Triggers the Gemini Nano model download via AICore.
      *
      * [Generation.getClient] download returns a [Flow] of [DownloadStatus].
-     * This collects the flow and reports success when [DownloadStatus.DownloadCompleted]
-     * is emitted, or error on [DownloadStatus.DownloadFailed].
+     * This collects the flow and reports success when [DownloadStatus.DownloadStarted] or
+     * [DownloadStatus.DownloadCompleted] is emitted, or error on [DownloadStatus.DownloadFailed].
      */
     private fun downloadModel(result: MethodChannel.Result) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = Generation.getClient()
-                // download() returns Flow<DownloadStatus>; collect until terminal state.
+                var hasResponded = false
+                // download() returns Flow<DownloadStatus>; collect status updates.
                 client.download().collectLatest { status ->
                     when (status) {
+                        is DownloadStatus.DownloadStarted -> {
+                            if (!hasResponded) {
+                                hasResponded = true
+                                withContext(Dispatchers.Main) {
+                                    result.success(true)
+                                }
+                            }
+                        }
                         is DownloadStatus.DownloadCompleted -> {
                             client.close()
-                            withContext(Dispatchers.Main) {
-                                result.success(true)
+                            if (!hasResponded) {
+                                hasResponded = true
+                                withContext(Dispatchers.Main) {
+                                    result.success(true)
+                                }
                             }
                         }
                         is DownloadStatus.DownloadFailed -> {
                             client.close()
-                            withContext(Dispatchers.Main) {
-                                result.error(
-                                    "DOWNLOAD_ERROR",
-                                    "Gemini Nano model download failed.",
-                                    null
-                                )
+                            if (!hasResponded) {
+                                hasResponded = true
+                                withContext(Dispatchers.Main) {
+                                    result.error(
+                                        "DOWNLOAD_ERROR",
+                                        "Gemini Nano model download failed.",
+                                        null
+                                    )
+                                }
                             }
                         }
-                        // DownloadStarted and DownloadProgress are intermediate — keep collecting.
-                        else -> { /* no-op, wait for terminal state */ }
+                        // DownloadProgress is intermediate — keep collecting.
+                        else -> { /* no-op */ }
                     }
                 }
             } catch (t: Throwable) {
